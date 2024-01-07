@@ -48,7 +48,6 @@ class KillAura : Module() {
     
     //Options
     private val cps = IntRangeValue("CPS", 5, 8, 1, 20)
-
     private val hurtTimeValue = IntegerValue("HurtTime", 10, 0, 10)
 
     // Range
@@ -104,10 +103,6 @@ class KillAura : Module() {
     private val blue = IntegerValue("Blue", 255, 0, 255) { circleValue.get() }
     private val alpha = IntegerValue("Alpha", 255, 0, 255) { circleValue.get() }
 
-    /**
-     * MODULE
-     */
-
     // Target
     var hitable = false
     
@@ -149,11 +144,10 @@ class KillAura : Module() {
 
     @EventTarget
     fun onUpdate(event: UpdateEvent) {
-        if (target != null)
-            while (clicks > 0) {
-                runAttack()
-                clicks--
-            }
+        while (clicks > 0 && target != null) {
+            runAttack()
+            clicks--
+        }
     }
 
     @EventTarget
@@ -268,10 +262,12 @@ class KillAura : Module() {
         blockingMode.onPreAttack()
 
         runSwing()
-        MinusBounce.eventManager.callEvent(AttackEvent(entity))
-        mc.netHandler.addToSendQueue(C02PacketUseEntity(entity, C02PacketUseEntity.Action.ATTACK))
 
-        val criticals = MinusBounce.moduleManager[Criticals::class.java]!!
+        val event = AttackEvent(entity)
+        MinusBounce.eventManager.callEvent(event)
+        if (event.isCancelled) return
+
+        mc.netHandler.addToSendQueue(C02PacketUseEntity(entity, C02PacketUseEntity.Action.ATTACK))
 
         blockingMode.onPostAttack()
     }
