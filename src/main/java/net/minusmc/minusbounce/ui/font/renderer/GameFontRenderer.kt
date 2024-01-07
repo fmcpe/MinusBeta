@@ -144,14 +144,10 @@ class GameFontRenderer(font: Font) : FontRenderer(Minecraft.getMinecraft().gameS
                     currentFont.drawString(if (randomCase) ColorUtils.randomMagicText(words) else words, width, 0.0, hexColor)
 
                     if (strikeThrough)
-                        RenderUtils.drawLine(width / 2.0 + 1, currentFont.height / 3.0,
-                                (width + currentFont.getStringWidth(words)) / 2.0 + 1, currentFont.height / 3.0,
-                                FONT_HEIGHT / 16F)
+                        RenderUtils.drawLine(width / 2.0 + 1, currentFont.height / 3.0, (width + currentFont.getStringWidth(words)) / 2.0 + 1, currentFont.height / 3.0, FONT_HEIGHT / 16F)
 
                     if (underline)
-                        RenderUtils.drawLine(width / 2.0 + 1, currentFont.height / 2.0,
-                                (width + currentFont.getStringWidth(words)) / 2.0 + 1, currentFont.height / 2.0,
-                                FONT_HEIGHT / 16F)
+                        RenderUtils.drawLine(width / 2.0 + 1, currentFont.height / 2.0, (width + currentFont.getStringWidth(words)) / 2.0 + 1, currentFont.height / 2.0, FONT_HEIGHT / 16F)
 
                     width += currentFont.getStringWidth(words)
                 }
@@ -166,8 +162,7 @@ class GameFontRenderer(font: Font) : FontRenderer(Minecraft.getMinecraft().gameS
         return (x + getStringWidth(text)).toInt()
     }
 
-    override fun getColorCode(charCode: Char) =
-            ColorUtils.hexColors[getColorIndex(charCode)]
+    override fun getColorCode(charCode: Char) = ColorUtils.hexColors[getColorIndex(charCode)]
 
     override fun getStringWidth(text: String): Int {
         var currentText = text

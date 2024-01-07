@@ -85,12 +85,6 @@ class Target : Element() {
     var barColor = Color(-1)
     var bgColor = Color(-1)
 
-//    init {
-//        styles.map {
-//            style.values.forEach {it.name = "${style.name}-${it.name}"}
-//        }
-//    }
-
     override fun drawElement(): Border? {
         val mainStyle = style
 
@@ -100,13 +94,12 @@ class Target : Element() {
                             else if ((mc.currentScreen is GuiChat && showWithChatOpen.get()) || mc.currentScreen is GuiHudDesigner) mc.thePlayer 
                             else null
 
-        val preBarColor = when (colorModeValue.get()) {
-            "Rainbow" -> Color(RenderUtils.getRainbowOpaque(waveSecondValue.get(), saturationValue.get(), brightnessValue.get(), 0))
-            "Custom" -> Color(redValue.get(), greenValue.get(), blueValue.get())
-            "Sky" -> RenderUtils.skyRainbow(0, saturationValue.get(), brightnessValue.get())
-            "Fade" -> ColorUtils.fade(Color(redValue.get(), greenValue.get(), blueValue.get()), 0, 100)
-            "Health" -> if (actualTarget != null) BlendUtils.getHealthColor(actualTarget.health, actualTarget.maxHealth) else Color.green
-            else -> ColorUtils.LiquidSlowly(System.nanoTime(), 0, saturationValue.get(), brightnessValue.get())!!
+        val preBarColor = when (colorModeValue.get().lowercase()) {
+            "rainbow" -> Color(ColorUtils.getRainbowOpaque(waveSecondValue.get(), saturationValue.get(), brightnessValue.get(), 0))
+            "sky" -> Color(ColorUtils.skyRainbow(0, saturationValue.get(), brightnessValue.get()))
+            "fade" -> ColorUtils.fade(Color(redValue.get(), greenValue.get(), blueValue.get()), 0, 100)
+            "health" -> if (actualTarget != null) BlendUtils.getHealthColor(actualTarget.health, actualTarget.maxHealth) else Color.green
+            else -> Color(redValue.get(), greenValue.get(), blueValue.get())
         }
 
         val preBgColor = Color(bgRedValue.get(), bgGreenValue.get(), bgBlueValue.get(), bgAlphaValue.get())

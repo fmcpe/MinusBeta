@@ -14,6 +14,7 @@ import net.minusmc.minusbounce.ui.font.Fonts
 import net.minusmc.minusbounce.utils.extensions.darker
 import net.minusmc.minusbounce.utils.render.BlendUtils
 import net.minusmc.minusbounce.utils.render.RenderUtils
+import net.minusmc.minusbounce.utils.render.ColorUtils
 import org.lwjgl.opengl.GL11
 import java.awt.Color
 import kotlin.math.abs
@@ -44,7 +45,7 @@ class MoonLatest(inst: Target): TargetStyle("MoonLatest", inst, true) {
         RenderUtils.drawRect(37F, 25.5F, 45F + barLength, 26.5F, getColor(BlendUtils.getHealthColor(entity.health, entity.maxHealth)).rgb)
 
         // Draw rect 1
-        RenderUtils.drawRect(0F, 0F, width, 1F, RenderUtils.skyRainbow(0, 1f,1f))
+        RenderUtils.drawRect(0F, 0F, width, 1F, ColorUtils.skyRainbow(0, 1f,1f))
 
         // Armor bar
         if (entity.totalArmorValue != 0) {

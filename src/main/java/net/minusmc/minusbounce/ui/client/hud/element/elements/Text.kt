@@ -74,7 +74,7 @@ class Text(x: Double = 10.0, y: Double = 10.0, scale: Float = 1F,
     private val bggreenValue = IntegerValue("Background-Green", 0, 0, 255)
     private val bgblueValue = IntegerValue("Background-Blue", 0, 0, 255)
     private val bgalphaValue = IntegerValue("Background-Alpha", 120, 0, 255)
-    private val rainbowList = ListValue("Rainbow", arrayOf("Off", "CRainbow", "Sky", "LiquidSlowly", "Fade"), "Off")
+    private val rainbowList = ListValue("Rainbow", arrayOf("Off", "CRainbow", "Sky", "Fade"), "Off")
     private val saturationValue = FloatValue("Saturation", 0.9f, 0f, 1f)
     private val brightnessValue = FloatValue("Brightness", 1f, 0f, 1f)
     private val cRainbowSecValue = IntegerValue("Seconds", 2, 1, 10)
@@ -191,8 +191,6 @@ class Text(x: Double = 10.0, y: Double = 10.0, scale: Float = 1F,
      * Draw element
      */
     override fun drawElement(): Border {
-        val color = Color(redValue.get(), greenValue.get(), blueValue.get(), alphaValue.get()).rgb
-
         val fontRenderer = fontValue.get()
 
         val rainbowType = rainbowList.get()
@@ -224,51 +222,46 @@ class Text(x: Double = 10.0, y: Double = 10.0, scale: Float = 1F,
             drawExhiRect(-4F, if (lineValue.get()) -5F else -4F, fontRenderer.getStringWidth(displayText) + 4F, fontRenderer.FONT_HEIGHT + 2F)
         }
 
-        val fadeColor : Int = ColorUtils.fade(Color(redValue.get(), greenValue.get(), blueValue.get(), alphaValue.get()), 0, 100).rgb
-        val liquidSlowli = ColorUtils.LiquidSlowly(System.nanoTime(), 0, saturationValue.get(), brightnessValue.get())?.rgb!!
-
         if (lineValue.get()) {
             val barLength = (fontRenderer.getStringWidth(displayText) + 4F).toDouble()
 
             for (i in 0 until gradientAmountValue.get()) {
                 val barStart = i.toDouble() / gradientAmountValue.get().toDouble() * barLength
                 val barEnd = (i + 1).toDouble() / gradientAmountValue.get().toDouble() * barLength
-                RenderUtils.drawGradientSideways(-2.0 + barStart, -3.0, -2.0 + barEnd, -2.0, 
-                when (rainbowType) {
-                    "CRainbow" -> RenderUtils.getRainbowOpaque(cRainbowSecValue.get(), saturationValue.get(), brightnessValue.get(), i * distanceValue.get())
-                    "Sky" -> RenderUtils.SkyRainbow(i * distanceValue.get(), saturationValue.get(), brightnessValue.get())
-                    "LiquidSlowly" -> ColorUtils.LiquidSlowly(System.nanoTime(), i * distanceValue.get(), saturationValue.get(), brightnessValue.get())!!.rgb
+                val startColor = when (rainbowType) {
+                    "CRainbow" -> ColorUtils.getRainbowOpaque(cRainbowSecValue.get(), saturationValue.get(), brightnessValue.get(), i * distanceValue.get())
+                    "Sky" -> ColorUtils.skyRainbow(i * distanceValue.get(), saturationValue.get(), brightnessValue.get())
                     "Fade" -> ColorUtils.fade(Color(redValue.get(), greenValue.get(), blueValue.get()), i * distanceValue.get(), 100).rgb
-                    else -> color
-                },
-                when (rainbowType) {
-                    "CRainbow" -> RenderUtils.getRainbowOpaque(cRainbowSecValue.get(), saturationValue.get(), brightnessValue.get(), (i + 1) * distanceValue.get())
-                    "Sky" -> RenderUtils.SkyRainbow((i + 1) * distanceValue.get(), saturationValue.get(), brightnessValue.get())
-                    "LiquidSlowly" -> ColorUtils.LiquidSlowly(System.nanoTime(), (i + 1) * distanceValue.get(), saturationValue.get(), brightnessValue.get())!!.rgb
+                    else -> Color(redValue.get(), greenValue.get(), blueValue.get(), alphaValue.get()).rgb
+                }
+                val endColor = when (rainbowType) {
+                    "CRainbow" -> ColorUtils.getRainbowOpaque(cRainbowSecValue.get(), saturationValue.get(), brightnessValue.get(), (i + 1) * distanceValue.get())
+                    "Sky" -> ColorUtils.skyRainbow((i + 1) * distanceValue.get(), saturationValue.get(), brightnessValue.get())
                     "Fade" -> ColorUtils.fade(Color(redValue.get(), greenValue.get(), blueValue.get()), (i + 1) * distanceValue.get(), 100).rgb
-                    else -> color
-                })
+                    else -> Color(redValue.get(), greenValue.get(), blueValue.get(), alphaValue.get()).rgb
+                }
+
+                RenderUtils.drawGradientSideways(-2.0 + barStart, -3.0, -2.0 + barEnd, -2.0, startColor, endColor)
             }
         }
-
-        fontRenderer.drawString(displayText, 0F, 0F, when (rainbowType) {
-            "CRainbow" -> RenderUtils.getRainbowOpaque(cRainbowSecValue.get(), saturationValue.get(), brightnessValue.get(), 0)
-            "Sky" -> RenderUtils.SkyRainbow(0, saturationValue.get(), brightnessValue.get())
-            "LiquidSlowly" -> liquidSlowli
-            "Fade" -> fadeColor
-            else -> color
-        }, shadow.get())
+        val color = when (rainbowType) {
+            "CRainbow" -> ColorUtils.getRainbowOpaque(cRainbowSecValue.get(), saturationValue.get(), brightnessValue.get(), 0)
+            "Sky" -> Color(ColorUtils.skyRainbow(0, saturationValue.get(), brightnessValue.get()))
+            "Fade" -> ColorUtils.fade(Color(redValue.get(), greenValue.get(), blueValue.get(), alphaValue.get()), 0, 100).rgb
+            else -> Color(redValue.get(), greenValue.get(), blueValue.get(), alphaValue.get()).rgb
+        }
+        fontRenderer.drawString(displayText, 0F, 0F, color, shadow.get())
 
         if (editMode && mc.currentScreen is GuiHudDesigner) {
-            if (editTicks <= 40)
-                fontRenderer.drawString("_", fontRenderer.getStringWidth(displayText) + 2F,
-                    0F, when (rainbowType) {
-                            "CRainbow" -> RenderUtils.getRainbowOpaque(cRainbowSecValue.get(), saturationValue.get(), brightnessValue.get(), 0)
-                            "Sky" -> RenderUtils.SkyRainbow(0, saturationValue.get(), brightnessValue.get())
-                            "LiquidSlowly" -> liquidSlowli
-                            "Fade" -> fadeColor
-                    else -> color
-                }, shadow.get()) 
+            if (editTicks <= 40) {
+                val color = when (rainbowType) {
+                    "CRainbow" -> ColorUtils.getRainbowOpaque(cRainbowSecValue.get(), saturationValue.get(), brightnessValue.get(), 0)
+                    "Sky" -> Color(ColorUtils.skyRainbow(0, saturationValue.get(), brightnessValue.get()))
+                    "Fade" -> ColorUtils.fade(Color(redValue.get(), greenValue.get(), blueValue.get(), alphaValue.get()), 0, 100).rgb
+                    else -> Color(redValue.get(), greenValue.get(), blueValue.get(), alphaValue.get()).rgb
+                }
+                fontRenderer.drawString("_", fontRenderer.getStringWidth(displayText) + 2F, 0F, color, shadow.get()) 
+            }
             if (suggestion.size > 0) {
                 GL11.glColor4f(1f, 1f, 1f, 1f)
                 val totalLength = fontRenderer.getStringWidth(suggestion[0])

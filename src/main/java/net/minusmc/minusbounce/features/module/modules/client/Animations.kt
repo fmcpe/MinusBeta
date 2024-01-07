@@ -75,7 +75,7 @@ object Animations : Module() {
     val SpeedSwing = IntegerValue("Swing-Speed", 4, 0, 20)
     val RotateItems = BoolValue("Rotate-Items", false)
     val SpeedRotate = FloatValue("Rotate-Speed", 1f, 0f, 10f) {
-        RotateItems.get() || Sword.contains("smoothfloat", "rotate360")
+        RotateItems.get() || Sword.equals("smoothfloat", "rotate360")
     }
 
     // transform rotation

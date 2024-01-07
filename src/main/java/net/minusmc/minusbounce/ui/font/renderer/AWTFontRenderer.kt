@@ -217,11 +217,9 @@ class AWTFontRenderer(val font: Font, startChar: Int = 0, stopChar: Int = 255) {
 
         for (targetChar in startChar until stopChar)
             if (fontImages[targetChar] != null && charLocations[targetChar] != null)
-                graphics2D.drawImage(fontImages[targetChar], charLocations[targetChar]!!.x, charLocations[targetChar]!!.y,
-                        null)
+                graphics2D.drawImage(fontImages[targetChar], charLocations[targetChar]!!.x, charLocations[targetChar]!!.y, null)
 
-        textureID = TextureUtil.uploadTextureImageAllocate(TextureUtil.glGenTextures(), bufferedImage, true,
-                true)
+        textureID = TextureUtil.uploadTextureImageAllocate(TextureUtil.glGenTextures(), bufferedImage, true, true)
     }
 
     /**
@@ -267,10 +265,10 @@ class AWTFontRenderer(val font: Font, startChar: Int = 0, stopChar: Int = 255) {
 
         for (c in text.toCharArray()) {
             val fontChar = charLocations[
-                    if (c.code < charLocations.size)
-                        c.code
-                    else
-                        '\u0003'.code
+                if (c.code < charLocations.size)
+                    c.code
+                else
+                    '\u0003'.code
             ] ?: continue
 
             width += fontChar.width - 8

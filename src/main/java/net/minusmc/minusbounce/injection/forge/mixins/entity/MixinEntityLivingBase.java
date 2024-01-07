@@ -7,6 +7,7 @@ package net.minusmc.minusbounce.injection.forge.mixins.entity;
 
 import net.minusmc.minusbounce.MinusBounce;
 import net.minusmc.minusbounce.event.JumpEvent;
+import net.minusmc.minusbounce.event.LookEvent;
 import net.minusmc.minusbounce.features.module.modules.combat.KillAura;
 import net.minusmc.minusbounce.features.module.modules.misc.Patcher;
 import net.minusmc.minusbounce.features.module.modules.movement.NoJumpDelay;
@@ -131,10 +132,34 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
             jumpTicks = 0;
     }
 
-    @Inject(method = "getLook", at = @At("HEAD"), cancellable = true)
-    private void getLook(CallbackInfoReturnable<Vec3> callbackInfoReturnable) {
-        if (((EntityLivingBase) (Object) this) instanceof EntityPlayerSP)
-            callbackInfoReturnable.setReturnValue(getVectorForRotation(this.rotationPitch, this.rotationYaw));
+    /**
+     * interpolated look vector
+     * 
+     * @author fmcpe
+     */
+    @Overwrite
+    public Vec3 getLook(float partialTicks)
+    {
+
+        final LookEvent event = new LookEvent(this.rotationYaw, this.rotationPitch);
+
+        MinusBounce.eventManager.callEvent(event);
+
+        final float yaw = event.getYaw();
+        final float pitch = event.getPitch();
+        final float prevYaw = RotationUtils.serverRotation.getYaw();
+        final float prevPitch = RotationUtils.serverRotation.getPitch();
+        
+        if (partialTicks == 1.0F)
+        {
+            return this.getVectorForRotation(pitch, yaw);
+        }
+        else
+        {
+            float f = prevPitch + (pitch - prevPitch) * partialTicks;
+            float f1 = prevYaw + (yaw - prevYaw) * partialTicks;
+            return this.getVectorForRotation(f, f1);
+        }
     }
 
     @Inject(method = "isPotionActive(Lnet/minecraft/potion/Potion;)Z", at = @At("HEAD"), cancellable = true)

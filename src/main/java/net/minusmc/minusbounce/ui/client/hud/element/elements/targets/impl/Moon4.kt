@@ -57,15 +57,7 @@ class Moon4(inst: Target): TargetStyle("Moon4", inst, true) {
 
     override fun handleBlur(entity: EntityPlayer) {
         val percent = entity.health.toInt()
-        // val nameLength = (Fonts.fontTahoma.getStringWidth(entity.name)).coerceAtLeast(
-        val nameLength = (Fonts.fontSFUI40.getStringWidth("$BOLD${entity.name}")).coerceAtLeast(
-            // Fonts.fontTahoma.getStringWidth(
-            Fonts.fontSFUI35.getStringWidth(
-                "$BOLD${
-                    decimalFormat2.format(percent)
-                }"
-            )
-        ).toFloat() + 18f
+        val nameLength = (Fonts.fontSFUI40.getStringWidth("$BOLD${entity.name}")).coerceAtLeast(Fonts.fontSFUI35.getStringWidth("$BOLD${decimalFormat2.format(percent)}")).toFloat() + 18f
         GlStateManager.enableBlend()
         GlStateManager.disableTexture2D()
         GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0)

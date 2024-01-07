@@ -18,12 +18,7 @@ import kotlin.math.max
 /**
  * Created by Zeb on 12/19/2016.
  */
-class TTFFontRenderer @JvmOverloads constructor(
-    /**
-     * The font to be drawn.
-     */
-    val font: Font, characterCount: Int = 256, fractionalMetrics: Boolean = true
-) {
+class TTFFontRenderer @JvmOverloads constructor(val font: Font, characterCount: Int = 256, fractionalMetrics: Boolean = true) {
 
     /**
      * If fractional metrics should be used in the font renderer.

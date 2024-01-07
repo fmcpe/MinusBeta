@@ -38,7 +38,7 @@ object ClickGUI: Module() {
     val scaleValue = FloatValue("Scale", 1F, 0.4F, 2F)
     val maxElementsValue = IntegerValue("MaxElements", 15, 1, 20)
 
-    private val colorModeValue = ListValue("Color", arrayOf("Custom", "Sky", "Rainbow", "LiquidSlowly", "Fade"), "Custom")
+    private val colorModeValue = ListValue("Color", arrayOf("Custom", "Sky", "Rainbow", "Fade"), "Custom")
     private val colorRedValue = IntegerValue("Red", 0, 0, 255)
     private val colorGreenValue = IntegerValue("Green", 160, 0, 255)
     private val colorBlueValue = IntegerValue("Blue", 255, 0, 255)
@@ -59,9 +59,8 @@ object ClickGUI: Module() {
     val accentColor: Color?
         get() = when (colorModeValue.get().lowercase()) {
             "custom" -> Color(colorRedValue.get(), colorGreenValue.get(), colorBlueValue.get())
-            "rainbow" -> Color(RenderUtils.getRainbowOpaque(mixerSecondsValue.get(), saturationValue.get(), brightnessValue.get(), 0))
-            "sky" -> RenderUtils.skyRainbow(0, saturationValue.get(), brightnessValue.get())
-            "liquidslowly" -> ColorUtils.LiquidSlowly(System.nanoTime(), 0, saturationValue.get(), brightnessValue.get())
+            "rainbow" -> Color(ColorUtils.getRainbowOpaque(mixerSecondsValue.get(), saturationValue.get(), brightnessValue.get(), 0))
+            "sky" -> Color(ColorUtils.skyRainbow(0, saturationValue.get(), brightnessValue.get()))
             "fade" -> ColorUtils.fade(Color(colorRedValue.get(), colorGreenValue.get(), colorBlueValue.get()), 0, 100)
             else -> null
         }
