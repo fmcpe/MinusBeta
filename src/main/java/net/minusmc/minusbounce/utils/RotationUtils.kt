@@ -41,6 +41,14 @@ object RotationUtils : MinecraftInstance(), Listenable {
         }
     }
 
+    @EventTarget 
+    fun onLook(event: LookEvent){
+        targetRotation?.let {
+            event.yaw = it.yaw
+            event.pitch = it.pitch
+        }
+    }
+
     @EventTarget
     fun onUpdate(event: PreUpdateEvent){
         if (targetRotation != null){

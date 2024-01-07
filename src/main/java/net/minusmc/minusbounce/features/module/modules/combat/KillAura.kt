@@ -24,7 +24,7 @@ import net.minusmc.minusbounce.features.module.modules.render.FreeCam
 import net.minusmc.minusbounce.features.module.modules.world.Scaffold
 import net.minusmc.minusbounce.utils.*
 import net.minusmc.minusbounce.utils.EntityUtils.isAlive
-import net.minusmc.minusbounce.utils.EntityUtils.isEnemy
+import net.minusmc.minusbounce.utils.EntityUtils.isSelected
 import net.minusmc.minusbounce.utils.extensions.*
 import net.minusmc.minusbounce.utils.misc.RandomUtils
 import net.minusmc.minusbounce.utils.timer.*
@@ -117,7 +117,6 @@ class KillAura : Module() {
     override fun onEnable() {
         mc.thePlayer ?: return
         mc.theWorld ?: return
-        updateTarget()
     }
 
     override fun onDisable() {
@@ -126,6 +125,8 @@ class KillAura : Module() {
         attackTimer.reset()
         clicks = 0
         stopBlocking()
+        discoveredEntities.clear()
+		prevTargetEntities.clear()
         mc.gameSettings.keyBindUseItem.pressed = false
     }
 
@@ -170,10 +171,7 @@ class KillAura : Module() {
 
         blockingMode.onPreUpdate()
 
-        if (target != null && mc.thePlayer.getDistanceToEntityBox(target!!) > rangeValue.get()) {
-            MinusBounce.combatManager.target = null
-        }
-        else if (target == null){
+        if (target == null){
             stopBlocking()
         }
     }
@@ -226,16 +224,16 @@ class KillAura : Module() {
             runSwing()
         } else {
             // Attack
-            if (!targetModeValue.get().equals("Multi", true))
+            if (targetModeValue.get().equals("Multi", false))
                 attackEntity(target!!)
             else
-                MinusBounce.combatManager.getEntitiesInRange(rangeValue.get(), limitedMultiTargetsValue.get()).forEach {
-                    attackEntity(it)
-                }
+                discoveredEntities.filter {mc.thePlayer.getDistanceToEntityBox(it) <= rangeValue.get()}
+                    .take(limitedMultiTargetsValue.get())
+                    .forEach {attackEntity(it)}
         }
 
         if (targetModeValue.get().equals("Switch", true) && switchDelayValue.get() != 0 && attackTimer.hasTimePassed(switchDelayValue.get())) {
-            MinusBounce.combatManager.nextEntity()
+            prevTargetEntities.add(target!!.entityId)
             attackTimer.reset()
         }
     }
@@ -248,13 +246,34 @@ class KillAura : Module() {
     }
 
     private fun updateTarget() {
-        MinusBounce.combatManager.sortEntities(priorityValue.get())
+        discoveredEntities.clear()
 
-        MinusBounce.combatManager.getEntitiesInRange(rangeValue.get()).forEach {
-            if (updateRotations(it)) {
-                MinusBounce.combatManager.target = it
-                return
-            }
+        for (entity in mc.theWorld.loadedEntityList) {
+			if (entity !is EntityLivingBase || !EntityUtils.isSelected(entity, true) || (targetModeValue.get().equals("switch", true) && prevTargetEntities.contains(entity.entityId)))
+                continue
+
+			if (mc.thePlayer.getDistanceToEntityBox(entity) <= rangeValue.get() && entity.hurtTime < hurtTimeValue.get())
+				discoveredEntities.add(entity)
+		}
+
+        when (priorityValue.get().lowercase()) {
+			"distance" -> discoveredEntities.sortBy { mc.thePlayer.getDistanceToEntityBox(it) }
+			"health" -> discoveredEntities.sortBy { it.health + it.absorptionAmount }
+			"hurtresistance" -> discoveredEntities.sortBy { it.hurtResistantTime }
+			"hurttime" -> discoveredEntities.sortBy { it.hurtTime }
+			"armor" -> discoveredEntities.sortBy { it.totalArmorValue }
+		}
+
+        discoveredEntities.forEach {
+			if (updateRotations(it)) {
+				target = it
+				return
+			}
+		}
+
+		if (prevTargetEntities.isNotEmpty()) {
+            prevTargetEntities.clear()
+            updateTarget()
         }
     }
 
@@ -272,17 +291,16 @@ class KillAura : Module() {
         blockingMode.onPostAttack()
     }
 
-    private fun updateRotations(entity: Entity): Boolean {
+    fun updateRotations(entity: Entity): Boolean {
         if (rotations.get().equals("none", true)) return true
 
         val defRotation = getTargetRotation(entity) ?: return false
-
+        
         if (silentRotationValue.get()) {
             RotationUtils.setTargetRot(defRotation)
         } else {
             defRotation.toPlayer(mc.thePlayer!!)
         }
-
         return true
     }
 
@@ -352,7 +370,7 @@ class KillAura : Module() {
         if (raycastValue.get()) {
             val raycastedEntity = RaycastUtils.raycastEntity(reach, object: RaycastUtils.IEntityFilter {
                 override fun canRaycast(entity: Entity?): Boolean {
-                    return entity is EntityLivingBase && entity !is EntityArmorStand && isEnemy(entity)
+                    return entity is EntityLivingBase && entity !is EntityArmorStand && isSelected(entity, true)
                 }
             })
 
@@ -380,9 +398,6 @@ class KillAura : Module() {
 
     override val tag: String
         get() = targetModeValue.get()
-
-    val target: EntityLivingBase?
-        get() = MinusBounce.combatManager.target
 
     @EventTarget
     fun onPreMotion(event: PreMotionEvent) {
