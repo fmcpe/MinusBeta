@@ -30,6 +30,7 @@ import net.minecraftforge.client.MinecraftForgeClient;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minusmc.minusbounce.MinusBounce;
 import net.minusmc.minusbounce.event.*;
+import net.minusmc.minusbounce.utils.*;
 import net.minusmc.minusbounce.features.module.modules.combat.AutoClicker;
 import net.minusmc.minusbounce.features.module.modules.combat.TickBase;
 import net.minusmc.minusbounce.features.module.modules.exploit.MultiActions;
@@ -52,6 +53,7 @@ import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.*;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.nio.ByteBuffer;
 import java.util.Queue;
@@ -189,6 +191,17 @@ public abstract class MixinMinecraft {
 
         if(displayHeight < 622)
             displayHeight = 622;
+    }
+
+    @Inject(method = "getRenderViewEntity", at = @At("HEAD"))
+    public void getRenderViewEntity(CallbackInfoReturnable<Entity> cir){
+        if(renderViewEntity instanceof EntityLivingBase && RotationUtils.targetRotation != null){
+            final EntityLivingBase entityLivingBase = (EntityLivingBase) renderViewEntity;
+
+            final float yaw = RotationUtils.targetRotation.getYaw();
+
+            entityLivingBase.rotationYawHead = entityLivingBase.prevRotationYawHead = entityLivingBase.renderYawOffset = entityLivingBase.prevRenderYawOffset = yaw;
+        }
     }
 
     @Inject(method = "startGame", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;checkGLError(Ljava/lang/String;)V", ordinal = 2, shift = At.Shift.AFTER))
