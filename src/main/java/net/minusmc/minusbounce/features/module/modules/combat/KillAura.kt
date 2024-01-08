@@ -104,10 +104,10 @@ class KillAura : Module() {
     private val alpha = IntegerValue("Alpha", 255, 0, 255) { circleValue.get() }
 
     // Target
-    private val discoveredEntities = mutableListOf<EntityLivingBase>()
     private val prevTargetEntities = mutableListOf<Int>()
-    public var target: EntityLivingBase? = null
-    public var hitable = false
+    private val discoveredEntities = mutableListOf<EntityLivingBase>()
+    var target: EntityLivingBase? = null
+    var hitable = false
     
     // Attack delay
     private val attackTimer = MSTimer()
@@ -128,7 +128,6 @@ class KillAura : Module() {
         attackTimer.reset()
         clicks = 0
         stopBlocking()
-        discoveredEntities.clear()
 		prevTargetEntities.clear()
         mc.gameSettings.keyBindUseItem.pressed = false
     }
@@ -173,13 +172,8 @@ class KillAura : Module() {
     @EventTarget
     fun onPreUpdate(event: PreUpdateEvent){
         updateTarget()
-
+        
         blockingMode.onPreUpdate()
-
-        if (discoveredEntities.isEmpty() || target == null) {
-            stopBlocking()
-            return
-        }
     }
 
     @EventTarget
@@ -232,10 +226,12 @@ class KillAura : Module() {
             // Attack
             if (!targetModeValue.get().equals("Multi", true))
                 attackEntity(target!!)
-            else
-                discoveredEntities.filter {mc.thePlayer.getDistanceToEntityBox(it) <= rangeValue.get()}
+            else {
+                discoveredEntities
+                    .filter {mc.thePlayer.getDistanceToEntityBox(it) < rangeValue.get()}
                     .take(limitedMultiTargetsValue.get())
                     .forEach {attackEntity(it)}
+            }
         }
 
         if (targetModeValue.get().equals("Switch", true)) {
@@ -243,8 +239,6 @@ class KillAura : Module() {
                 prevTargetEntities.add(target!!.entityId)
                 attackTimer.reset()
             }
-        } else {
-            prevTargetEntities.add(target!!.entityId)
         }
     }
 
@@ -256,7 +250,6 @@ class KillAura : Module() {
     }
 
     private fun updateTarget() {
-
         discoveredEntities.clear()
 
         for (entity in mc.theWorld.loadedEntityList) {
@@ -275,19 +268,19 @@ class KillAura : Module() {
 			"armor" -> discoveredEntities.sortBy { it.totalArmorValue }
 		}
 
-        if (discoveredEntities.isEmpty() && prevTargetEntities.isNotEmpty()) {
-            prevTargetEntities.clear()
-            updateTarget()
-            return
-        }
-
         discoveredEntities.forEach {
 			if (updateRotations(it)) {
 				target = it
+                return
 			}
 		}
 
         target = null
+
+        if (prevTargetEntities.isNotEmpty()) {
+            prevTargetEntities.clear()
+            updateTarget()
+        }
     }
 
     private fun attackEntity(entity: EntityLivingBase) {

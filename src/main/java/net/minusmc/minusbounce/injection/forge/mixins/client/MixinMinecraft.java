@@ -26,6 +26,8 @@ import net.minecraft.profiler.PlayerUsageSnooper;
 import net.minecraft.profiler.Profiler;
 import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.util.*;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraftforge.client.MinecraftForgeClient;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minusmc.minusbounce.MinusBounce;
@@ -184,6 +186,9 @@ public abstract class MixinMinecraft {
     @Shadow
     private boolean isGamePaused;
 
+    @Shadow
+    private Entity renderViewEntity;
+
     @Inject(method = "run", at = @At("HEAD"))
     private void init(CallbackInfo callbackInfo) {
         if(displayWidth < 1067)
@@ -197,9 +202,7 @@ public abstract class MixinMinecraft {
     public void getRenderViewEntity(CallbackInfoReturnable<Entity> cir){
         if(renderViewEntity instanceof EntityLivingBase && RotationUtils.targetRotation != null){
             final EntityLivingBase entityLivingBase = (EntityLivingBase) renderViewEntity;
-
             final float yaw = RotationUtils.targetRotation.getYaw();
-
             entityLivingBase.rotationYawHead = entityLivingBase.prevRotationYawHead = entityLivingBase.renderYawOffset = entityLivingBase.prevRenderYawOffset = yaw;
         }
     }
