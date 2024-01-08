@@ -288,16 +288,13 @@ class KillAura : Module() {
 
         runSwing()
 
-        val event = AttackEvent(entity)
-        MinusBounce.eventManager.callEvent(event)
-        if (event.isCancelled) return
-
+        MinusBounce.eventManager.callEvent(AttackEvent(entity))
         mc.netHandler.addToSendQueue(C02PacketUseEntity(entity, C02PacketUseEntity.Action.ATTACK))
 
         blockingMode.onPostAttack()
     }
 
-    fun updateRotations(entity: Entity): Boolean {
+    private fun updateRotations(entity: Entity): Boolean {
         if (rotations.get().equals("none", true)) return true
 
         val defRotation = getTargetRotation(entity) ?: return false
