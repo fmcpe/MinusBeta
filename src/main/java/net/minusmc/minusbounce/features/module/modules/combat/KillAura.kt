@@ -106,7 +106,8 @@ class KillAura : Module() {
     // Target
     private val discoveredEntities = mutableListOf<EntityLivingBase>()
     private val prevTargetEntities = mutableListOf<Int>()
-    var hitable = false
+    public var target: EntityLivingBase? = null
+    public var hitable = false
     
     // Attack delay
     private val attackTimer = MSTimer()
@@ -134,7 +135,7 @@ class KillAura : Module() {
 
     @EventTarget
     fun onPostMotion(event: PostMotionEvent) {
-        MinusBounce.combatManager.target ?: return
+        target ?: return
 
         updateHitable()
         blockingMode.onPostMotion()
@@ -147,9 +148,11 @@ class KillAura : Module() {
 
     @EventTarget
     fun onUpdate(event: UpdateEvent) {
-        while (clicks > 0 && target != null) {
-            runAttack()
-            clicks--
+        if(target != null){
+            while (clicks > 0) {
+                runAttack()
+                clicks--
+            }
         }
     }
 
@@ -173,7 +176,7 @@ class KillAura : Module() {
 
         blockingMode.onPreUpdate()
 
-        if (discoveredEntities.isEmpty() || currentTarget == null) {
+        if (discoveredEntities.isEmpty() || target == null) {
             stopBlocking()
             return
         }
@@ -227,7 +230,7 @@ class KillAura : Module() {
             runSwing()
         } else {
             // Attack
-            if (targetModeValue.get().equals("Multi", false))
+            if (!targetModeValue.get().equals("Multi", true))
                 attackEntity(target!!)
             else
                 discoveredEntities.filter {mc.thePlayer.getDistanceToEntityBox(it) <= rangeValue.get()}
@@ -235,7 +238,7 @@ class KillAura : Module() {
                     .forEach {attackEntity(it)}
         }
 
-        if (targetModeValue.equals("Switch"), true) {
+        if (targetModeValue.get().equals("Switch", true)) {
             if (attackTimer.hasTimePassed(switchDelayValue.get().toLong())) {
                 prevTargetEntities.add(target!!.entityId)
                 attackTimer.reset()
