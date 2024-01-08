@@ -32,6 +32,7 @@ import net.minusmc.minusbounce.utils.render.RenderUtils
 import net.minusmc.minusbounce.utils.timer.MSTimer
 import net.minusmc.minusbounce.utils.timer.TimeUtils
 import net.minusmc.minusbounce.value.*
+import net.minecraft.block.material.Material
 import org.lwjgl.input.Keyboard
 import org.lwjgl.opengl.GL11
 import java.awt.Color
@@ -391,16 +392,22 @@ class Scaffold: Module() {
             itemStack = mc.thePlayer.inventoryContainer.getSlot(blockSlot).stack
         }
 
+        var canLegacyPlace: Boolean? = null
         var pos = mc.objectMouseOver.blockPos
         var facing = mc.objectMouseOver.sideHit
         var vec = mc.objectMouseOver.hitVec
+        canLegacyPlace = (mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && mc.theWorld.getBlockState(pos).block.material != Material.air)
 
         if(!legacy.get() || rotationsValue.get().equals("None", true)){
             pos = targetPlace!!.blockPos
             facing = targetPlace!!.enumFacing
             vec = targetPlace!!.vec3
+            canLegacyPlace = null
         }
-
+        
+        if(legacy.get())
+            canLegacyPlace ?: return
+        
         if (mc.playerController.onPlayerRightClick(mc.thePlayer, mc.theWorld, itemStack, pos, facing, vec)) {
             delay = TimeUtils.randomDelay(delayValue.getMinValue(), delayValue.getMaxValue())
 

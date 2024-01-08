@@ -132,36 +132,6 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
             jumpTicks = 0;
     }
 
-    /**
-     * interpolated look vector
-     * 
-     * @author fmcpe
-     */
-    @Overwrite
-    public Vec3 getLook(float partialTicks)
-    {
-
-        final LookEvent event = new LookEvent(this.rotationYaw, this.rotationPitch);
-
-        MinusBounce.eventManager.callEvent(event);
-
-        final float yaw = event.getYaw();
-        final float pitch = event.getPitch();
-        final float prevYaw = RotationUtils.serverRotation.getYaw();
-        final float prevPitch = RotationUtils.serverRotation.getPitch();
-        
-        if (partialTicks == 1.0F)
-        {
-            return this.getVectorForRotation(pitch, yaw);
-        }
-        else
-        {
-            float f = prevPitch + (pitch - prevPitch) * partialTicks;
-            float f1 = prevYaw + (yaw - prevYaw) * partialTicks;
-            return this.getVectorForRotation(f, f1);
-        }
-    }
-
     @Inject(method = "isPotionActive(Lnet/minecraft/potion/Potion;)Z", at = @At("HEAD"), cancellable = true)
     private void isPotionActive(Potion p_isPotionActive_1_, final CallbackInfoReturnable<Boolean> callbackInfoReturnable) {
         final AntiBlind antiBlind = MinusBounce.moduleManager.getModule(AntiBlind.class);
