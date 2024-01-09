@@ -7,6 +7,7 @@ package net.minusmc.minusbounce.injection.forge.mixins.render;
 
 import net.minusmc.minusbounce.MinusBounce;
 import com.google.common.base.Predicates;
+import com.google.common.base.Predicate;
 import net.minusmc.minusbounce.event.Render3DEvent;
 import net.minusmc.minusbounce.utils.*;
 import net.minusmc.minusbounce.features.module.modules.combat.KillAura;
