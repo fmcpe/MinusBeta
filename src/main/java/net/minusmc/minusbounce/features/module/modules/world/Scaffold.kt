@@ -393,13 +393,11 @@ class Scaffold: Module() {
         }
 
         var canLegacyPlace: Boolean? = null
-        var pos = mc.objectMouseOver.blockPos
         var facing = mc.objectMouseOver.sideHit
         var vec = mc.objectMouseOver.hitVec
         canLegacyPlace = (mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && mc.theWorld.getBlockState(pos).block.material != Material.air)
 
         if(!legacy.get() || rotationsValue.get().equals("None", true)){
-            pos = targetPlace!!.blockPos
             facing = targetPlace!!.enumFacing
             vec = targetPlace!!.vec3
             canLegacyPlace = null
@@ -408,7 +406,7 @@ class Scaffold: Module() {
         if(legacy.get())
             canLegacyPlace ?: return
         
-        if (mc.playerController.onPlayerRightClick(mc.thePlayer, mc.theWorld, itemStack, pos, facing, vec)) {
+        if (mc.playerController.onPlayerRightClick(mc.thePlayer, mc.theWorld, itemStack, targetPlace!!.blockPos, facing, vec)) {
             delay = TimeUtils.randomDelay(delayValue.getMinValue(), delayValue.getMaxValue())
 
             if (mc.thePlayer.onGround) {

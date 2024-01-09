@@ -147,6 +147,8 @@ class KillAura : Module() {
 
     @EventTarget
     fun onUpdate(event: UpdateEvent) {
+        if (discoveredEntities.isEmpty() || target == null) stopBlocking()
+
         if(target != null){
             while (clicks > 0) {
                 runAttack()
