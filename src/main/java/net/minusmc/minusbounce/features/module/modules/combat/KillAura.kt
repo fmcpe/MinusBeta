@@ -173,6 +173,7 @@ class KillAura : Module() {
 
     @EventTarget
     fun onPreUpdate(event: PreUpdateEvent){
+        target ?: stopBlocking()
         updateTarget()
         
         blockingMode.onPreUpdate()

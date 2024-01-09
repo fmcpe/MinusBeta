@@ -5,9 +5,7 @@
  */
 package net.minusmc.minusbounce.injection.forge.mixins.render;
 
-import com.google.common.base.Predicates;
 import net.minusmc.minusbounce.MinusBounce;
-import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import net.minusmc.minusbounce.event.Render3DEvent;
 import net.minusmc.minusbounce.utils.*;

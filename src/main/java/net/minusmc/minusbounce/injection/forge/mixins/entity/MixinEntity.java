@@ -283,6 +283,34 @@ public abstract class MixinEntity {
     }
 
     /**
+     * interpolated look vector
+     * 
+     * @author fmcpe
+     */
+    @Overwrite
+    public Vec3 getLook(float partialTicks) {
+
+        final LookEvent event = new LookEvent(this.rotationYaw, this.rotationPitch);
+        System.out.println("Look event!!");
+        MinusBounce.eventManager.callEvent(event);
+
+        final float yaw = event.getYaw();
+        final float pitch = event.getPitch();
+        final float prevYaw = RotationUtils.serverRotation.getYaw();
+        final float prevPitch = RotationUtils.serverRotation.getPitch();
+        
+        if (partialTicks == 1.0F) {
+            return this.getVectorForRotation(pitch, yaw);
+        }
+        else {
+            float f = prevPitch + (pitch - prevPitch) * partialTicks;
+            float f1 = prevYaw + (yaw - prevYaw) * partialTicks;
+            return this.getVectorForRotation(f, f1);
+        }
+    }
+
+
+    /**
      * @author asbyth
      * @reason Faster capability check
      */
