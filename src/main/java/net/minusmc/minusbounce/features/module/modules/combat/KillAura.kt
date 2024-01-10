@@ -103,19 +103,8 @@ class KillAura : Module() {
     private val blue = IntegerValue("Blue", 255, 0, 255) { circleValue.get() }
     private val alpha = IntegerValue("Alpha", 255, 0, 255) { circleValue.get() }
 
-    // Target
-    private val prevTargetEntities = mutableListOf<Int>()
-    private val discoveredEntities = mutableListOf<EntityLivingBase>()
-    var target: EntityLivingBase? = null
-    var hitable = false
-    
-    // Attack delay
-    private val attackTimer = MSTimer()
-    private var attackDelay = 0L
-    private var clicks = 0
-
-    // Fake block status
-    var blockingStatus = false
+    override val tag: String
+        get() = targetModeValue.get()
 
     override fun onEnable() {
         mc.thePlayer ?: return
@@ -132,111 +121,70 @@ class KillAura : Module() {
         mc.gameSettings.keyBindUseItem.pressed = false
     }
 
+    // Target
+    private val prevTargetEntities = mutableListOf<Int>()
+    private val discoveredEntities = mutableListOf<EntityLivingBase>()
+    var target: EntityLivingBase? = null
+    var hitable = false
+    
+    // Attack delay
+    private val attackTimer = MSTimer()
+    private var attackDelay = 0L
+    private var clicks = 0
+
+    // Blocking
+    var blockingStatus = false
+    val canBlock: Boolean
+        get() = mc.thePlayer.heldItem != null && mc.thePlayer.heldItem.item is ItemSword && !blockingStatus
+
+
     @EventTarget
     fun onPostMotion(event: PostMotionEvent) {
-        target ?: return
-
-        updateHitable()
         blockingMode.onPostMotion()
+
+        target ?: return
+        updateHitable()
     }
 
     @EventTarget
-    fun onPacket(event: PacketEvent) {
-        blockingMode.onPacket(event)
-    }
+    fun onPreUpdate(event: PreUpdateEvent){
+        blockingMode.onPreUpdate()
 
-    @EventTarget
-    fun onUpdate(event: UpdateEvent) {
-        if (target == null) {
-            stopBlocking()
-            return
-        }
-
+        updateTarget()
         if (target != null){
             while (clicks > 0) {
                 runAttack()
                 clicks--
             }
+        } else {
+            stopBlocking()
+            return
         }
-    }
-
-    @EventTarget
-    fun onStrafe(event: StrafeEvent) {
-        val targetStrafe = MinusBounce.moduleManager[TargetStrafe::class.java]!!
-        if (!targetStrafe.state) return
-
-        if (target != null && RotationUtils.targetRotation != null) {
-            if (targetStrafe.canStrafe) {
-                val strafingData = targetStrafe.getData()
-                MovementUtils.strafe(MovementUtils.speed, strafingData[0], strafingData[1], strafingData[2])
-                event.cancelEvent()
-            }
-        }
-    }
-
-    @EventTarget
-    fun onPreUpdate(event: PreUpdateEvent){
-        updateTarget()
-        
-        blockingMode.onPreUpdate()
     }
 
     @EventTarget
     fun onRender3D(event: Render3DEvent) {
-        if (circleValue.get()) {
-            GL11.glPushMatrix()
-            GL11.glTranslated(
-                mc.thePlayer.lastTickPosX + (mc.thePlayer.posX - mc.thePlayer.lastTickPosX) * mc.timer.renderPartialTicks - mc.renderManager.renderPosX,
-                mc.thePlayer.lastTickPosY + (mc.thePlayer.posY - mc.thePlayer.lastTickPosY) * mc.timer.renderPartialTicks - mc.renderManager.renderPosY,
-                mc.thePlayer.lastTickPosZ + (mc.thePlayer.posZ - mc.thePlayer.lastTickPosZ) * mc.timer.renderPartialTicks - mc.renderManager.renderPosZ
-            )
-            GL11.glEnable(GL11.GL_BLEND)
-            GL11.glEnable(GL11.GL_LINE_SMOOTH)
-            GL11.glDisable(GL11.GL_TEXTURE_2D)
-            GL11.glDisable(GL11.GL_DEPTH_TEST)
-            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
-
-            GL11.glLineWidth(1F)
-            GL11.glColor4f(red.get().toFloat() / 255.0F, green.get().toFloat() / 255.0F, blue.get().toFloat() / 255.0F, alpha.get().toFloat() / 255.0F)
-            GL11.glRotatef(90F, 1F, 0F, 0F)
-            GL11.glBegin(GL11.GL_LINE_STRIP)
-
-            for (i in 0..360 step 60 - accuracyValue.get()) { // You can change circle accuracy  (60 - accuracy)
-                GL11.glVertex2f(cos(i * Math.PI / 180.0).toFloat() * rangeValue.get(), (sin(i * Math.PI / 180.0).toFloat() * rangeValue.get()))
-            }
-
-            GL11.glEnd()
-
-            GL11.glDisable(GL11.GL_BLEND)
-            GL11.glEnable(GL11.GL_TEXTURE_2D)
-            GL11.glEnable(GL11.GL_DEPTH_TEST)
-            GL11.glDisable(GL11.GL_LINE_SMOOTH)
-
-            GL11.glPopMatrix()
-        }
-
         if (target != null && attackTimer.hasTimePassed(attackDelay) && target!!.hurtTime <= hurtTimeValue.get()) {
             clicks++
             attackTimer.reset()
             attackDelay = TimeUtils.randomClickDelay(cps.getMinValue(), cps.getMaxValue())
         }
+
+        if (circleValue.get()) drawCircle()
     }
 
     private fun runAttack() {
         target ?: return
+        if(!hitable) return
 
-        if (!hitable) {
-            runSwing()
-        } else {
-            // Attack
-            if (!targetModeValue.get().equals("Multi", true))
-                attackEntity(target!!)
-            else {
-                discoveredEntities
-                    .filter {mc.thePlayer.getDistanceToEntityBox(it) < rangeValue.get()}
-                    .take(limitedMultiTargetsValue.get())
-                    .forEach {attackEntity(it)}
-            }
+        // Attack
+        if (!targetModeValue.get().equals("Multi", true))
+            attackEntity(target!!)
+        else {
+            discoveredEntities
+                .filter {mc.thePlayer.getDistanceToEntityBox(it) < rangeValue.get()}
+                .take(limitedMultiTargetsValue.get())
+                .forEach {attackEntity(it)}
         }
 
         if (targetModeValue.get().equals("Switch", true)) {
@@ -374,6 +322,7 @@ class KillAura : Module() {
             else -> RotationUtils.serverRotation
         }
     }
+
     private fun updateHitable() {
         if (rotations.get().equals("none", true) || turnSpeed.getMaxValue() <= 0F || noHitCheck.get()) {
             hitable = true
@@ -394,6 +343,38 @@ class KillAura : Module() {
             hitable = RotationUtils.isFaced(target!!, reach)
     }
 
+    private fun drawCircle(){
+        GL11.glPushMatrix()
+        GL11.glTranslated(
+            mc.thePlayer.lastTickPosX + (mc.thePlayer.posX - mc.thePlayer.lastTickPosX) * mc.timer.renderPartialTicks - mc.renderManager.renderPosX,
+            mc.thePlayer.lastTickPosY + (mc.thePlayer.posY - mc.thePlayer.lastTickPosY) * mc.timer.renderPartialTicks - mc.renderManager.renderPosY,
+            mc.thePlayer.lastTickPosZ + (mc.thePlayer.posZ - mc.thePlayer.lastTickPosZ) * mc.timer.renderPartialTicks - mc.renderManager.renderPosZ
+        )
+        GL11.glEnable(GL11.GL_BLEND)
+        GL11.glEnable(GL11.GL_LINE_SMOOTH)
+        GL11.glDisable(GL11.GL_TEXTURE_2D)
+        GL11.glDisable(GL11.GL_DEPTH_TEST)
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
+
+        GL11.glLineWidth(1F)
+        GL11.glColor4f(red.get().toFloat() / 255.0F, green.get().toFloat() / 255.0F, blue.get().toFloat() / 255.0F, alpha.get().toFloat() / 255.0F)
+        GL11.glRotatef(90F, 1F, 0F, 0F)
+        GL11.glBegin(GL11.GL_LINE_STRIP)
+
+        for (i in 0..360 step 60 - accuracyValue.get()) { // You can change circle accuracy  (60 - accuracy)
+            GL11.glVertex2f(cos(i * Math.PI / 180.0).toFloat() * rangeValue.get(), (sin(i * Math.PI / 180.0).toFloat() * rangeValue.get()))
+        }
+
+        GL11.glEnd()
+
+        GL11.glDisable(GL11.GL_BLEND)
+        GL11.glEnable(GL11.GL_TEXTURE_2D)
+        GL11.glEnable(GL11.GL_DEPTH_TEST)
+        GL11.glDisable(GL11.GL_LINE_SMOOTH)
+
+        GL11.glPopMatrix()
+    }
+
     fun startBlocking() {
         if (canBlock) {
             mc.netHandler.addToSendQueue(C08PacketPlayerBlockPlacement(mc.thePlayer.inventory.getCurrentItem()))
@@ -408,14 +389,27 @@ class KillAura : Module() {
         }
     }
 
-    val canBlock: Boolean
-        get() = mc.thePlayer.heldItem != null && mc.thePlayer.heldItem.item is ItemSword && !blockingStatus
-
-    override val tag: String
-        get() = targetModeValue.get()
-
     @EventTarget
     fun onPreMotion(event: PreMotionEvent) {
         blockingMode.onPreMotion()
+    }
+
+    @EventTarget
+    fun onPacket(event: PacketEvent) {
+        blockingMode.onPacket(event)
+    }
+
+    @EventTarget
+    fun onStrafe(event: StrafeEvent) {
+        val targetStrafe = MinusBounce.moduleManager[TargetStrafe::class.java]!!
+        if (!targetStrafe.state) return
+
+        if (target != null && RotationUtils.targetRotation != null) {
+            if (targetStrafe.canStrafe) {
+                val strafingData = targetStrafe.getData()
+                MovementUtils.strafe(MovementUtils.speed, strafingData[0], strafingData[1], strafingData[2])
+                event.cancelEvent()
+            }
+        }
     }
 }
