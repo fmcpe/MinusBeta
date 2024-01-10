@@ -67,17 +67,28 @@ object AntiBot : Module() {
     private val swing = mutableListOf<Int>()
     private val invisible = mutableListOf<Int>()
     private val hasRemovedEntities = mutableListOf<Int>()
-    private val spawnInCombat = mutableListOf<Int>()
     private val hitted = mutableListOf<Int>()
     private val duplicate = mutableListOf<UUID>()
     private var wasAdded = (mc.thePlayer != null)
+
+    private var ticksSinceCombat = 0
+
     override fun onDisable() {
+        ticksSinceCombat = 0
         clearAll()
     }
+
+
     @EventTarget
     fun onUpdate(event: UpdateEvent) {
         mc.thePlayer ?: return
         mc.theWorld ?: return
+
+        if (MinusBounce.combatManager.inCombat)
+            ticksSinceCombat++
+        else
+            ticksSinceCombat = 0
+
         if (removeFromWorld.get() && mc.thePlayer.ticksExisted > 0 && mc.thePlayer.ticksExisted % removeIntervalValue.get() == 0){
             val ent = mutableListOf<EntityPlayer>()
             for (entity in mc.theWorld.playerEntities) {
@@ -147,19 +158,20 @@ object AntiBot : Module() {
                 }
             }
         } else if (packet is S0CPacketSpawnPlayer) {
-            if (MinusBounce.combatManager.target != null && !hasRemovedEntities.contains(packet.entityID)) {
-                spawnInCombat.add(packet.entityID)
-            }
+            if (spawnInCombatValue.get() && ticksSinceCombat >= 7)
+                event.cancelEvent()
         } else if (packet is S13PacketDestroyEntities) {
             hasRemovedEntities.addAll(packet.entityIDs.toTypedArray())
         }
     }
+
     @EventTarget
     fun onAttack(event: AttackEvent) {
         val entity = event.targetEntity
         if(entity is EntityLivingBase && !hitted.contains(entity.entityId))
             hitted.add(entity.entityId)
     }
+
     @EventTarget
     fun onWorld(event: WorldEvent) {
         clearAll()
@@ -172,6 +184,7 @@ object AntiBot : Module() {
         invalidGround.clear()
         invisible.clear()
     }
+    
     @JvmStatic
     fun isBot(entity: EntityLivingBase): Boolean {
         if (entity !is EntityPlayer || entity == mc.thePlayer)
@@ -182,7 +195,7 @@ object AntiBot : Module() {
         if (experimentalNPCDetection.get() && (entity.getDisplayName().unformattedText.lowercase().contains("npc") || entity.getDisplayName().unformattedText.lowercase().contains("cit-")))
             return true
 
-        if (illegalName.get() && (entity.getName().contains(" ") || entity.getDisplayName().unformattedText.contains(" ")))
+        if (illegalName.get() && (entity.name.contains(" ") || entity.getDisplayName().unformattedText.contains(" ")))
             return true
 
         if (colorValue.get() && !entity.getDisplayName().formattedText.replace("§r", "").contains("§"))
@@ -195,9 +208,6 @@ object AntiBot : Module() {
             return true
 
         if (airValue.get() && !air.contains(entity.entityId))
-            return true
-
-        if (spawnInCombatValue.get() && spawnInCombat.contains(entity.entityId))
             return true
 
         if(swingValue.get() && !swing.contains(entity.entityId))
@@ -253,8 +263,8 @@ object AntiBot : Module() {
         }
 
         /* 
-         * Check armor material in bedwars
-         * Author: pie, toidicakhia
+        Check armor material in bedwars
+        Author: pie, toidicakhia
         */
 
         if (sameArmorOnBedwars.get()) {
@@ -274,6 +284,6 @@ object AntiBot : Module() {
                 return true
         }
 
-        return entity.getName().isEmpty() || entity.getName().equals(mc.thePlayer.name)
+        return entity.name.isEmpty() || entity.name.equals(mc.thePlayer.name)
     }
 }

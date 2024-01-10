@@ -30,11 +30,12 @@ import net.minusmc.minusbounce.utils.render.ColorUtils
 object EntityUtils : MinecraftInstance() {
     fun isSelected(entity: Entity, canAttackCheck: Boolean): Boolean {
         val targetsModule = MinusBounce.moduleManager[Target::class.java]!!
-        val teams = MinusBounce.moduleManager[Teams::class.java]!!
+        val teams = MinusBounce.moduleManager[Teams::class.java] as Teams
         if (entity is EntityLivingBase) {
+            // From augustus
             if (entity is EntityArmorStand)
                 return false
-
+            
             if (!targetsModule.dead.get() && entity.isDead)
                 return false
 
@@ -47,15 +48,15 @@ object EntityUtils : MinecraftInstance() {
             if (!targetsModule.animals.get() && isAnimal(entity))
                 return false
 
-            if (entity.deathTime > 1) return false
-            
             if (!canAttackCheck)
                 return false
 
-            if (entity.ticksExisted < 1)
+            if (entity.deathTime > 1) return false
+
+            if (!targetsModule.players.get() && entity is EntityPlayer)
                 return false
 
-            if (isFriend(entity))
+            if (entity.ticksExisted < 1)
                 return false
 
             if (!(!teams.state || !teams.isInYourTeam(entity)))

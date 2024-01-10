@@ -538,14 +538,14 @@ object RotationUtils : MinecraftInstance(), Listenable {
     }
 
     fun getDirectionToBlock(x: Double, y: Double, z: Double, enumfacing: EnumFacing): Rotation {
-        val var4 = EntityEgg(mc.theWorld)
-        var4.posX = x + 0.5
-        var4.posY = y + 0.5
-        var4.posZ = z + 0.5
-        var4.posX += enumfacing.directionVec.x.toDouble() * 0.5
-        var4.posY += enumfacing.directionVec.y.toDouble() * 0.5
-        var4.posZ += enumfacing.directionVec.z.toDouble() * 0.5
-        return getRotations(var4.posX, var4.posY, var4.posZ)
+        val entity = EntityEgg(mc.theWorld)
+        entity.posX = x + 0.5
+        entity.posY = y + 0.5
+        entity.posZ = z + 0.5
+        entity.posX += enumfacing.directionVec.x.toDouble() * 0.5
+        entity.posY += enumfacing.directionVec.y.toDouble() * 0.5
+        entity.posZ += enumfacing.directionVec.z.toDouble() * 0.5
+        return getRotations(entity.posX, entity.posY, entity.posZ)
     }
 
     // Vestige

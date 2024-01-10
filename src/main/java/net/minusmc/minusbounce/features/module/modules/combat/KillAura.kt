@@ -147,9 +147,12 @@ class KillAura : Module() {
 
     @EventTarget
     fun onUpdate(event: UpdateEvent) {
-        if (discoveredEntities.isEmpty() || target == null) stopBlocking()
+        if (target == null) {
+            stopBlocking()
+            return
+        }
 
-        if(target != null){
+        if (target != null){
             while (clicks > 0) {
                 runAttack()
                 clicks--
@@ -173,7 +176,6 @@ class KillAura : Module() {
 
     @EventTarget
     fun onPreUpdate(event: PreUpdateEvent){
-        target ?: stopBlocking()
         updateTarget()
         
         blockingMode.onPreUpdate()
@@ -259,7 +261,7 @@ class KillAura : Module() {
 			if (entity !is EntityLivingBase || !EntityUtils.isSelected(entity, true) || (targetModeValue.get().equals("switch", true) && prevTargetEntities.contains(entity.entityId)))
                 continue
 
-			if (mc.thePlayer.getDistanceToEntityBox(entity) <= rangeValue.get() && entity.hurtTime < hurtTimeValue.get())
+			if (mc.thePlayer.getDistanceToEntityBox(entity) <= rangeValue.get())
 				discoveredEntities.add(entity)
 		}
 
