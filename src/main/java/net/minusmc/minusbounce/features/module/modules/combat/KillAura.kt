@@ -292,8 +292,15 @@ class KillAura : Module() {
         runSwing()
 
         MinusBounce.eventManager.callEvent(AttackEvent(entity))
+
+        mc.playerController.syncCurrentPlayItem()
         mc.netHandler.addToSendQueue(C02PacketUseEntity(entity, C02PacketUseEntity.Action.ATTACK))
 
+        if(mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.ENTITY)
+        {
+            mc.playerController.interactWithEntitySendPacket(mc.thePlayer, mc.objectMouseOver.entityHit)
+        }
+        
         blockingMode.onPostAttack()
     }
 

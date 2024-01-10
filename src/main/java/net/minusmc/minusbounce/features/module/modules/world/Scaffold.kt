@@ -57,7 +57,6 @@ class Scaffold: Module() {
     private val swingValue = ListValue("Swing", arrayOf("Normal", "Packet", "Off"), "Normal")
     private val downValue = BoolValue("Down", false)
     private val searchValue = BoolValue("Search", true)
-    private val legacy = BoolValue("Legacy", true)
     private val placeModeValue = ListValue("PlaceTiming", arrayOf("Pre", "Post", "Legit"), "Post")
 
     private val eagleValue = ListValue("Eagle", arrayOf("Normal", "Slient", "Off"), "Off")
@@ -392,21 +391,10 @@ class Scaffold: Module() {
             itemStack = mc.thePlayer.inventoryContainer.getSlot(blockSlot).stack
         }
 
-        var canLegacyPlace: Boolean? = null
-        var facing = mc.objectMouseOver.sideHit
-        var vec = mc.objectMouseOver.hitVec
-        canLegacyPlace = (mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && mc.theWorld.getBlockState(pos).block.material != Material.air)
-
-        if(!legacy.get() || rotationsValue.get().equals("None", true)){
-            facing = targetPlace!!.enumFacing
-            vec = targetPlace!!.vec3
-            canLegacyPlace = null
-        }
+        // var facing = mc.objectMouseOver.sideHit
+        // var vec = mc.objectMouseOver.hitVec
         
-        if(legacy.get())
-            canLegacyPlace ?: return
-        
-        if (mc.playerController.onPlayerRightClick(mc.thePlayer, mc.theWorld, itemStack, targetPlace!!.blockPos, facing, vec)) {
+        if (mc.playerController.onPlayerRightClick(mc.thePlayer, mc.theWorld, itemStack, targetPlace!!.blockPos, targetPlace!!.enumFacing, targetPlace!!.vec3)) {
             delay = TimeUtils.randomDelay(delayValue.getMinValue(), delayValue.getMaxValue())
 
             if (mc.thePlayer.onGround) {
