@@ -1,4 +1,8 @@
-//from Augustus 
+/*
+ * MinusBounce Hacked Client
+ * A free open source mixin-based injection hacked client for Minecraft using Minecraft Forge.
+ * https://github.com/MinusMC/MinusBounce
+ */
 package net.minusmc.minusbounce.features.module.modules.combat
 
 import net.minusmc.minusbounce.MinusBounce
@@ -106,7 +110,6 @@ class BackTrack : Module() {
     var needFreeze = false
     var reversing = false
 
-    @EventTarget
     fun onPacket(event: PacketEvent) {
         mc.thePlayer ?: return
         val packet = event.packet
