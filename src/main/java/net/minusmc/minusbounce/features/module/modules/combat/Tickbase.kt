@@ -39,7 +39,7 @@ class TickBase : Module() {
         val isInRange = 
             if(killAura.state) 
                 killAura.target == null || mc.thePlayer.getDistanceToEntityBox(killAura.target!!) > killAura.rangeValue.get() 
-            else true
+            else false
 
         if (isInRange && mc.thePlayer.hurtTime <= 2) {
             counter = ticks.get()
