@@ -9,8 +9,9 @@ import net.minecraft.enchantment.Enchantment
 import net.minecraft.item.ItemSword
 import net.minecraft.item.ItemTool
 import net.minecraft.network.play.client.C02PacketUseEntity
+import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement
+import net.minecraft.network.play.client.C02PacketUseEntity.Action.ATTACK
 import net.minecraft.network.play.client.C09PacketHeldItemChange
-import net.minusmc.minusbounce.event.AttackEvent
 import net.minusmc.minusbounce.event.EventTarget
 import net.minusmc.minusbounce.event.PacketEvent
 import net.minusmc.minusbounce.event.UpdateEvent
@@ -27,21 +28,17 @@ class AutoWeapon : Module() {
 
     private val silentValue = BoolValue("SpoofItem", false)
     private val ticksValue = IntegerValue("SpoofTicks", 10, 1, 20)
-    private var attackEnemy = false
+    private val spam = BoolValue("SpamSwitching", false)
 
     private var spoofedSlot = 0
 
     @EventTarget
-    fun onAttack(event: AttackEvent) {
-        attackEnemy = true
-    }
-
-    @EventTarget
     fun onPacket(event: PacketEvent) {
-        if (event.packet is C02PacketUseEntity && event.packet.action == C02PacketUseEntity.Action.ATTACK
-                && attackEnemy) {
-            attackEnemy = false
+        val packet = event.packet
+        val attack = packet is C02PacketUseEntity && packet.action == ATTACK
+        val block = packet is C08PacketPlayerBlockPlacement
 
+        if (attack || block) {
             // Find the best weapon in hotbar (#Kotlin Style)
             val (slot, _) = (0..8)
                     .map { Pair(it, mc.thePlayer.inventory.getStackInSlot(it)) }
@@ -51,7 +48,7 @@ class AutoWeapon : Module() {
                                 ?: 0.0) + 1.25 * ItemUtils.getEnchantment(it.second, Enchantment.sharpness)
                     } ?: return
 
-            if (slot == mc.thePlayer.inventory.currentItem)
+            if (slot == mc.thePlayer.inventory.currentItem || !spam.get())
                 return
 
             if (silentValue.get()) {
@@ -62,7 +59,7 @@ class AutoWeapon : Module() {
                 mc.playerController.updateController()
             }
 
-            mc.netHandler.addToSendQueue(event.packet)
+            mc.netHandler.addToSendQueue(packet)
             event.cancelEvent()
         }
     }

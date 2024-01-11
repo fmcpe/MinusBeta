@@ -13,13 +13,16 @@ import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
 import net.minusmc.minusbounce.utils.timer.MSTimer
+import net.minusmc.minusbounce.utils.extensions.*
 import net.minusmc.minusbounce.value.*
 
 @ModuleInfo(name = "TickBase", description = "Tick Base", category = ModuleCategory.COMBAT)
 class TickBase : Module() {
-    var target: EntityLivingBase? = null
     var counter = -1
     var freezing = false
+
+    protected val killAura: KillAura
+		get() = MinusBounce.moduleManager[KillAura::class.java]!!
 
     private val ticks = IntegerValue("Ticks", 3, 1, 10)
 
@@ -33,7 +36,12 @@ class TickBase : Module() {
             return -1
         freezing = false
 
-        if (MinusBounce.combatManager.inCombat && mc.thePlayer.hurtTime <= 2) {
+        val isInRange = 
+            if(killAura.state) 
+                killAura.target == null || mc.thePlayer.getDistanceToEntityBox(killAura.target!!) > killAura.rangeValue.get() 
+            else true
+
+        if (isInRange && mc.thePlayer.hurtTime <= 2) {
             counter = ticks.get()
             return counter
         }

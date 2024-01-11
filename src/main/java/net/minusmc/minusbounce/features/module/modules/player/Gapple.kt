@@ -32,7 +32,7 @@ class Gapple : Module() {
     private val delayValue = IntegerValue("Delay", 150, 0, 1000, "ms")
     private val noAbsorption = BoolValue("NoAbsorption", true)
     private val grim = BoolValue("Grim", true)
-    private val packetsGrimAmount = IntegerValue("GrimAmount", 35, 1, 50)
+    private val packetsGrimAmount = IntegerValue("GrimAmount", 35, 1, 50) {grim.get()}
     private val timer = MSTimer()
 
     @EventTarget
@@ -79,7 +79,7 @@ class Gapple : Module() {
             mc.netHandler.addToSendQueue(C08PacketPlayerBlockPlacement(mc.thePlayer.heldItem))
             if (grim.get()) {
                 repeat (packetsGrimAmount.get()) {
-                    PacketUtils.sendPacketNoEvent(C06PacketPlayerPosLook(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ, mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch, mc.thePlayer.onGround))
+                    PacketUtils.sendPacketNoEvent(C06PacketPlayerPosLook(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ, mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch, true))
                 }
             } else {
                 repeat (35) {

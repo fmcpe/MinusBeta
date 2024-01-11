@@ -20,7 +20,7 @@ class GrimC07Velocity : VelocityMode("GrimC07") {
     private val onlyAirValue = BoolValue("OnlyBreakAir", true)
     private val worldValue = BoolValue("BreakOnWorld", false)
     private val sendC03Value = BoolValue("SendC03", false)
-    private val c06Value = BoolValue("Send1.17C06", false)
+    private val c06Value = BoolValue("SendC06", false)
     private val flagPauseValue = IntegerValue("FlagPause-Time", 50, 0, 5000)
 
     private var gotVelo = false
@@ -67,12 +67,11 @@ class GrimC07Velocity : VelocityMode("GrimC07") {
 
     private fun checkBlock(pos: BlockPos): Boolean {
         if (!onlyAirValue.get() || mc.theWorld.isAirBlock(pos)) {
-            if (sendC03Value.get()) {
-                if (c06Value.get())
-                    mc.netHandler.addToSendQueue(C03PacketPlayer.C06PacketPlayerPosLook(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ, mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch, mc.thePlayer.onGround))
-                else
-                    mc.netHandler.addToSendQueue(C03PacketPlayer(mc.thePlayer.onGround))
-            }
+            if (c06Value.get())
+                mc.netHandler.addToSendQueue(C03PacketPlayer.C06PacketPlayerPosLook(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ, mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch, mc.thePlayer.onGround))
+            
+            if (sendC03Value.get())
+                mc.netHandler.addToSendQueue(C03PacketPlayer(mc.thePlayer.onGround))
 
             mc.netHandler.addToSendQueue(C07PacketPlayerDigging(C07PacketPlayerDigging.Action.STOP_DESTROY_BLOCK, pos, EnumFacing.DOWN))
             if (worldValue.get())

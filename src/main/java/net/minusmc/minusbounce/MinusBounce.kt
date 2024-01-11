@@ -85,7 +85,7 @@ object MinusBounce {
         eventManager.registerListener(BungeeCordSpoof())
         eventManager.registerListener(InventoryUtils())
         eventManager.registerListener(InventoryHelper)
-        eventManager.registerListener(PacketUtils())
+        eventManager.registerListener(PacketUtils)
         eventManager.registerListener(SessionUtils())
         eventManager.registerListener(MacroManager)
         eventManager.registerListener(combatManager)
