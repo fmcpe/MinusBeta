@@ -128,7 +128,7 @@ class KillAura : Module() {
         attackTimer.reset()
         clicks = 0
         stopBlocking()
-        prevTargetEntities.clear()
+		prevTargetEntities.clear()
         mc.gameSettings.keyBindUseItem.pressed = false
     }
 
@@ -258,27 +258,27 @@ class KillAura : Module() {
         discoveredEntities.clear()
 
         for (entity in mc.theWorld.loadedEntityList) {
-            if (entity !is EntityLivingBase || !EntityUtils.isSelected(entity, true) || (targetModeValue.get().equals("switch", true) && prevTargetEntities.contains(entity.entityId)))
+			if (entity !is EntityLivingBase || !EntityUtils.isSelected(entity, true) || (targetModeValue.get().equals("switch", true) && prevTargetEntities.contains(entity.entityId)))
                 continue
 
-            if (mc.thePlayer.getDistanceToEntityBox(entity) <= rangeValue.get())
-                discoveredEntities.add(entity)
-        }
+			if (mc.thePlayer.getDistanceToEntityBox(entity) <= rangeValue.get())
+				discoveredEntities.add(entity)
+		}
 
         when (priorityValue.get().lowercase()) {
-            "distance" -> discoveredEntities.sortBy { mc.thePlayer.getDistanceToEntityBox(it) }
-            "health" -> discoveredEntities.sortBy { it.health + it.absorptionAmount }
-            "hurtresistance" -> discoveredEntities.sortBy { it.hurtResistantTime }
-            "hurttime" -> discoveredEntities.sortBy { it.hurtTime }
-            "armor" -> discoveredEntities.sortBy { it.totalArmorValue }
-        }
+			"distance" -> discoveredEntities.sortBy { mc.thePlayer.getDistanceToEntityBox(it) }
+			"health" -> discoveredEntities.sortBy { it.health + it.absorptionAmount }
+			"hurtresistance" -> discoveredEntities.sortBy { it.hurtResistantTime }
+			"hurttime" -> discoveredEntities.sortBy { it.hurtTime }
+			"armor" -> discoveredEntities.sortBy { it.totalArmorValue }
+		}
 
         discoveredEntities.forEach {
-            if (updateRotations(it)) {
-                target = it
+			if (updateRotations(it)) {
+				target = it
                 return
-            }
-        }
+			}
+		}
 
         target = null
 
