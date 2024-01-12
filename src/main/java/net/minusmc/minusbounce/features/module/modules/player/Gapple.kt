@@ -32,7 +32,7 @@ class Gapple : Module() {
     private val delayValue = IntegerValue("Delay", 150, 0, 1000, "ms")
     private val noAbsorption = BoolValue("NoAbsorption", true)
     private val grim = BoolValue("Grim", true)
-    private val packetsGrimAmount = IntegerValue("GrimAmount", 35, 1, 50) {grim.get()}
+    private val packetsGrimAmount = IntegerValue("GrimSpeed", 35, 1, 50) {grim.get()}
     private val timer = MSTimer()
 
     @EventTarget

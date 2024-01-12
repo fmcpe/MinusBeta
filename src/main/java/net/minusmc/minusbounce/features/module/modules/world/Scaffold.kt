@@ -11,6 +11,7 @@ import net.minecraft.item.ItemBlock
 import net.minecraft.item.ItemStack
 import net.minecraft.item.Item
 import net.minecraft.network.play.client.C09PacketHeldItemChange
+import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement
 import net.minecraft.network.play.client.C0APacketAnimation
 import net.minecraft.network.play.client.C0BPacketEntityAction
 import net.minecraft.network.play.client.C03PacketPlayer
@@ -255,10 +256,22 @@ class Scaffold: Module() {
     fun onPacket(event: PacketEvent) {
         mc.thePlayer ?: return
         val packet = event.packet
-        
+
+        // fix scaffold duplicated hotbar switch
         if (packet is C09PacketHeldItemChange) {
-            slot = packet.slotId
-        }
+            if (packet.slotId == slot) {
+				event.cancelEvent()
+			} else {
+                slot = packet.slotId
+			}
+		}
+
+		if (packet is C08PacketPlayerBlockPlacement) {
+			packet.facingX = packet.facingX.coerceIn(-1.00000F, 1.00000F)
+			packet.facingY = packet.facingY.coerceIn(-1.00000F, 1.00000F)
+			packet.facingZ = packet.facingZ.coerceIn(-1.00000F, 1.00000F)
+		}
+
     }
 
     @EventTarget

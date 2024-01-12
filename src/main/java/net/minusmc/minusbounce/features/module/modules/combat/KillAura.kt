@@ -103,8 +103,6 @@ class KillAura : Module() {
     private val blue = IntegerValue("Blue", 255, 0, 255) { circleValue.get() }
     private val alpha = IntegerValue("Alpha", 255, 0, 255) { circleValue.get() }
 
-    private val debug = BoolValue("Debug", true)
-
     // Target
     private val prevTargetEntities = mutableListOf<Int>()
     private val discoveredEntities = mutableListOf<EntityLivingBase>()
@@ -150,8 +148,6 @@ class KillAura : Module() {
     @EventTarget
     fun onUpdate(event: UpdateEvent) {
         if (target == null) {
-            if (debug.get())
-                ClientUtils.displayChatMessage("KillAura: No target")
             stopBlocking()
             return
         }
@@ -276,9 +272,6 @@ class KillAura : Module() {
             "hurttime" -> discoveredEntities.sortBy { it.hurtTime }
             "armor" -> discoveredEntities.sortBy { it.totalArmorValue }
         }
-
-        if (debug.get())
-            ClientUtils.displayChatMessage("KillAura: Discovered ${discoveredEntities.size} entities")
 
         discoveredEntities.forEach {
             if (updateRotations(it)) {
