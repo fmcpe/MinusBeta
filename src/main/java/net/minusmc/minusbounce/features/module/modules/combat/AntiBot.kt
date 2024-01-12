@@ -49,7 +49,7 @@ object AntiBot : Module() {
     private val armorValue = BoolValue("Armor", false)
     private val pingValue = BoolValue("Ping", false)
     private val needHitValue = BoolValue("NeedHit", false)
-    private val spawnInCombatValue = BoolValue("SpawnInCombat", false)
+    private val spawnInCombatValue = BoolValue("SpawnInCombat", true)
     private val duplicateInWorldValue = BoolValue("DuplicateInWorld", false)
     private val duplicateInTabValue = BoolValue("DuplicateInTab", false)
     private val duplicateCompareModeValue = ListValue("DuplicateCompareMode", arrayOf("OnTime", "WhenSpawn"), "OnTime") {
@@ -65,6 +65,7 @@ object AntiBot : Module() {
     private val air = mutableListOf<Int>()
     private val invalidGround = mutableMapOf<Int, Int>()
     private val swing = mutableListOf<Int>()
+    private val spawnInCombat = mutableListOf<Int>()
     private val invisible = mutableListOf<Int>()
     private val hasRemovedEntities = mutableListOf<Int>()
     private val hitted = mutableListOf<Int>()
@@ -84,7 +85,7 @@ object AntiBot : Module() {
         mc.thePlayer ?: return
         mc.theWorld ?: return
 
-        if (MinusBounce.combatManager.inCombat)
+        if (MinusBounce.combatManager.inCombat && ticksSinceCombat <= 10)
             ticksSinceCombat++
         else
             ticksSinceCombat = 0
@@ -158,8 +159,8 @@ object AntiBot : Module() {
                 }
             }
         } else if (packet is S0CPacketSpawnPlayer) {
-            if (spawnInCombatValue.get() && ticksSinceCombat >= 7)
-                event.cancelEvent()
+            if (ticksSinceCombat >= 5)
+                spawnInCombat.add(packet.entityID)
         } else if (packet is S13PacketDestroyEntities) {
             hasRemovedEntities.addAll(packet.entityIDs.toTypedArray())
         }
@@ -252,6 +253,10 @@ object AntiBot : Module() {
                 return true
             }
         }
+
+        if (spawnInCombatValue.get() && spawnInCombat.contains(entity.entityId)) 
+            return true
+
         if (duplicateCompareModeValue.equals("WhenSpawn") && duplicate.contains(entity.gameProfile.id)) {
             return true
         }

@@ -50,7 +50,7 @@ object RotationUtils : MinecraftInstance(), Listenable {
     }
 
     @EventTarget
-    fun onUpdate(event: PreUpdateEvent){
+    fun onTick(event: PreUpdateEvent){
         if (targetRotation != null){
             keepLength--
 

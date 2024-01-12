@@ -340,46 +340,47 @@ class Scaffold: Module() {
     }
 
     private fun place() {
-        if (targetPlace == null && placeableDelay.get()) {
-            delayTimer.reset();
-            return;
+        if (targetPlace == null) {
+            if (placeableDelay.get())
+                delayTimer.reset()
+            return
         }
         
         if (!towerStatus && (!delayTimer.hasTimePassed(delay) || (canSameY && launchY - 1 != targetPlace!!.vec3.yCoord.toInt())))
-            return;
+            return
         
-        var blockSlot = -1;
-        var itemStack = mc.thePlayer.heldItem;
+        var blockSlot = -1
+        var itemStack = mc.thePlayer.heldItem
         
         if (mc.thePlayer.heldItem == null || !(itemStack.item is ItemBlock && isBlockToScaffold(itemStack.item as ItemBlock))) {
-            if (autoBlockMode.get().equals("Off", true)) return;
+            if (autoBlockMode.get().equals("Off", true)) return
         
-            blockSlot = InventoryUtils.findAutoBlockBlock();
-            if (blockSlot == -1) return;
+            blockSlot = InventoryUtils.findAutoBlockBlock()
+            if (blockSlot == -1) return
         
             if (autoBlockMode.get().equals("Spoof", true))
-                mc.netHandler.addToSendQueue(C09PacketHeldItemChange(blockSlot - 36));
+                mc.netHandler.addToSendQueue(C09PacketHeldItemChange(blockSlot - 36))
             else
-                mc.thePlayer.inventory.currentItem = blockSlot - 36;
+                mc.thePlayer.inventory.currentItem = blockSlot - 36
         
-            itemStack = mc.thePlayer.inventoryContainer.getSlot(blockSlot).stack;
+            itemStack = mc.thePlayer.inventoryContainer.getSlot(blockSlot).stack
         }
         
         if (mc.playerController.onPlayerRightClick(mc.thePlayer, mc.theWorld, itemStack, targetPlace!!.blockPos, targetPlace!!.enumFacing, targetPlace!!.vec3)) {
-            delay = TimeUtils.randomDelay(delayValue.getMinValue(), delayValue.getMaxValue());
+            delay = TimeUtils.randomDelay(delayValue.getMinValue(), delayValue.getMaxValue())
         
             if (mc.thePlayer.onGround) {
-                mc.thePlayer.motionX *= speedModifierValue.get().toDouble();
-                mc.thePlayer.motionZ *= speedModifierValue.get().toDouble();
+                mc.thePlayer.motionX *= speedModifierValue.get().toDouble()
+                mc.thePlayer.motionZ *= speedModifierValue.get().toDouble()
             }
         
             when (swingValue.get().lowercase()) {
-                "normal" -> mc.thePlayer.swingItem();
-                "packet" -> mc.netHandler.addToSendQueue(C0APacketAnimation());
+                "normal" -> mc.thePlayer.swingItem()
+                "packet" -> mc.netHandler.addToSendQueue(C0APacketAnimation())
             }
         }
         
-        targetPlace = null;        
+        targetPlace = null        
     }
 
     @EventTarget
