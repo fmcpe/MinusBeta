@@ -322,8 +322,8 @@ class KillAura : Module() {
             mc.thePlayer.attackTargetEntityWithCurrentItem(entity)
 
         if (mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.ENTITY && interactValue.get()){
-            mc.playerController.isPlayerRightClickingOnEntity(mc.thePlayer, mc.objectMouseOver.entityHit, mc.objectMouseOver)
-            mc.playerController.interactWithEntitySendPacket(mc.thePlayer, mc.objectMouseOver.entityHit)
+            if(!mc.playerController.isPlayerRightClickingOnEntity(mc.thePlayer, mc.objectMouseOver.entityHit, mc.objectMouseOver))
+                mc.playerController.interactWithEntitySendPacket(mc.thePlayer, mc.objectMouseOver.entityHit)
         }
         
         blockingMode.onPostAttack()
