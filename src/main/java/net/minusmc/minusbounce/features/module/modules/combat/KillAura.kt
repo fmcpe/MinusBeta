@@ -319,12 +319,12 @@ class KillAura : Module() {
         mc.netHandler.addToSendQueue(C02PacketUseEntity(entity, C02PacketUseEntity.Action.ATTACK))
 
         if (mc.playerController.currentGameType != WorldSettings.GameType.SPECTATOR)
-	    mc.thePlayer.attackTargetEntityWithCurrentItem(entity)
+            mc.thePlayer.attackTargetEntityWithCurrentItem(entity)
 
         if (mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.ENTITY && interactValue.get()){
-		mc.playerController.isPlayerRightClickingOnEntity(mc.thePlayer, mc.objectMouseOver.entityHit, mc.objectMouseOver))
-        	mc.playerController.interactWithEntitySendPacket(mc.thePlayer, mc.objectMouseOver.entityHit))
-	}
+            mc.playerController.isPlayerRightClickingOnEntity(mc.thePlayer, mc.objectMouseOver.entityHit, mc.objectMouseOver)
+            mc.playerController.interactWithEntitySendPacket(mc.thePlayer, mc.objectMouseOver.entityHit)
+        }
         
         blockingMode.onPostAttack()
     }
