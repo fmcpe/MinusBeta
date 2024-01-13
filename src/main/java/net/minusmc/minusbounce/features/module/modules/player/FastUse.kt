@@ -81,9 +81,8 @@ class FastUse : Module() {
                 }
 
                 "grim" -> {
-                    repeat(35) {
+                    repeat(5) {
                         PacketUtils.sendPacketNoEvent(C06PacketPlayerPosLook(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ, mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch, mc.thePlayer.onGround))
-                        mc.playerController.onStoppedUsingItem(mc.thePlayer)
                     }
                 }
 

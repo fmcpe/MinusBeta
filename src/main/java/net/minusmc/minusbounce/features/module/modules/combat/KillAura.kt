@@ -122,11 +122,15 @@ class KillAura : Module() {
     override fun onEnable() {
         mc.thePlayer ?: return
         mc.theWorld ?: return
+
+        stopBlocking()
+        blockingStatus = false
     }
 
     override fun onDisable() {
         blockingMode.onDisable()
         hitable = false
+        blockingStatus = false
         attackTimer.reset()
         clicks = 0
         stopBlocking()

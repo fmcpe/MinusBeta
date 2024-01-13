@@ -8,6 +8,7 @@ package net.minusmc.minusbounce.features.module.modules.combat
 import net.minecraft.entity.EntityLivingBase
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.item.ItemArmor
+import net.minecraft.network.play.client.*
 import net.minecraft.network.play.server.*
 import net.minecraft.world.WorldSettings
 import net.minusmc.minusbounce.MinusBounce
@@ -85,11 +86,6 @@ object AntiBot : Module() {
         mc.thePlayer ?: return
         mc.theWorld ?: return
 
-        if (MinusBounce.combatManager.inCombat && ticksSinceCombat <= 10)
-            ticksSinceCombat++
-        else
-            ticksSinceCombat = 0
-
         if (removeFromWorld.get() && mc.thePlayer.ticksExisted > 0 && mc.thePlayer.ticksExisted % removeIntervalValue.get() == 0){
             val ent = mutableListOf<EntityPlayer>()
             for (entity in mc.theWorld.playerEntities) {
@@ -103,11 +99,18 @@ object AntiBot : Module() {
             }
         }
     }
+
+    @EventTarget
+    fun onPreMotion(event: PreMotionEvent) {
+        ticksSinceCombat++
+    }
+
     @EventTarget
     fun onPacket(event: PacketEvent) {
         mc.thePlayer ?: return
         mc.theWorld ?: return
         val packet = event.packet
+
         if (czechHekValue.get()) {
             if (packet is S41PacketServerDifficulty) wasAdded = false
             if (packet is S38PacketPlayerListItem) {
@@ -122,6 +125,7 @@ object AntiBot : Module() {
                 }
             }
         }
+
         if(packet is S14PacketEntity) {
             val entity = packet.getEntity(mc.theWorld)
             if(entity is EntityPlayer) {
@@ -143,11 +147,13 @@ object AntiBot : Module() {
                     invisible.add(entity.entityId)
             }
         }
+
         if(packet is S0BPacketAnimation) {
             val entity = mc.theWorld.getEntityByID(packet.entityID)
             if (entity is EntityLivingBase && packet.animationType == 0 && !swing.contains(entity.entityId))
                 swing.add(entity.entityId)
         }
+
         if (packet is S38PacketPlayerListItem) {
             if (duplicateCompareModeValue.equals("WhenSpawn") && packet.action == S38PacketPlayerListItem.Action.ADD_PLAYER) {
                 packet.entries.forEach { entry ->
@@ -158,11 +164,19 @@ object AntiBot : Module() {
                     }
                 }
             }
-        } else if (packet is S0CPacketSpawnPlayer) {
-            if (ticksSinceCombat >= 5)
+        }
+
+        if (packet is S0CPacketSpawnPlayer) {
+            if (spawnInCombatValue.get() && ticksSinceCombat < 9)
                 spawnInCombat.add(packet.entityID)
-        } else if (packet is S13PacketDestroyEntities) {
+        }
+
+        if (packet is S13PacketDestroyEntities) {
             hasRemovedEntities.addAll(packet.entityIDs.toTypedArray())
+        }
+
+        if (packet is C02PacketUseEntity) {
+            ticksSinceCombat = 0
         }
     }
 
@@ -184,6 +198,7 @@ object AntiBot : Module() {
         ground.clear()
         invalidGround.clear()
         invisible.clear()
+        spawnInCombat.clear()
     }
     
     @JvmStatic
