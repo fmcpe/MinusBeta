@@ -10,6 +10,7 @@ import net.minusmc.minusbounce.utils.PlaceRotation
 import net.minusmc.minusbounce.utils.RotationUtils
 import net.minusmc.minusbounce.utils.MinecraftInstance
 import net.minusmc.minusbounce.injection.access.StaticStorage
+import net.minusmc.minusbounce.utils.extensions.*
 import net.minecraft.init.Blocks
 import net.minecraft.block.Block
 import net.minecraft.block.material.Material
@@ -171,18 +172,14 @@ object BlockUtils : MinecraftInstance() {
 
             val dirVec = Vec3(side.directionVec)
 
-            var xSearch = 0.1
-            while (xSearch < 0.9) {
-                var ySearch = 0.1
-                while (ySearch < 0.9) {
-                    var zSearch = 0.1
-                    while (zSearch < 0.9) {
-                        val posVec = Vec3(blockPosition).addVector(xSearch, ySearch, zSearch)
+            for (x in 0.1..0.9){
+                for (y in 0.1..0.9){
+                    for (z in 0.1..0.9){
+                        val posVec = Vec3(blockPosition).addVector(x, y, z)
                         val distanceSqPosVec = eyesPos.squareDistanceTo(posVec)
                         val hitVec = posVec.add(Vec3(dirVec.xCoord * 0.5, dirVec.yCoord * 0.5, dirVec.zCoord * 0.5))
 
                         if (checks && (eyesPos.squareDistanceTo(hitVec) > 18.0 || distanceSqPosVec > eyesPos.squareDistanceTo(posVec.add(dirVec)) || mc.theWorld.rayTraceBlocks(eyesPos, hitVec, false, true, false) != null)) {
-                            zSearch += 0.1
                             continue
                         }
 
@@ -201,21 +198,15 @@ object BlockUtils : MinecraftInstance() {
                             rotationVector.zCoord * 4
                         )
                         val obj = mc.theWorld.rayTraceBlocks(eyesPos, vector, false, false, true)
-                        if (!(obj.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && obj.blockPos == neighbor)) {
-                            zSearch += 0.1
+                        if (obj.typeOfHit != MovingObjectPosition.MovingObjectType.BLOCK || obj.blockPos != neighbor || obj.sideHit != side.opposite) {
                             continue
                         }
                         if (placeRotation == null || RotationUtils.getRotationDifference(rotation) < RotationUtils.getRotationDifference(placeRotation.rotation))
                             placeRotation = PlaceRotation(PlaceInfo(neighbor, side.opposite, hitVec), rotation)
-
-                        zSearch += 0.1
                     }
-                    ySearch += 0.1
                 }
-                xSearch += 0.1
             }
         }
-
         return placeRotation
     }
 }
