@@ -73,10 +73,7 @@ object AntiBot : Module() {
     private val duplicate = mutableListOf<UUID>()
     private var wasAdded = (mc.thePlayer != null)
 
-    private var ticksSinceCombat = 0
-
     override fun onDisable() {
-        ticksSinceCombat = 0
         clearAll()
     }
 
@@ -98,11 +95,6 @@ object AntiBot : Module() {
                 if (debugValue.get()) ClientUtils.displayChatMessage("§7[§a§lAnti Bot§7] §fRemoved §r${e.name} §fdue to it being a bot.")
             }
         }
-    }
-
-    @EventTarget
-    fun onPreMotion(event: PreMotionEvent) {
-        ticksSinceCombat++
     }
 
     @EventTarget
@@ -167,16 +159,12 @@ object AntiBot : Module() {
         }
 
         if (packet is S0CPacketSpawnPlayer) {
-            if (spawnInCombatValue.get() && ticksSinceCombat < 9)
-                spawnInCombat.add(packet.entityID)
+            if (spawnInCombatValue.get() && MinusBounce.combatManager.target != null)
+                event.cancelEvent()
         }
 
         if (packet is S13PacketDestroyEntities) {
             hasRemovedEntities.addAll(packet.entityIDs.toTypedArray())
-        }
-
-        if (packet is C02PacketUseEntity) {
-            ticksSinceCombat = 0
         }
     }
 
@@ -268,9 +256,6 @@ object AntiBot : Module() {
                 return true
             }
         }
-
-        if (spawnInCombatValue.get() && spawnInCombat.contains(entity.entityId)) 
-            return true
 
         if (duplicateCompareModeValue.equals("WhenSpawn") && duplicate.contains(entity.gameProfile.id)) {
             return true

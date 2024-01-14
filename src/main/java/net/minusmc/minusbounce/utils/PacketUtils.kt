@@ -8,6 +8,7 @@ package net.minusmc.minusbounce.utils
 import net.minecraft.network.Packet
 import net.minecraft.network.play.INetHandlerPlayServer
 import net.minecraft.network.play.server.S32PacketConfirmTransaction
+import net.minecraft.network.NetworkManager
 import net.minusmc.minusbounce.event.*
 import net.minusmc.minusbounce.utils.timer.MSTimer
 
@@ -37,13 +38,30 @@ object PacketUtils : MinecraftInstance(), Listenable {
         }
     }
 
-    fun sendPacketNoEvent(packet: Packet<*>){
-        packetList.add(packet)
-        mc.netHandler.addToSendQueue(packet)
+    @JvmStatic
+    fun sendPacketNoEvent(packet: Packet<*>) {
+        sendPacket(packet, false)
     }
 
-    fun sendPacket(packet: Packet<*>) {
-        mc.netHandler.addToSendQueue(packet)
+    @JvmStatic
+    fun sendPacket(packet: Packet<*>, triggerEvent: Boolean) {
+        if (triggerEvent) {
+            mc.netHandler?.addToSendQueue(packet)
+            return
+        }
+
+        val netManager = mc.netHandler?.networkManager ?: return
+        if (netManager.isChannelOpen) {
+            netManager.flushOutboundQueue()
+            netManager.dispatchPacket(packet, null)
+        } else {
+            netManager.readWriteLock.writeLock().lock()
+            try {
+                netManager.outboundPacketsQueue += NetworkManager.InboundHandlerTuplePacketListener(packet, null)
+            } finally {
+                netManager.readWriteLock.writeLock().unlock()
+            }
+        }
     }
 
     @EventTarget
