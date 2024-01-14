@@ -312,18 +312,20 @@ class KillAura : Module() {
         if (mc.playerController.currentGameType != WorldSettings.GameType.SPECTATOR)
             mc.thePlayer.attackTargetEntityWithCurrentItem(entity)
 
-        val (yaw, pitch) = RotationUtils.calculate(getNearestPointBB(mc.thePlayer.getPositionEyes(1F), entity.entityBoundingBox))
-        val blockReachDistance: Float = mc.playerController.getBlockReachDistance()
-        val vec3: Vec3 = mc.thePlayer.getPositionEyes(1f)
-        val vec31: Vec3 = mc.thePlayer.getVectorForRotation(pitch, yaw)
-        val vec32: Vec3 = vec3.addVector(vec31.xCoord * blockReachDistance, vec31.yCoord * blockReachDistance, vec31.zCoord * blockReachDistance)
-        val mouse: MovingObjectPosition = mc.thePlayer.worldObj.rayTraceBlocks(vec3, vec32, false, false, true)
+        if (interactValue.get()) {
+            val (yaw, pitch) = RotationUtils.calculate(getNearestPointBB(mc.thePlayer.getPositionEyes(1F), entity.entityBoundingBox))
+            val blockReachDistance: Float = mc.playerController.getBlockReachDistance()
+            val vec3: Vec3 = mc.thePlayer.getPositionEyes(1f)
+            val vec31: Vec3 = mc.thePlayer.getVectorForRotation(pitch, yaw)
+            val vec32: Vec3 = vec3.addVector(vec31.xCoord * blockReachDistance, vec31.yCoord * blockReachDistance, vec31.zCoord * blockReachDistance)
+            val mouse: MovingObjectPosition = mc.thePlayer.worldObj.rayTraceBlocks(vec3, vec32, false, false, true)
 
-        if (mouse.typeOfHit == MovingObjectPosition.MovingObjectType.ENTITY && interactValue.get()){
-            if(!mc.playerController.isPlayerRightClickingOnEntity(mc.thePlayer, mouse.entityHit, mouse))
-                mc.playerController.interactWithEntitySendPacket(mc.thePlayer, mouse.entityHit)
+            if (mouse.typeOfHit == MovingObjectPosition.MovingObjectType.ENTITY){
+                if(!mc.playerController.isPlayerRightClickingOnEntity(mc.thePlayer, mouse.entityHit, mouse))
+                    mc.playerController.interactWithEntitySendPacket(mc.thePlayer, mouse.entityHit)
+            } 
         }
-        
+
         blockingMode.onPostAttack()
     }
 
