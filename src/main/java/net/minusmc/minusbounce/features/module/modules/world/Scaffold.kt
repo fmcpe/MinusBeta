@@ -68,7 +68,7 @@ class Scaffold: Module() {
     private val expandLengthValue = IntegerValue("ExpandLength", 1, 1, 6, " blocks")
 
     val rotationsValue = ListValue("Rotation", arrayOf("Normal", "AAC", "None"), "Normal")
-    private val aacOffsetValue = FloatValue("AAC-Offset", 4f, 0f, 50f, "°") { rotationsValue.get().equals("aac", true) }
+    private val yaw = FloatValue("Yaw", 180f, 0f, 180f, "°") { !rotationsValue.get().equals("none", true) }
 
     private val turnSpeed = FloatRangeValue("TurnSpeed", 180f, 180f, 0f, 180f) {!rotationsValue.get().equals("None", true)}
     private val keepLengthValue = IntegerValue("KeepRotationLength", 0, 0, 20) {
@@ -304,18 +304,18 @@ class Scaffold: Module() {
             else -> BlockPos(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ).down()
         }
 
-        if (!expand && (!BlockUtils.isReplaceable(blockPosition) || search(blockPosition, !down))) return
+        if (!expand && (!BlockUtils.isReplaceable(blockPosition) || search(blockPosition))) return
         
         if (expand) {
             for (i in 0 until expandLengthValue.get()) {
                 val x = if (mc.thePlayer.horizontalFacing == EnumFacing.WEST) -i else if (mc.thePlayer.horizontalFacing == EnumFacing.EAST) i else 0
                 val z = if (mc.thePlayer.horizontalFacing == EnumFacing.NORTH) -i else if (mc.thePlayer.horizontalFacing == EnumFacing.SOUTH) i else 0
-                if (search(blockPosition.add(x, 0, z), false)) return
+                if (search(blockPosition.add(x, 0, z))) return
             }
         } else if (searchValue.get()) {
             for (x in -1..1) {
                 for (z in -1..1) {
-                    if (search(blockPosition.add(x, 0, z), !down)) return
+                    if (search(blockPosition.add(x, 0, z))) return
                 }
             }
         }        
@@ -449,21 +449,22 @@ class Scaffold: Module() {
         }
     }
 
-    private fun search(blockPosition: BlockPos, checks: Boolean): Boolean {
+    private fun search(blockPosition: BlockPos): Boolean {
         if (!BlockUtils.isReplaceable(blockPosition)) return false
 
-        val placeRotation = BlockUtils.searchBlock(blockPosition, 180F, checks) ?: return false
+        val placeRotation = BlockUtils.searchBlock(blockPosition, yaw.get()) ?: return false
 
         lockRotation = when (rotationsValue.get().lowercase()) {
             "normal" -> placeRotation.rotation
-            "aac" -> Rotation(mc.thePlayer.rotationYaw + (if (mc.thePlayer.movementInput.moveForward < 0) 0 else 180) + aacOffsetValue.get(), placeRotation.rotation.pitch)
+            "aac" -> Rotation(mc.thePlayer.rotationYaw + (if (mc.thePlayer.movementInput.moveForward < 0) 0 else 180), placeRotation.rotation.pitch)
             "none" -> null
             else -> return false
         }
 
-        RotationUtils.setTargetRot(lockRotation!!, keepLengthValue.get())
+        if(lockRotation != null)
+            RotationUtils.setTargetRot(lockRotation!!, keepLengthValue.get())
 
-        targetPlace = placeRotation!!.placeInfo
+        targetPlace = placeRotation.placeInfo
         return true
     }
 

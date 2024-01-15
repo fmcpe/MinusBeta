@@ -164,7 +164,7 @@ object BlockUtils : MinecraftInstance() {
      * @author fmcpe
      */
     @JvmStatic
-    fun searchBlock(blockPosition: BlockPos, yaw: Float, checks: Boolean): PlaceRotation? {
+    fun searchBlock(blockPosition: BlockPos, yaw: Float): PlaceRotation? {
         val eyesPos = Vec3(mc.thePlayer.posX, mc.thePlayer.entityBoundingBox.minY + mc.thePlayer.eyeHeight, mc.thePlayer.posZ)
         val fromPos = fromPos(blockPosition)
 
