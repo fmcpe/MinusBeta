@@ -67,15 +67,8 @@ class Scaffold: Module() {
     }
     private val expandLengthValue = IntegerValue("ExpandLength", 1, 1, 6, " blocks")
 
-    val rotationsValue = ListValue("Rotation", arrayOf("Normal", "AAC", "Novoline", "Intave", "Backwards", "Custom", "None"), "Normal")
+    val rotationsValue = ListValue("Rotation", arrayOf("Normal", "AAC", "None"), "Normal")
     private val aacOffsetValue = FloatValue("AAC-Offset", 4f, 0f, 50f, "°") { rotationsValue.get().equals("aac", true) }
-
-    private val customYawValue = FloatValue("Custom-Yaw", 135F, -180F, 180F, "°") {
-        rotationsValue.get().equals("custom", true)
-    }
-    private val customPitchValue = FloatValue("Custom-Pitch", 86F, -90F, 90F, "°") {
-        rotationsValue.get().equals("custom", true)
-    }
 
     private val turnSpeed = FloatRangeValue("TurnSpeed", 180f, 180f, 0f, 180f) {!rotationsValue.get().equals("None", true)}
     private val keepLengthValue = IntegerValue("KeepRotationLength", 0, 0, 20) {
@@ -92,9 +85,7 @@ class Scaffold: Module() {
         !onTowerValue.get().equals("None", true)
     }
 
-    private val sameYValue = ListValue("SameY", arrayOf("Same", "AutoJump", "MotionY", "DelayedTower", "BlocksJump", "Off"), "Off")
-    private val blocksPerJump = IntegerValue("BlocksPerJump", 5, 0, 10) {sameYValue.get().equals("blocksjump", true)}
-
+    private val sameYValue = ListValue("SameY", arrayOf("Same", "AutoJump", "MotionY", "DelayedTower", "Off"), "Off")
     private val safeWalkValue = ListValue("SafeWalk", arrayOf("Ground", "Air", "Off"), "Off")
     private val counterDisplayValue = BoolValue("Counter", true)
 
@@ -133,13 +124,10 @@ class Scaffold: Module() {
 
     // Same Y
     private var canSameY = false
-    private var blocksStart = 0
     private var delayedTowerTicks = 0
 
     override fun onEnable() {
         mc.thePlayer ?: return
-
-        blocksStart = blocksAmount
 
         delayedTowerTicks = 0
 
@@ -190,15 +178,6 @@ class Scaffold: Module() {
                         delayedTowerTicks++
                     }
                     delayedTowerTicks % 2 == 0
-                }
-                "blocksjump" -> {
-                    if (blocksStart - blocksAmount >= blocksPerJump.get()) {
-                        if (mc.thePlayer.onGround && MovementUtils.isMoving) {
-                            mc.thePlayer.jump()
-                            blocksStart = blocksAmount
-                        }
-                        false
-                    } else true
                 }
                 else -> false
             }
@@ -269,7 +248,6 @@ class Scaffold: Module() {
         mc.thePlayer ?: return
         val packet = event.packet
 
-        // fix scaffold duplicated hotbar switch
         if (packet is C09PacketHeldItemChange) {
             if (packet.slotId == slot) {
 				event.cancelEvent()
@@ -474,38 +452,16 @@ class Scaffold: Module() {
     private fun search(blockPosition: BlockPos, checks: Boolean): Boolean {
         if (!BlockUtils.isReplaceable(blockPosition)) return false
 
-        lockRotation = when(rotationsValue.get().lowercase()) {
-            "custom" -> Rotation(mc.thePlayer.rotationYaw + customYawValue.get(), customPitchValue.get())
-            "novoline" -> {
-                val blockData = get(blockPosition) ?: return false
-                val entity = EntityPig(mc.theWorld)
-                entity.posX = blockData.blockPos.x + 0.5
-                entity.posY = blockData.blockPos.y + 0.5
-                entity.posZ = blockData.blockPos.z + 0.5
-                RotationUtils.getAngles(entity)
-            }
-            "backwards" -> {
-                val calcyaw = ((MovementUtils.movingYaw - 180) / 45).roundToInt() * 45
-                val calcpitch = if (calcyaw % 90 == 0) 82f else 78f
-                Rotation(calcyaw.toFloat(), calcpitch)
-            }
-            else -> null
-        }
-
-        val placeRotation = 
-            BlockUtils.searchBlock(blockPosition, 
-                if(lockRotation == null) 180F
-                else lockRotation!!.yaw, checks) ?: return false
+        val placeRotation = BlockUtils.searchBlock(blockPosition, if(lockRotation == null) 180F else lockRotation!!.yaw, checks) ?: return false
 
         lockRotation = when(rotationsValue.get().lowercase()) {
             "normal" -> placeRotation.rotation
             "aac" -> Rotation(mc.thePlayer.rotationYaw + (if (mc.thePlayer.movementInput.moveForward < 0) 0 else 180) + aacOffsetValue.get(), placeRotation.rotation.pitch)
-            "intave" -> Rotation(mc.thePlayer.rotationYaw + 180, placeRotation.rotation.pitch)
             "none" -> null
             else -> return false
         }
 
-        if (!rotationsValue.get().equals("None", true) && lockRotation != null) {
+        if (!rotationsValue.equals("None", true) && lockRotation != null) {
             RotationUtils.setTargetRot(lockRotation!!, keepLengthValue.get())
         }
 
