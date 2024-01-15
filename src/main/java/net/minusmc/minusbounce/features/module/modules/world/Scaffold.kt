@@ -118,7 +118,7 @@ class Scaffold: Module() {
 
     // Delay
     private val delayTimer = MSTimer()
-    private val zitterTimer = MSTimer()
+    private var clicks = 0
     private var delay = 0L
 
     // Eagle
@@ -252,9 +252,18 @@ class Scaffold: Module() {
 
     @EventTarget
     fun onClick(event: ClickEvent){
-        if (placeModeValue.get().equals("legit", true)) place()
+        if (placeModeValue.get().equals("legit", true)){loopPlace()}
     }
     
+    fun loopPlace(){
+        if (targetPlace != null){
+            while (clicks > 0) {
+                place()
+                clicks--
+            }
+        }
+    }
+
     @EventTarget
     fun onPacket(event: PacketEvent) {
         mc.thePlayer ?: return
@@ -283,11 +292,7 @@ class Scaffold: Module() {
         
         if (isNotBlock || isNotReplaceable) return
 
-        if (targetPlace == null && !placeableDelay.get() && !towerStatus) {
-            delayTimer.reset()
-        }
-
-        if (placeModeValue.get().equals("pre", true)) place()
+        if (placeModeValue.get().equals("pre", true)) loopPlace()
 
         if (towerStatus)
             towerMode.onPreMotion(event)
@@ -306,11 +311,7 @@ class Scaffold: Module() {
                 else -> false
             }
 
-        if (placeModeValue.get().equals("post", true)) place()
-
-        if (targetPlace == null && !placeableDelay.get() && !towerStatus) {
-            delayTimer.reset()
-        }
+        if (placeModeValue.get().equals("post", true)) loopPlace()
 
         if (towerStatus)
             towerMode.onPostMotion()
@@ -343,13 +344,10 @@ class Scaffold: Module() {
     }
 
     private fun place() {
-        if (targetPlace == null) {
-            if (placeableDelay.get())
-                delayTimer.reset()
+        if (targetPlace == null)
             return
-        }
         
-        if (!towerStatus && (!delayTimer.hasTimePassed(delay) || (canSameY && launchY - 1 != targetPlace!!.vec3.yCoord.toInt())))
+        if (!towerStatus && (canSameY && launchY - 1 != targetPlace!!.vec3.yCoord.toInt()))
             return
         
         var blockSlot = -1
@@ -370,7 +368,6 @@ class Scaffold: Module() {
         }
         
         if (mc.playerController.onPlayerRightClick(mc.thePlayer, mc.theWorld, itemStack, targetPlace!!.blockPos, targetPlace!!.enumFacing, targetPlace!!.vec3)) {
-            delay = TimeUtils.randomDelay(delayValue.getMinValue(), delayValue.getMaxValue())
         
             if (mc.thePlayer.onGround) {
                 mc.thePlayer.motionX *= speedModifierValue.get().toDouble()
@@ -446,25 +443,31 @@ class Scaffold: Module() {
 
     @EventTarget
     fun onRender3D(event: Render3DEvent) {
-        if (!markValue.get()) return
-
-        for (i in 0 until (expandLengthValue.get() + 1)) {
-            val xOffset = if (mc.thePlayer.horizontalFacing == EnumFacing.WEST) -i else if (mc.thePlayer.horizontalFacing == EnumFacing.EAST) i else 0
-            val yOffset = mc.thePlayer.posY - if (mc.thePlayer.posY == mc.thePlayer.posY.toInt() + 0.5) 0.0 else 1.0 - if (down) 1.0 else 0.0
-            val zOffset = if (mc.thePlayer.horizontalFacing == EnumFacing.NORTH) -i else if (mc.thePlayer.horizontalFacing == EnumFacing.SOUTH) i else 0
-
-            val blockPos = BlockPos(
-                mc.thePlayer.posX + xOffset,
-                yOffset,
-                mc.thePlayer.posZ + zOffset
-            )
-
-            val placeInfo = get(blockPos)
-            
-            if (BlockUtils.isReplaceable(blockPos) && placeInfo != null) {
-                RenderUtils.drawBlockBox(blockPos, Color(redValue.get(), greenValue.get(), blueValue.get(), 100), false)
-                break
+        if (markValue.get()){
+            for (i in 0 until (expandLengthValue.get() + 1)) {
+                val xOffset = if (mc.thePlayer.horizontalFacing == EnumFacing.WEST) -i else if (mc.thePlayer.horizontalFacing == EnumFacing.EAST) i else 0
+                val yOffset = mc.thePlayer.posY - if (mc.thePlayer.posY == mc.thePlayer.posY.toInt() + 0.5) 0.0 else 1.0 - if (down) 1.0 else 0.0
+                val zOffset = if (mc.thePlayer.horizontalFacing == EnumFacing.NORTH) -i else if (mc.thePlayer.horizontalFacing == EnumFacing.SOUTH) i else 0
+    
+                val blockPos = BlockPos(
+                    mc.thePlayer.posX + xOffset,
+                    yOffset,
+                    mc.thePlayer.posZ + zOffset
+                )
+    
+                val placeInfo = get(blockPos)
+                
+                if (BlockUtils.isReplaceable(blockPos) && placeInfo != null) {
+                    RenderUtils.drawBlockBox(blockPos, Color(redValue.get(), greenValue.get(), blueValue.get(), 100), false)
+                    break
+                }
             }
+        }
+
+        if (targetPlace != null && delayTimer.hasTimePassed(delay)) {
+            clicks++
+            delayTimer.reset()
+            delay = TimeUtils.randomDelay(delayValue.getMinValue(), delayValue.getMaxValue())
         }
     }
 
