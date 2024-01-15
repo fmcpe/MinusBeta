@@ -5,10 +5,8 @@
  */
 package net.minusmc.minusbounce.utils.block
 
-import net.minusmc.minusbounce.utils.Rotation
-import net.minusmc.minusbounce.utils.PlaceRotation
-import net.minusmc.minusbounce.utils.RotationUtils
-import net.minusmc.minusbounce.utils.MinecraftInstance
+import net.minusmc.minusbounce.utils.*
+import net.minusmc.minusbounce.utils.block.PlaceInfo.Companion.get
 import net.minusmc.minusbounce.injection.access.StaticStorage
 import net.minusmc.minusbounce.utils.extensions.*
 import net.minecraft.init.Blocks
@@ -160,53 +158,94 @@ object BlockUtils : MinecraftInstance() {
         return Block.getBlockById(id).registryName.replace(Regex("^minecraft:"), "")
     }
 
+    /**
+     * Finding corrent yaw and pitch to placing block
+     * 
+     * @author fmcpe
+     */
     @JvmStatic
-    fun searchBlock(blockPosition: BlockPos, checks: Boolean): PlaceRotation? {
+    fun searchBlock(blockPosition: BlockPos, yaw: Float, checks: Boolean): PlaceRotation? {
         val eyesPos = Vec3(mc.thePlayer.posX, mc.thePlayer.entityBoundingBox.minY + mc.thePlayer.eyeHeight, mc.thePlayer.posZ)
+        val fromPos = fromPos(blockPosition)
 
         var placeRotation: PlaceRotation? = null
 
         for (side in StaticStorage.facings()) {
             val neighbor = blockPosition.offset(side)
-            if (!canBeClicked(neighbor)) continue
-
             val dirVec = Vec3(side.directionVec)
 
-            for (x in 0.1..0.9){
-                for (y in 0.1..0.9){
-                    for (z in 0.1..0.9){
-                        val posVec = Vec3(blockPosition).addVector(x, y, z)
-                        val distanceSqPosVec = eyesPos.squareDistanceTo(posVec)
-                        val hitVec = posVec.add(Vec3(dirVec.xCoord * 0.5, dirVec.yCoord * 0.5, dirVec.zCoord * 0.5))
+            cantClick(neighbor) ?: continue
 
-                        if (checks && (eyesPos.squareDistanceTo(hitVec) > 18.0 || distanceSqPosVec > eyesPos.squareDistanceTo(posVec.add(dirVec)) || mc.theWorld.rayTraceBlocks(eyesPos, hitVec, false, true, false) != null)) {
-                            continue
-                        }
+            for (pitch in -90.0..90.0 step 0.02) {
+                val rotation = Rotation(mc.thePlayer.rotationYaw - yaw, pitch.toFloat())
 
-                        val diffX = hitVec.xCoord - eyesPos.xCoord
-                        val diffY = hitVec.yCoord - eyesPos.yCoord
-                        val diffZ = hitVec.zCoord - eyesPos.zCoord
-                        val diffXZ = sqrt(diffX * diffX + diffZ * diffZ)
-                        val rotation = Rotation(
-                            MathHelper.wrapAngleTo180_float(Math.toDegrees(atan2(diffZ, diffX)).toFloat() - 90f),
-                            MathHelper.wrapAngleTo180_float((-Math.toDegrees(atan2(diffY, diffXZ))).toFloat())
-                        )
-                        val rotationVector = RotationUtils.getVectorForRotation(rotation)
-                        val vector = eyesPos.addVector(
-                            rotationVector.xCoord * 4,
-                            rotationVector.yCoord * 4,
-                            rotationVector.zCoord * 4
-                        )
-                        val obj = mc.theWorld.rayTraceBlocks(eyesPos, vector, false, false, true)
-                        if (obj.typeOfHit != MovingObjectPosition.MovingObjectType.BLOCK || obj.blockPos != neighbor || obj.sideHit != side.opposite) {
-                            continue
-                        }
-                        if (placeRotation == null || RotationUtils.getRotationDifference(rotation) < RotationUtils.getRotationDifference(placeRotation.rotation))
-                            placeRotation = PlaceRotation(PlaceInfo(neighbor, side.opposite, hitVec), rotation)
-                    }
+                if (fromBlocks(rotation, neighbor, side.opposite) != null) {
+                    if (placeRotation == null || RotationUtils.getRotationDifference(rotation) < RotationUtils.getRotationDifference(placeRotation.rotation))
+                        placeRotation = PlaceRotation(PlaceInfo(neighbor, side.opposite, rayTrace(rotation).hitVec), rotation)
+                    
+                    break
                 }
             }
+
+            if(placeRotation == null && fromPos != null)
+                placeRotation = PlaceRotation(PlaceInfo(neighbor, side.opposite, rayTrace(fromPos).hitVec), fromPos)
         }
+
         return placeRotation
     }
+
+    /**
+     * Finding if the rotation is correct from blockPos and facing
+     * 
+     * @author fmcpe
+     */
+    @JvmStatic
+    fun fromBlocks(rotation: Rotation, pos: BlockPos, facing: EnumFacing): Boolean? {
+        val eyesPos = Vec3(mc.thePlayer.posX, mc.thePlayer.entityBoundingBox.minY + mc.thePlayer.eyeHeight, mc.thePlayer.posZ)
+
+        val vec = RotationUtils.getVectorForRotation(rotation)
+        val vector = eyesPos.addVector(vec.xCoord * 4.5, vec.yCoord * 4.5, vec.zCoord * 4.5)
+        val obj = mc.theWorld.rayTraceBlocks(eyesPos, vector, false, false, true)
+
+        return if(
+                obj.typeOfHit != MovingObjectPosition.MovingObjectType.BLOCK || 
+                obj.blockPos != pos || 
+                obj.sideHit != facing
+            ) null else false
+    }
+
+    /**
+     * Raytrace from a rotation
+     * 
+     * @author fmcpe
+     */
+    @JvmStatic
+    fun rayTrace(rotation: Rotation): MovingObjectPosition {
+        val eyesPos = Vec3(mc.thePlayer.posX, mc.thePlayer.entityBoundingBox.minY + mc.thePlayer.eyeHeight, mc.thePlayer.posZ)
+        val vec = RotationUtils.getVectorForRotation(rotation)
+        val vector = eyesPos.addVector(vec.xCoord * 4.5, vec.yCoord * 4.5, vec.zCoord * 4.5)
+        return mc.theWorld.rayTraceBlocks(eyesPos, vector, false, false, true)
+    }
+
+    /**
+     * Search rotation from blockPos
+     * 
+     * @author fmcpe
+     */
+    @JvmStatic
+    fun fromPos(blockPosition: BlockPos): Rotation? {
+        val blockData = get(blockPosition) ?: return null
+
+        return RotationUtils.getDirectionToBlock(blockData.blockPos.x.toDouble(), blockData.blockPos.y.toDouble(), blockData.blockPos.z.toDouble(), blockData.enumFacing)
+    }
+
+    /**
+     * Check if [blockPos] is not clickable
+     * 
+     * @author fmcpe
+     */
+    @JvmStatic
+    fun cantClick(blockPos: BlockPos?): Boolean? = 
+        if(getBlock(blockPos)?.canCollideCheck(getState(blockPos), false) ?: false &&
+            mc.theWorld.worldBorder.contains(blockPos)) false else null
 }
