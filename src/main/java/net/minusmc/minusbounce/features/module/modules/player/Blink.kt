@@ -34,9 +34,11 @@ import java.util.concurrent.LinkedBlockingQueue
 class Blink : Module() {
     
     
-    val c0FValue = BoolValue("C0FCancel", false)
+    val C0F = BoolValue("C0F", false)
+    val C00 = BoolValue("C00", false)
     val pulseValue = BoolValue("Pulse", false)
-    private val pulseDelayValue = IntegerValue("PulseDelay", 1000, 500, 5000, "ms")
+    private val pulseDelayValue = IntegerValue("PulseDelay", 1000, 500, 5000, "ms") {pulseValue.get()}
+    private val Ground = BoolValue("ReleaseOnGround", false) {pulseValue.get()}
     val fake = BoolValue("FakePlayer", false)
 
 
@@ -84,7 +86,7 @@ class Blink : Module() {
         if (packet is C04PacketPlayerPosition || packet is C06PacketPlayerPosLook ||
                 packet is C08PacketPlayerBlockPlacement ||
                 packet is C0APacketAnimation ||
-                packet is C0BPacketEntityAction || packet is C02PacketUseEntity || c0FValue.get() && packet is C0FPacketConfirmTransaction) {
+                packet is C0BPacketEntityAction || packet is C02PacketUseEntity || C0F.get() && packet is C0FPacketConfirmTransaction || C00.get() && packet is C00PacketKeepAlive) {
             event.cancelEvent()
             packets.add(packet)
         }
@@ -93,7 +95,7 @@ class Blink : Module() {
     @EventTarget
     fun onUpdate(event: UpdateEvent?) {
         synchronized(positions) { positions.add(doubleArrayOf(mc.thePlayer.posX, mc.thePlayer.getEntityBoundingBox().minY, mc.thePlayer.posZ)) }
-        if (pulseValue.get() && pulseTimer.hasTimePassed(pulseDelayValue.get().toLong())) {
+        if (pulseValue.get() && pulseTimer.hasTimePassed(pulseDelayValue.get().toLong()) && (!Ground.get() || mc.thePlayer.onGround)) {
             blink()
             pulseTimer.reset()
         }
