@@ -239,7 +239,7 @@ object RotationUtils : MinecraftInstance(), Listenable {
     fun toRotation(vec: Vec3, predict: Boolean): Rotation {
         val eyesPos = Vec3(
             mc.thePlayer.posX, mc.thePlayer.entityBoundingBox.minY +
-                    mc.thePlayer.getEyeHeight(), mc.thePlayer.posZ
+                    mc.thePlayer.eyeHeight, mc.thePlayer.posZ
         )
         if (predict) eyesPos.addVector(mc.thePlayer.motionX, mc.thePlayer.motionY, mc.thePlayer.motionZ)
         val diffX = vec.xCoord - eyesPos.xCoord
