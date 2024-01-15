@@ -454,7 +454,7 @@ class Scaffold: Module() {
 
         val placeRotation = BlockUtils.searchBlock(blockPosition, 180F, checks) ?: return false
 
-        lockRotation = when(rotationsValue.get().lowercase()) {
+        lockRotation = when (rotationsValue.get().lowercase()) {
             "normal" -> placeRotation.rotation
             "aac" -> Rotation(mc.thePlayer.rotationYaw + (if (mc.thePlayer.movementInput.moveForward < 0) 0 else 180) + aacOffsetValue.get(), placeRotation.rotation.pitch)
             "none" -> null
