@@ -48,6 +48,8 @@ class BlockBBEvent(blockPos: BlockPos, val block: Block, var boundingBox: AxisAl
  */
 class ClickBlockEvent(val clickedBlock: BlockPos?, val enumFacing: EnumFacing?) : Event()
 
+class ClickEvent : CancellableEvent()
+
 /**
  * Called when client is shutting down
  */

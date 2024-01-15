@@ -48,22 +48,25 @@ object EntityUtils : MinecraftInstance() {
             if (!targetsModule.animals.get() && isAnimal(entity))
                 return false
 
+            if (!targetsModule.players.get() && entity is EntityPlayer)
+                return false
+
             if (!canAttackCheck)
                 return false
 
-            if (entity.deathTime > 1) return false
-
-            if (!targetsModule.players.get() && entity is EntityPlayer)
+            if (entity.deathTime > 1)
                 return false
 
             if (entity.ticksExisted < 1)
                 return false
 
-            if (!(!teams.state || !teams.isInYourTeam(entity)))
-                return false
+            if (entity is EntityPlayer) {
+                if (!(!teams.state || !teams.isInYourTeam(entity)))
+                    return false
 
-            if (isBot(entity))
-                return false
+                if (isBot(entity))
+                    return false
+            }
         }
 
         return entity is EntityLivingBase && entity != mc.thePlayer
