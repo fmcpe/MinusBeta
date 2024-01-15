@@ -452,7 +452,7 @@ class Scaffold: Module() {
     private fun search(blockPosition: BlockPos, checks: Boolean): Boolean {
         if (!BlockUtils.isReplaceable(blockPosition)) return false
 
-        val placeRotation = BlockUtils.searchBlock(blockPosition, if(lockRotation == null) 180F else lockRotation!!.yaw, checks) ?: return false
+        val placeRotation = BlockUtils.searchBlock(blockPosition, 180F, checks) ?: return false
 
         lockRotation = when(rotationsValue.get().lowercase()) {
             "normal" -> placeRotation.rotation
@@ -461,9 +461,7 @@ class Scaffold: Module() {
             else -> return false
         }
 
-        if (!rotationsValue.equals("None", true) && lockRotation != null) {
-            RotationUtils.setTargetRot(lockRotation!!, keepLengthValue.get())
-        }
+        RotationUtils.setTargetRot(lockRotation!!, keepLengthValue.get())
 
         targetPlace = placeRotation!!.placeInfo
         return true

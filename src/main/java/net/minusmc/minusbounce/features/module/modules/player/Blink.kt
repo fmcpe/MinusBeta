@@ -38,9 +38,8 @@ class Blink : Module() {
     val C00 = BoolValue("C00", false)
     val pulseValue = BoolValue("Pulse", false)
     private val pulseDelayValue = IntegerValue("PulseDelay", 1000, 500, 5000, "ms") {pulseValue.get()}
-    private val Ground = BoolValue("ReleaseOnGround", false) {pulseValue.get()}
+    private val Ground = BoolValue("BlinkOnGround", false) {pulseValue.get()}
     val fake = BoolValue("FakePlayer", false)
-
 
     private val packets = LinkedBlockingQueue<Packet<*>>()
     private var fakePlayer: EntityOtherPlayerMP? = null
@@ -80,7 +79,7 @@ class Blink : Module() {
     @EventTarget
     fun onPacket(event: PacketEvent) {
         val packet = event.packet
-        if (mc.thePlayer == null || disableLogger) return
+        if (mc.thePlayer == null || disableLogger || !(Ground.get() || !mc.thePlayer.onGround)) return
         if (packet is C03PacketPlayer) // Cancel all movement stuff
             event.cancelEvent()
         if (packet is C04PacketPlayerPosition || packet is C06PacketPlayerPosLook ||
@@ -95,7 +94,7 @@ class Blink : Module() {
     @EventTarget
     fun onUpdate(event: UpdateEvent?) {
         synchronized(positions) { positions.add(doubleArrayOf(mc.thePlayer.posX, mc.thePlayer.getEntityBoundingBox().minY, mc.thePlayer.posZ)) }
-        if (pulseValue.get() && pulseTimer.hasTimePassed(pulseDelayValue.get().toLong()) && (!Ground.get() || mc.thePlayer.onGround)) {
+        if (pulseValue.get() && pulseTimer.hasTimePassed(pulseDelayValue.get().toLong())) {
             blink()
             pulseTimer.reset()
         }
