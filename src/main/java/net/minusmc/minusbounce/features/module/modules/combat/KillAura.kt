@@ -54,7 +54,6 @@ class KillAura : Module() {
     val rangeValue = FloatValue("Range", 3.7f, 1f, 8f, "m")
     private val throughWallsValue = BoolValue("ThroughWalls", true)
     private val interactValue = BoolValue("Interact", true)
-    private val keepSprintValue = BoolValue("KeepSprint", true)
 
     // Modes
     private val rotations = ListValue("RotationMode", arrayOf("Vanilla", "BackTrack", "Grim", "Intave", "None"), "BackTrack")
@@ -307,20 +306,11 @@ class KillAura : Module() {
         blockingMode.onPreAttack()
         runSwing()
 
-        //mc.playerController.syncCurrentPlayItem()
+        mc.playerController.syncCurrentPlayItem()
         mc.netHandler.addToSendQueue(C02PacketUseEntity(entity, C02PacketUseEntity.Action.ATTACK))
 
-        if (keepSprintValue.get()) {
-            if (mc.thePlayer.fallDistance > 0F && !mc.thePlayer.onGround && !mc.thePlayer.isOnLadder &&
-                    !mc.thePlayer.isInWater && !mc.thePlayer.isPotionActive(Potion.blindness) && !mc.thePlayer.isRiding)
-                mc.thePlayer.onCriticalHit(entity)
-
-            if (EnchantmentHelper.getModifierForCreature(mc.thePlayer.heldItem, entity.creatureAttribute) > 0F)
-                mc.thePlayer.onEnchantmentCritical(entity)
-        } else {
-            if (mc.playerController.currentGameType != WorldSettings.GameType.SPECTATOR)
-                mc.thePlayer.attackTargetEntityWithCurrentItem(entity)
-        }
+        if (mc.playerController.currentGameType != WorldSettings.GameType.SPECTATOR)
+            mc.thePlayer.attackTargetEntityWithCurrentItem(entity)
 
         if (interactValue.get()) {
             val (yaw, pitch) = RotationUtils.calculate(getNearestPointBB(mc.thePlayer.getPositionEyes(1F), entity.entityBoundingBox))
