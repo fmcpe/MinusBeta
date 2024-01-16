@@ -10,6 +10,7 @@ import net.minecraft.init.Blocks
 import net.minecraft.item.ItemBlock
 import net.minecraft.item.ItemStack
 import net.minecraft.item.Item
+import net.minusmc.minusbounce.utils.extensions.*
 import net.minecraft.network.play.client.C09PacketHeldItemChange
 import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement
 import net.minecraft.network.play.client.C0APacketAnimation
@@ -67,8 +68,8 @@ class Scaffold: Module() {
     }
     private val expandLengthValue = IntegerValue("ExpandLength", 1, 1, 6, " blocks")
 
+    private val yaw = FloatValue("Yaw", 180f, 0f, 180f, "°")
     val rotationsValue = ListValue("Rotation", arrayOf("Normal", "AAC", "None"), "Normal")
-    private val yaw = FloatValue("Yaw", 180f, 0f, 180f, "°") { !rotationsValue.get().equals("none", true) }
 
     private val turnSpeed = FloatRangeValue("TurnSpeed", 180f, 180f, 0f, 180f) {!rotationsValue.get().equals("None", true)}
     private val keepLengthValue = IntegerValue("KeepRotationLength", 0, 0, 20) {
@@ -313,8 +314,8 @@ class Scaffold: Module() {
                 if (search(blockPosition.add(x, 0, z))) return
             }
         } else if (searchValue.get()) {
-            for (x in -1..1) {
-                for (z in -1..1) {
+            for (x in -1..1 step 2) {
+                for (z in -1..1 step 2) {
                     if (search(blockPosition.add(x, 0, z))) return
                 }
             }

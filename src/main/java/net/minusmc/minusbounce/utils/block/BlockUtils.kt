@@ -179,7 +179,7 @@ object BlockUtils : MinecraftInstance() {
             for (pitch in -90.0..90.0 step 0.02) {
                 val rotation = Rotation(mc.thePlayer.rotationYaw - yaw, pitch.toFloat())
 
-                if (fromBlocks(rotation, neighbor, side.opposite) != null) {
+                if (fromBlocks(rotation, neighbor, side.opposite)) {
                     if (placeRotation == null || RotationUtils.getRotationDifference(rotation) < RotationUtils.getRotationDifference(placeRotation.rotation))
                         placeRotation = PlaceRotation(PlaceInfo(neighbor, side.opposite, rayTrace(rotation).hitVec), rotation)
                     
@@ -200,18 +200,14 @@ object BlockUtils : MinecraftInstance() {
      * @author fmcpe
      */
     @JvmStatic
-    fun fromBlocks(rotation: Rotation, pos: BlockPos, facing: EnumFacing): Boolean? {
+    fun fromBlocks(rotation: Rotation, pos: BlockPos, facing: EnumFacing): Boolean {
         val eyesPos = Vec3(mc.thePlayer.posX, mc.thePlayer.entityBoundingBox.minY + mc.thePlayer.eyeHeight, mc.thePlayer.posZ)
 
         val vec = RotationUtils.getVectorForRotation(rotation)
         val vector = eyesPos.addVector(vec.xCoord * 4.5, vec.yCoord * 4.5, vec.zCoord * 4.5)
         val obj = mc.theWorld.rayTraceBlocks(eyesPos, vector, false, false, true)
 
-        return if(
-                obj.typeOfHit != MovingObjectPosition.MovingObjectType.BLOCK || 
-                obj.blockPos != pos || 
-                obj.sideHit != facing
-            ) null else false
+        return mc.thePlayer.getDistance(vec.xCoord, vec.yCoord, vec.zCoord) < 5 && obj.typeOfHit != MovingObjectPosition.MovingObjectType.BLOCK && obj.blockPos != pos && obj.sideHit != facing
     }
 
     /**
