@@ -52,6 +52,7 @@ operator fun ScaledResolution.component2() = this.scaledHeight
  * Provides:
  * `vec + othervec`, `vec - othervec`, `vec * number`, `vec / number`
  * */
+operator fun Vec3.plus(num: Double): Vec3 = add(Vec3(num, num, num))
 operator fun Vec3.plus(vec: Vec3): Vec3 = add(vec)
 operator fun Vec3.minus(vec: Vec3): Vec3 = subtract(vec)
 operator fun Vec3.times(number: Double) = Vec3(xCoord * number, yCoord * number, zCoord * number)

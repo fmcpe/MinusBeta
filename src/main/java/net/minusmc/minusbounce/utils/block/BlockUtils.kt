@@ -165,30 +165,26 @@ object BlockUtils : MinecraftInstance() {
      */
     @JvmStatic
     fun searchBlock(blockPosition: BlockPos, yaw: Float): PlaceRotation? {
-        val eyesPos = Vec3(mc.thePlayer.posX, mc.thePlayer.entityBoundingBox.minY + mc.thePlayer.eyeHeight, mc.thePlayer.posZ)
-        val fromPos = fromPos(blockPosition)
+        val fromPos = blockPosition.fromPos()
 
         var placeRotation: PlaceRotation? = null
 
         for (side in StaticStorage.facings()) {
-            val neighbor = blockPosition.offset(side)
-            val dirVec = Vec3(side.directionVec)
+            val blockPos = blockPosition.offset(side)
 
-            cantClick(neighbor) ?: continue
+            if(!blockPos.isClickable())
+                continue
 
             for (pitch in -90.0..90.0 step 0.02) {
                 val rotation = Rotation(mc.thePlayer.rotationYaw - yaw, pitch.toFloat())
-
-                if (fromBlocks(rotation, neighbor, side.opposite)) {
-                    if (placeRotation == null || RotationUtils.getRotationDifference(rotation) < RotationUtils.getRotationDifference(placeRotation.rotation))
-                        placeRotation = PlaceRotation(PlaceInfo(neighbor, side.opposite, rayTrace(rotation).hitVec), rotation)
-                    
-                    break
+                if (fromBlocks(rotation, blockPos, side.opposite)) {
+                    if (placeRotation == null || rotation.pitch < placeRotation.rotation.pitch)
+                        placeRotation = PlaceRotation(PlaceInfo(blockPos, side.opposite, Vec3(blockPos)), rotation)
                 }
             }
 
-            if(placeRotation == null && fromPos != null)
-                placeRotation = PlaceRotation(PlaceInfo(neighbor, side.opposite, rayTrace(fromPos).hitVec), fromPos)
+            if(placeRotation == null && fromPos != null && fromBlocks(fromPos, blockPos, side.opposite))
+                placeRotation = PlaceRotation(PlaceInfo(blockPos, side.opposite, Vec3(blockPos)), fromPos)
         }
 
         return placeRotation
@@ -199,15 +195,9 @@ object BlockUtils : MinecraftInstance() {
      * 
      * @author fmcpe
      */
-    @JvmStatic
     fun fromBlocks(rotation: Rotation, pos: BlockPos, facing: EnumFacing): Boolean {
-        val eyesPos = Vec3(mc.thePlayer.posX, mc.thePlayer.entityBoundingBox.minY + mc.thePlayer.eyeHeight, mc.thePlayer.posZ)
-
-        val vec = RotationUtils.getVectorForRotation(rotation)
-        val vector = eyesPos.addVector(vec.xCoord * 4.5, vec.yCoord * 4.5, vec.zCoord * 4.5)
-        val obj = mc.theWorld.rayTraceBlocks(eyesPos, vector, false, false, true)
-
-        return mc.thePlayer.getDistance(vec.xCoord, vec.yCoord, vec.zCoord) < 5 && obj.typeOfHit != MovingObjectPosition.MovingObjectType.BLOCK && obj.blockPos != pos && obj.sideHit != facing
+        val obj = rotation.distanceRayTrace() ?: return false
+        return obj.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && obj.blockPos == pos && obj.sideHit == facing
     }
 
     /**
@@ -215,12 +205,17 @@ object BlockUtils : MinecraftInstance() {
      * 
      * @author fmcpe
      */
-    @JvmStatic
-    fun rayTrace(rotation: Rotation): MovingObjectPosition {
-        val eyesPos = Vec3(mc.thePlayer.posX, mc.thePlayer.entityBoundingBox.minY + mc.thePlayer.eyeHeight, mc.thePlayer.posZ)
-        val vec = RotationUtils.getVectorForRotation(rotation)
+    fun Rotation.rayTrace(): MovingObjectPosition {
+        val vec = RotationUtils.getVectorForRotation(this)
         val vector = eyesPos.addVector(vec.xCoord * 4.5, vec.yCoord * 4.5, vec.zCoord * 4.5)
         return mc.theWorld.rayTraceBlocks(eyesPos, vector, false, false, true)
+    }
+
+    fun Rotation.distanceRayTrace(): MovingObjectPosition? {
+        val vec = RotationUtils.getVectorForRotation(this)
+        val vector = eyesPos.addVector(vec.xCoord * 4.5, vec.yCoord * 4.5, vec.zCoord * 4.5)
+        val obj = mc.theWorld.rayTraceBlocks(eyesPos, vector, false, false, true)
+        return if(mc.thePlayer.getDistance(vector.xCoord, vector.yCoord, vector.zCoord) > 5) null else obj
     }
 
     /**
@@ -228,20 +223,41 @@ object BlockUtils : MinecraftInstance() {
      * 
      * @author fmcpe
      */
-    @JvmStatic
-    fun fromPos(blockPosition: BlockPos): Rotation? {
-        val blockData = get(blockPosition) ?: return null
+    fun BlockPos.fromPos(): Rotation? {
+        val blockData = get(this) ?: return null
+        val (posX, posY, posZ) = 
+            Vec3(blockData.blockPos).plus(0.5).plus(
+                Vec3(blockData.enumFacing.directionVec).times(0.5)
+                )
 
-        return RotationUtils.getDirectionToBlock(blockData.blockPos.x.toDouble(), blockData.blockPos.y.toDouble(), blockData.blockPos.z.toDouble(), blockData.enumFacing)
+        val (x, y, z) = Vec3(
+            posX - eyesPos.xCoord, 
+            posY - eyesPos.yCoord, 
+            posZ - eyesPos.zCoord
+        )
+
+        val dist = MathHelper.sqrt_double(x * x + z * z).toDouble()
+        val yaw = (atan2(z, x) * 180.0 / 3.141592653589793).toFloat() - 90.0f
+        val pitch = (-(atan2(y, dist) * 180.0 / 3.141592653589793)).toFloat()
+        return Rotation(yaw, pitch)
     }
 
     /**
-     * Check if [blockPos] is not clickable
+     * Check if [blockPos] is clickable
      * 
      * @author fmcpe
      */
-    @JvmStatic
-    fun cantClick(blockPos: BlockPos?): Boolean? = 
-        if(getBlock(blockPos)?.canCollideCheck(getState(blockPos), false) ?: false &&
-            mc.theWorld.worldBorder.contains(blockPos)) false else null
+    fun BlockPos.isClickable() = getBlock(this)?.canCollideCheck(getState(this), false) ?: false &&
+            mc.theWorld.worldBorder.contains(this)
+    
+    /**
+     * EyesPos
+     * 
+     * @author fmcpe
+     */
+    val eyesPos: Vec3
+        get() = Vec3(mc.thePlayer.posX, mc.thePlayer.entityBoundingBox.minY + mc.thePlayer.eyeHeight, mc.thePlayer.posZ)
+
+    val lastPos: Vec3
+        get() = Vec3(mc.thePlayer.lastReportedPosX, mc.thePlayer.lastReportedPosY + mc.thePlayer.eyeHeight, mc.thePlayer.lastReportedPosZ)
 }
