@@ -1,3 +1,8 @@
+/*
+ * MinusBounce Hacked Client
+ * A free open source mixin-based injection hacked client for Minecraft using Minecraft Forge.
+ * https://github.com/MinusMC/MinusBounce
+ */
 package net.minusmc.minusbounce.features.module.modules.world
 
 import net.minecraft.block.BlockAir
@@ -57,8 +62,6 @@ class Scaffold: Module() {
     private val sprintModeValue = ListValue("SprintMode", arrayOf("Always", "OnGround", "OffGround", "Off"), "Off")
 
     private val swingValue = ListValue("Swing", arrayOf("Normal", "Packet", "Off"), "Normal")
-    private val downValue = BoolValue("Down", false)
-    private val searchValue = BoolValue("Search", true)
     private val placeModeValue = ListValue("PlaceTiming", arrayOf("Pre", "Post", "Legit"), "Post")
 
     private val eagleValue = ListValue("Eagle", arrayOf("Normal", "Slient", "Off"), "Off")
@@ -68,9 +71,9 @@ class Scaffold: Module() {
     }
     private val expandLengthValue = IntegerValue("ExpandLength", 1, 1, 6, " blocks")
 
-    private val yaw = FloatValue("Yaw", 180f, 0f, 180f, "°")
     val rotationsValue = ListValue("Rotation", arrayOf("Normal", "AAC", "None"), "Normal")
-
+    private val yaw = FloatValue("Yaw-Offset", 180f, 0f, 180f, "°")
+    val raycast = BoolValue("RayCast", false)
     private val turnSpeed = FloatRangeValue("TurnSpeed", 180f, 180f, 0f, 180f) {!rotationsValue.get().equals("None", true)}
     private val keepLengthValue = IntegerValue("KeepRotationLength", 0, 0, 20) {
         !rotationsValue.get().equals("None", true)
@@ -186,11 +189,7 @@ class Scaffold: Module() {
             if (mc.thePlayer.onGround) launchY = mc.thePlayer.posY.toInt()
         }        
 
-        // Down
-        down = downValue.get() && GameSettings.isKeyDown(mc.gameSettings.keyBindSneak) && blocksAmount > 1
-        if (down) mc.gameSettings.keyBindSneak.pressed = false
-
-        if (mc.thePlayer.onGround && !eagleValue.get().equals("Off", true) && !down) {
+        if (mc.thePlayer.onGround && !eagleValue.get().equals("Off", true)) {
             var dif = 0.5
             val blockPos = BlockPos(mc.thePlayer.posX, mc.thePlayer.posY - 1.0, mc.thePlayer.posZ)
         
@@ -268,7 +267,7 @@ class Scaffold: Module() {
     @EventTarget
     fun onPreMotion(event: PreMotionEvent) {
         findBlock(expandLengthValue.get() > 1 && !towerStatus)
-        
+
         if (isNotBlock || isNotReplaceable) return
 
         if (placeModeValue.get().equals("pre", true)) loopPlace()
@@ -298,36 +297,32 @@ class Scaffold: Module() {
 
     private fun findBlock(expand: Boolean) {
         val blockPosition = when {
-            down && mc.thePlayer.posY == mc.thePlayer.posY.toInt() + 0.5 -> BlockPos(mc.thePlayer.posX, mc.thePlayer.posY - 0.6, mc.thePlayer.posZ)
-            down -> BlockPos(mc.thePlayer.posX, mc.thePlayer.posY - 0.6, mc.thePlayer.posZ).down()
             !canSameY && mc.thePlayer.posY == mc.thePlayer.posY.toInt() + 0.5 -> BlockPos(mc.thePlayer)
             canSameY && launchY <= mc.thePlayer.posY -> BlockPos(mc.thePlayer.posX, launchY - 1.0, mc.thePlayer.posZ)
             else -> BlockPos(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ).down()
         }
 
-        if (!expand && (!BlockUtils.isReplaceable(blockPosition) || search(blockPosition))) return
-        
         if (expand) {
             for (i in 0 until expandLengthValue.get()) {
                 val x = if (mc.thePlayer.horizontalFacing == EnumFacing.WEST) -i else if (mc.thePlayer.horizontalFacing == EnumFacing.EAST) i else 0
                 val z = if (mc.thePlayer.horizontalFacing == EnumFacing.NORTH) -i else if (mc.thePlayer.horizontalFacing == EnumFacing.SOUTH) i else 0
                 if (search(blockPosition.add(x, 0, z))) return
             }
-        } else if (searchValue.get()) {
-            for (x in -1..1 step 2) {
-                for (z in -1..1 step 2) {
+        } else {
+            if (!BlockUtils.isReplaceable(blockPosition) || search(blockPosition)) 
+                return
+
+            for (x in -1..1) {
+                for (z in -1..1) {
                     if (search(blockPosition.add(x, 0, z))) return
                 }
             }
-        }        
+        }
     }
 
     private fun place() {
-        if (targetPlace == null)
-            return
-        
-        if (!towerStatus && (canSameY && launchY - 1 != targetPlace!!.vec3.yCoord.toInt()))
-            return
+        if(lockRotation != null)
+            RotationUtils.setTargetRot(lockRotation!!, keepLengthValue.get())
         
         var blockSlot = -1
         var itemStack = mc.thePlayer.heldItem
@@ -358,14 +353,14 @@ class Scaffold: Module() {
                 "packet" -> mc.netHandler.addToSendQueue(C0APacketAnimation())
             }
         }
-        
+
         targetPlace = null        
     }
 
     @EventTarget
     fun onMove(event: MoveEvent) {
-        if (safeWalkValue.get().equals("off", true) || down) return
-        if (safeWalkValue.get().equals("air", true) || mc.thePlayer.onGround) event.isSafeWalk = true
+        if (safeWalkValue.get().equals("air", true) || mc.thePlayer.onGround) 
+            event.isSafeWalk = true
     }
 
     @EventTarget
@@ -425,7 +420,7 @@ class Scaffold: Module() {
         if (markValue.get()){
             for (i in 0 until (expandLengthValue.get() + 1)) {
                 val xOffset = if (mc.thePlayer.horizontalFacing == EnumFacing.WEST) -i else if (mc.thePlayer.horizontalFacing == EnumFacing.EAST) i else 0
-                val yOffset = mc.thePlayer.posY - if (mc.thePlayer.posY == mc.thePlayer.posY.toInt() + 0.5) 0.0 else 1.0 - if (down) 1.0 else 0.0
+                val yOffset = mc.thePlayer.posY - if (mc.thePlayer.posY == mc.thePlayer.posY.toInt() + 0.5) 0.0 else 1.0
                 val zOffset = if (mc.thePlayer.horizontalFacing == EnumFacing.NORTH) -i else if (mc.thePlayer.horizontalFacing == EnumFacing.SOUTH) i else 0
     
                 val blockPos = BlockPos(
@@ -453,7 +448,7 @@ class Scaffold: Module() {
     private fun search(blockPosition: BlockPos): Boolean {
         if (!BlockUtils.isReplaceable(blockPosition)) return false
 
-        val placeRotation = BlockUtils.searchBlock(blockPosition, yaw.get()) ?: return false
+        val placeRotation = BlockUtils.searchBlock(blockPosition, raycast.get(), yaw.get()) ?: return false
 
         lockRotation = when (rotationsValue.get().lowercase()) {
             "normal" -> placeRotation.rotation
@@ -461,9 +456,6 @@ class Scaffold: Module() {
             "none" -> null
             else -> return false
         }
-
-        if(lockRotation != null)
-            RotationUtils.setTargetRot(lockRotation!!, keepLengthValue.get())
 
         targetPlace = placeRotation.placeInfo
         return true

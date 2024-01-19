@@ -6,6 +6,8 @@
 package net.minusmc.minusbounce.utils.block
 
 import net.minusmc.minusbounce.utils.*
+import net.minusmc.minusbounce.MinusBounce
+import net.minusmc.minusbounce.features.module.modules.world.Scaffold
 import net.minusmc.minusbounce.utils.block.PlaceInfo.Companion.get
 import net.minusmc.minusbounce.injection.access.StaticStorage
 import net.minusmc.minusbounce.utils.extensions.*
@@ -164,27 +166,28 @@ object BlockUtils : MinecraftInstance() {
      * @author fmcpe
      */
     @JvmStatic
-    fun searchBlock(blockPosition: BlockPos, yaw: Float): PlaceRotation? {
-        val fromPos = blockPosition.fromPos()
-
+    fun searchBlock(blockPosition: BlockPos, raycast: Boolean, yaw: Float): PlaceRotation? {
         var placeRotation: PlaceRotation? = null
 
         for (side in StaticStorage.facings()) {
             val blockPos = blockPosition.offset(side)
+            val hitVec = Vec3(blockPos)
 
             if(!blockPos.isClickable())
                 continue
 
-            for (pitch in -90.0..90.0 step 0.02) {
-                val rotation = Rotation(mc.thePlayer.rotationYaw - yaw, pitch.toFloat())
-                if (fromBlocks(rotation, blockPos, side.opposite)) {
-                    if (placeRotation == null || rotation.pitch < placeRotation.rotation.pitch)
-                        placeRotation = PlaceRotation(PlaceInfo(blockPos, side.opposite, Vec3(blockPos)), rotation)
+            if(raycast){
+                for (pitch in -90.0..90.0 step 0.02){
+                    val rotation = Rotation(mc.thePlayer.rotationYaw - yaw, pitch.toFloat())
+                    if (isCorrect(rotation, blockPos, side.opposite)) {
+                        if (placeRotation == null || rotation.pitch < placeRotation.rotation.pitch)
+                            placeRotation = PlaceRotation(PlaceInfo(blockPos, side.opposite, hitVec), rotation)
+                    }
                 }
             }
 
-            if(placeRotation == null && fromPos != null && fromBlocks(fromPos, blockPos, side.opposite))
-                placeRotation = PlaceRotation(PlaceInfo(blockPos, side.opposite, Vec3(blockPos)), fromPos)
+            if(placeRotation == null)
+                placeRotation = blockPos.getRotations(side.opposite, hitVec, get(blockPos))
         }
 
         return placeRotation
@@ -195,8 +198,8 @@ object BlockUtils : MinecraftInstance() {
      * 
      * @author fmcpe
      */
-    fun fromBlocks(rotation: Rotation, pos: BlockPos, facing: EnumFacing): Boolean {
-        val obj = rotation.distanceRayTrace() ?: return false
+    fun isCorrect(rotation: Rotation, pos: BlockPos, facing: EnumFacing): Boolean {
+        val obj = distanceRayTrace(rotation) ?: return false
         return obj.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && obj.blockPos == pos && obj.sideHit == facing
     }
 
@@ -205,14 +208,8 @@ object BlockUtils : MinecraftInstance() {
      * 
      * @author fmcpe
      */
-    fun Rotation.rayTrace(): MovingObjectPosition {
-        val vec = RotationUtils.getVectorForRotation(this)
-        val vector = eyesPos.addVector(vec.xCoord * 4.5, vec.yCoord * 4.5, vec.zCoord * 4.5)
-        return mc.theWorld.rayTraceBlocks(eyesPos, vector, false, false, true)
-    }
-
-    fun Rotation.distanceRayTrace(): MovingObjectPosition? {
-        val vec = RotationUtils.getVectorForRotation(this)
+    fun distanceRayTrace(rotation: Rotation): MovingObjectPosition? {
+        val vec = RotationUtils.getVectorForRotation(rotation)
         val vector = eyesPos.addVector(vec.xCoord * 4.5, vec.yCoord * 4.5, vec.zCoord * 4.5)
         val obj = mc.theWorld.rayTraceBlocks(eyesPos, vector, false, false, true)
         return if(mc.thePlayer.getDistance(vector.xCoord, vector.yCoord, vector.zCoord) > 5) null else obj
@@ -223,23 +220,21 @@ object BlockUtils : MinecraftInstance() {
      * 
      * @author fmcpe
      */
-    fun BlockPos.fromPos(): Rotation? {
-        val blockData = get(this) ?: return null
-        val (posX, posY, posZ) = 
-            Vec3(blockData.blockPos).plus(0.5).plus(
-                Vec3(blockData.enumFacing.directionVec).times(0.5)
-                )
+    fun BlockPos.getRotations(side: EnumFacing, hitVec: Vec3, blockData: PlaceInfo?): PlaceRotation? {
+        blockData ?: return null
 
         val (x, y, z) = Vec3(
-            posX - eyesPos.xCoord, 
-            posY - eyesPos.yCoord, 
-            posZ - eyesPos.zCoord
+            hitVec.xCoord - eyesPos.xCoord,
+            hitVec.yCoord - eyesPos.yCoord, 
+            hitVec.zCoord - eyesPos.zCoord
         )
 
         val dist = MathHelper.sqrt_double(x * x + z * z).toDouble()
         val yaw = (atan2(z, x) * 180.0 / 3.141592653589793).toFloat() - 90.0f
         val pitch = (-(atan2(y, dist) * 180.0 / 3.141592653589793)).toFloat()
-        return Rotation(yaw, pitch)
+        val rotation = Rotation(yaw, pitch)
+
+        return PlaceRotation(PlaceInfo(this, side, distanceRayTrace(rotation)!!.hitVec), rotation)
     }
 
     /**
@@ -257,7 +252,7 @@ object BlockUtils : MinecraftInstance() {
      */
     val eyesPos: Vec3
         get() = Vec3(mc.thePlayer.posX, mc.thePlayer.entityBoundingBox.minY + mc.thePlayer.eyeHeight, mc.thePlayer.posZ)
-
+    
     val lastPos: Vec3
         get() = Vec3(mc.thePlayer.lastReportedPosX, mc.thePlayer.lastReportedPosY + mc.thePlayer.eyeHeight, mc.thePlayer.lastReportedPosZ)
 }
