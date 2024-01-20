@@ -9,8 +9,7 @@ import net.minusmc.minusbounce.MinusBounce
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
-import net.minusmc.minusbounce.ui.client.clickgui.DropDownClickGui
-import net.minusmc.minusbounce.ui.client.clickgui.styles.StyleMode
+import net.minusmc.minusbounce.ui.client.clickgui.ClickGui
 import net.minusmc.minusbounce.utils.ClassUtils
 import net.minusmc.minusbounce.utils.render.ColorUtils
 import net.minusmc.minusbounce.utils.render.RenderUtils
@@ -23,16 +22,6 @@ import java.awt.Color
 
 @ModuleInfo(name = "ClickGUI", description = "Opens the ClickGUI.", category = ModuleCategory.CLIENT, keyBind = Keyboard.KEY_RSHIFT, forceNoSound = true, onlyEnable = true)
 object ClickGUI: Module() {
-    val styleClazzes = ClassUtils.resolvePackage("net.minusmc.minusbounce.ui.client.clickgui.styles", StyleMode::class.java)
-    var styles = styleClazzes.map {it.newInstance() as StyleMode}.sortedBy { it.styleName }
-
-    val style: StyleMode
-        get() = styles.find {styleValue.get().equals(it.styleName, true)} ?: throw NullPointerException()
-
-    private val styleValue: ListValue = object: ListValue("Style", styles.map {it.styleName}.toTypedArray(), "LiquidBounce") {
-        override fun onChanged(oldValue: String, newValue: String) = changeClickGui()
-    }
-
     val fastRenderValue = BoolValue("FastRender", true)
 
     val scaleValue = FloatValue("Scale", 1F, 0.4F, 2F)
@@ -66,13 +55,7 @@ object ClickGUI: Module() {
         }
 
     fun changeClickGui() {
-        if (style is DropDownClickGui) {
-            val dropDown = style as DropDownClickGui
-            dropDown.progress = 0.0
-            dropDown.slide = 0.0
-            dropDown.lastMS = System.currentTimeMillis()
-        }
-        mc.displayGuiScreen(style)
+        mc.displayGuiScreen(ClickGui())
     }
 
     override fun onEnable() {

@@ -21,7 +21,7 @@ import net.minusmc.minusbounce.file.FileManager
 import net.minusmc.minusbounce.plugin.PluginAPIVersion
 import net.minusmc.minusbounce.plugin.PluginManager
 import net.minusmc.minusbounce.ui.client.altmanager.GuiAltManager
-import net.minusmc.minusbounce.ui.client.clickgui.styles.StyleMode
+import net.minusmc.minusbounce.ui.client.clickgui.ClickGui
 import net.minusmc.minusbounce.ui.client.hud.HUD
 import net.minusmc.minusbounce.ui.client.hud.HUD.Companion.createDefault
 import net.minusmc.minusbounce.ui.font.Fonts
@@ -48,6 +48,7 @@ object MinusBounce {
     lateinit var fileManager: FileManager
     lateinit var tipSoundManager: TipSoundManager
     lateinit var pluginManager: PluginManager
+    lateinit var clickGui: ClickGui
 
     // HUD & ClickGUI
     lateinit var hud: HUD
@@ -111,10 +112,7 @@ object MinusBounce {
 
         fileManager.loadConfigs(fileManager.modulesConfig, fileManager.valuesConfig, fileManager.accountsConfig, fileManager.friendsConfig)
 
-        val clickGuiModule = moduleManager[ClickGUI::class.java]!!
-        clickGuiModule.styles = clickGuiModule.styleClazzes.map {it.newInstance() as StyleMode}.sortedBy { it.styleName }
-
-        fileManager.loadConfig(fileManager.clickGuiConfig)
+        clickGui = ClickGui()
 
         // Set HUD
         hud = createDefault()

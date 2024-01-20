@@ -286,21 +286,17 @@ object RenderUtils : MinecraftInstance() {
         GL11.glEnd()
     }
 
-    fun drawHead(skin: ResourceLocation?, x: Int, y: Int, width: Int, height: Int, color: Int) {
-        val f3 = (color shr 24 and 255).toFloat() / 255.0f
-        val f = (color shr 16 and 255).toFloat() / 255.0f
-        val f1 = (color shr 8 and 255).toFloat() / 255.0f
-        val f2 = (color and 255).toFloat() / 255.0f
-        GlStateManager.color(f, f1, f2, f3)
+    fun drawHead(skin: ResourceLocation, x: Int, y: Int, width: Int, height: Int) {
+        glDisable(GL_DEPTH_TEST)
+        glEnable(GL_BLEND)
+        glDepthMask(false)
+        OpenGlHelper.glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO)
+        glColor4f(1f, 1f, 1f, 1f)
         mc.textureManager.bindTexture(skin)
-        RenderUtils.drawScaledCustomSizeModalRect(
-            x, y, 8f, 8f, 8, 8, width, height,
-            64f, 64f
-        )
-        RenderUtils.drawScaledCustomSizeModalRect(
-            x, y, 40f, 8f, 8, 8, width, height,
-            64f, 64f
-        )
+        Gui.drawScaledCustomSizeModalRect(x, y, 8F, 8F, 8, 8, width, height, 4F, 64F)
+        glDepthMask(true)
+        glDisable(GL_BLEND)
+        glEnable(GL_DEPTH_TEST)
     }
 
     fun isInViewFrustrum(entity: Entity): Boolean {
