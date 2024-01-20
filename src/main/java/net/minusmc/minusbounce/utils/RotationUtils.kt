@@ -237,26 +237,14 @@ object RotationUtils : MinecraftInstance(), Listenable {
      * @return rotation
      */
     fun toRotation(vec: Vec3, predict: Boolean): Rotation {
-        val eyesPos = Vec3(
-            mc.thePlayer.posX, mc.thePlayer.entityBoundingBox.minY +
-                    mc.thePlayer.eyeHeight, mc.thePlayer.posZ
-        )
+        val eyesPos = Vec3(mc.thePlayer.posX, mc.thePlayer.entityBoundingBox.minY + mc.thePlayer.eyeHeight, mc.thePlayer.posZ)
         if (predict) eyesPos.addVector(mc.thePlayer.motionX, mc.thePlayer.motionY, mc.thePlayer.motionZ)
         val diffX = vec.xCoord - eyesPos.xCoord
         val diffY = vec.yCoord - eyesPos.yCoord
         val diffZ = vec.zCoord - eyesPos.zCoord
         return Rotation(
-            MathHelper.wrapAngleTo180_float(
-                Math.toDegrees(atan2(diffZ, diffX)).toFloat() - 90f
-            ),
-            MathHelper.wrapAngleTo180_float(
-                (-Math.toDegrees(
-                    atan2(
-                        diffY,
-                        sqrt(diffX * diffX + diffZ * diffZ)
-                    )
-                )).toFloat()
-            )
+            MathHelper.wrapAngleTo180_float(Math.toDegrees(atan2(diffZ, diffX)).toFloat() - 90f),
+            MathHelper.wrapAngleTo180_float((-Math.toDegrees(atan2(diffY, sqrt(diffX * diffX + diffZ * diffZ)))).toFloat())
         )
     }
 
