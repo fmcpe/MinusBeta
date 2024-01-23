@@ -26,10 +26,6 @@ import net.minecraft.util.EnumFacing
  */
 class AttackEvent(val targetEntity: Entity?) : CancellableEvent()
 
-class PreAttackEvent(val targetEntity: Entity?) : CancellableEvent()
-
-class PostAttackEvent(val targetEntity: Entity?) : Event()
-
 /**
  * Called when minecraft get bounding box of block
  *
@@ -81,7 +77,7 @@ class Render3DEvent(val partialTicks: Float) : Event()
  * @param motion jump motion (y motion)
  * @param yaw
  */
-class JumpEvent(var motion: Float, var yaw: Float) : CancellableEvent()
+class JumpEvent(var motion: Float, var yaw: Float, var correction: Boolean) : CancellableEvent()
 
 /**
  * interpolated look vector
@@ -95,7 +91,7 @@ class LookEvent(var yaw: Float, var pitch: Float) : Event()
  * Called when movement input
  */
 
-class MoveInputEvent(var forward: Float, var strafe: Float, var jump: Boolean, var sneak: Boolean, var sneakMultiplier: Double) : Event()
+class MoveInputEvent(var forward: Float, var strafe: Float, var jump: Boolean, var sneak: Boolean, var sneakMultiplier: Double, var yaw: Float, var correction: Boolean) : Event()
 
 /**
  * Called when user press a key once
@@ -133,7 +129,7 @@ class SlowDownEvent(var strafe: Float, var forward: Float) : CancellableEvent()
 /**
  * Called in "moveFlying"
  */
-class StrafeEvent(var strafe: Float, var forward: Float, var friction: Float, var yaw: Float) : CancellableEvent()
+class StrafeEvent(var strafe: Float, var forward: Float, var friction: Float, var yaw: Float, var correction: Boolean) : CancellableEvent()
 
 /**
  * Called when player moves

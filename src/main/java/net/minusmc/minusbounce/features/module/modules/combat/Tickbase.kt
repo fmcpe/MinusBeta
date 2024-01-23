@@ -22,7 +22,7 @@ class TickBase : Module() {
     var freezing = false
 
     protected val killAura: KillAura
-		get() = MinusBounce.moduleManager[KillAura::class.java]!!
+        get() = MinusBounce.moduleManager[KillAura::class.java]!!
 
     private val ticks = IntegerValue("Ticks", 3, 1, 10)
 

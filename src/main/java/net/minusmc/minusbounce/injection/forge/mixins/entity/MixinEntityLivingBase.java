@@ -42,6 +42,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
+import static net.minusmc.minusbounce.utils.RotationUtils.targetRotation;
 @Mixin(EntityLivingBase.class)
 public abstract class MixinEntityLivingBase extends MixinEntity {
 
@@ -99,20 +100,20 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
     @Overwrite
     protected void jump() {
 
-        final JumpEvent jumpEvent = new JumpEvent(this.getJumpUpwardsMotion(), this.rotationYaw);
+        final JumpEvent event = new JumpEvent(this.getJumpUpwardsMotion(), this.rotationYaw, true);
 
-        MinusBounce.eventManager.callEvent(jumpEvent);
-        if (jumpEvent.isCancelled())
+        MinusBounce.eventManager.callEvent(event);
+        if (event.isCancelled())
             return;
 
-        float yaw = jumpEvent.getYaw();
+        float yaw = targetRotation != null && event.getCorrection() ? targetRotation.getYaw() : event.getYaw();
 
         final TargetStrafe tsMod = MinusBounce.moduleManager.getModule(TargetStrafe.class);
         
         if (tsMod.getCanStrafe()) 
             yaw = tsMod.getMovingYaw();
 
-        this.motionY = jumpEvent.getMotion();
+        this.motionY = event.getMotion();
 
         if (this.isPotionActive(Potion.jump))
             this.motionY += (double) ((float) (this.getActivePotionEffect(Potion.jump).getAmplifier() + 1) * 0.1F);

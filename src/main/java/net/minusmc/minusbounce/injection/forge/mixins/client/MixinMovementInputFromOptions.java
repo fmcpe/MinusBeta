@@ -6,14 +6,19 @@
 package net.minusmc.minusbounce.injection.forge.mixins.client;
 
 import net.minusmc.minusbounce.MinusBounce;
-import net.minecraft.util.MovementInputFromOptions;
 import net.minecraft.client.settings.GameSettings;
 import net.minusmc.minusbounce.event.*;
 import org.spongepowered.asm.mixin.*;
 import net.minusmc.minusbounce.injection.forge.mixins.client.MixinMovementInput;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.util.*;
+import static net.minusmc.minusbounce.utils.RotationUtils.targetRotation;
+
 @Mixin(MovementInputFromOptions.class)
 public class MixinMovementInputFromOptions extends MixinMovementInput{
+    final Minecraft mc = Minecraft.getMinecraft();
+
     @Shadow
     @Final
     private GameSettings gameSettings;
@@ -42,15 +47,35 @@ public class MixinMovementInputFromOptions extends MixinMovementInput{
         this.jump = this.gameSettings.keyBindJump.isKeyDown();
         this.sneak = this.gameSettings.keyBindSneak.isKeyDown();
 
-        final MoveInputEvent moveInputEvent = new MoveInputEvent(this.moveForward, this.moveStrafe, this.jump, this.sneak, 0.3D);
+        final MoveInputEvent event = new MoveInputEvent(
+            this.moveForward, 
+            this.moveStrafe, 
+            this.jump, 
+            this.sneak, 
+            0.3D,
+            mc.thePlayer.rotationYaw,
+            true
+        );
 
-        MinusBounce.eventManager.callEvent(moveInputEvent);
+        final float rotation = targetRotation != null ? targetRotation.getYaw() : event.getYaw();
 
-        final double sneakMultiplier = moveInputEvent.getSneakMultiplier();
-        this.moveForward = moveInputEvent.getForward();
-        this.moveStrafe = moveInputEvent.getStrafe();
-        this.jump = moveInputEvent.getJump();
-        this.sneak = moveInputEvent.getSneak();
+        MinusBounce.eventManager.callEvent(event);
+
+        final double sneakMultiplier = event.getSneakMultiplier();
+        this.moveForward = event.getForward();
+        this.moveStrafe = event.getStrafe();
+        this.jump = event.getJump();
+        this.sneak = event.getSneak();
+
+        if(event.getCorrection()){
+            final float offset = (float) Math.toRadians(mc.thePlayer.rotationYaw - rotation);
+            
+            final float cosValue = MathHelper.cos(offset);
+            final float sinValue = MathHelper.sin(offset);
+
+            this.moveForward = Math.round(this.moveForward * cosValue + this.moveStrafe * sinValue);
+            this.moveStrafe = Math.round(this.moveStrafe * cosValue - this.moveForward * sinValue);
+        }
 
         if (this.sneak) {
             this.moveStrafe = (float) ((double) this.moveStrafe * sneakMultiplier);

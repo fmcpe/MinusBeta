@@ -208,106 +208,129 @@ object BlockUtils : MinecraftInstance() {
         return placeRotation
     }
 
-    // /**
-    //  * Finding corrent yaw and pitch to placing block
-    //  * 
-    //  * @author fmcpe
-    //  */
-    // @JvmStatic
-    // fun searchBlock(blockPosition: BlockPos, yaw: Float): PlaceRotation? {
-    //     val fromPos = blockPosition.fromPos()
+/**
+     * Finding correct yaw and pitch for placing a block.
+     * 
+     * @author fmcpe
+     */
+    @JvmStatic
+    fun searchBlock(blockPosition: BlockPos, yaw: Float): PlaceRotation? {
+        var placeRotation: PlaceRotation? = null
 
-    //     var placeRotation: PlaceRotation? = null
+        //side is blockFace
+        //side.opposite is the facing of the place ?
+        for (side in StaticStorage.facings()) {
+            val blockPos = blockPosition.offset(side)
 
-    //     for (side in StaticStorage.facings()) {
-    //         val blockPos = blockPosition.offset(side)
+            if (!blockPos.isClickable())
+                continue
 
-    //         if(!blockPos.isClickable())
-    //             continue
+            for (pitch in -90.0..90.0 step 0.02) {
+                val rotation = Rotation(mc.thePlayer.rotationYaw - yaw, pitch.toFloat())
+                val hitVec = blockPos.getHitVec(rotation, side.opposite) ?: continue
 
-    //         for (pitch in -90.0..90.0 step 0.02) {
-    //             val rotation = Rotation(mc.thePlayer.rotationYaw - yaw, pitch.toFloat())
-    //             if (fromBlocks(rotation, blockPos, side.opposite)) {
-    //                 if (placeRotation == null || rotation.pitch < placeRotation.rotation.pitch)
-    //                     placeRotation = PlaceRotation(PlaceInfo(blockPos, side.opposite, Vec3(blockPos)), rotation)
-    //             }
-    //         }
+                if (isCorrect(rotation, blockPos, side.opposite)) {
+                    if (placeRotation == null || rotation.pitch < placeRotation.rotation.pitch)
+                        placeRotation = PlaceRotation(PlaceInfo(blockPos, side.opposite, hitVec), rotation)
+                }
+            }
 
-    //         if(placeRotation == null && fromPos != null && fromBlocks(fromPos, blockPos, side.opposite))
-    //             placeRotation = PlaceRotation(PlaceInfo(blockPos, side.opposite, Vec3(blockPos)), fromPos)
-    //     }
+            if (placeRotation == null)
+                placeRotation = blockPos.getRotations(side.opposite, get(blockPos))
+        }
 
-    //     return placeRotation
-    // }
+        return placeRotation
+    }
 
-    // /**
-    //  * Finding if the rotation is correct from blockPos and facing
-    //  * 
-    //  * @author fmcpe
-    //  */
-    // fun fromBlocks(rotation: Rotation, pos: BlockPos, facing: EnumFacing): Boolean {
-    //     val obj = rotation.distanceRayTrace() ?: return false
-    //     return obj.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && obj.blockPos == pos && obj.sideHit == facing
-    // }
+    /**
+     * Checking if the rotation is correct from blockPos and facing.
+     * 
+     * @author fmcpe
+     */
+    fun isCorrect(rotation: Rotation, pos: BlockPos, facing: EnumFacing): Boolean {
+        val obj = distanceRayTrace(rotation) ?: return false
 
-    // /**
-    //  * Raytrace from a rotation
-    //  * 
-    //  * @author fmcpe
-    //  */
-    // fun Rotation.rayTrace(): MovingObjectPosition {
-    //     val vec = RotationUtils.getVectorForRotation(this)
-    //     val vector = eyesPos.addVector(vec.xCoord * 4.5, vec.yCoord * 4.5, vec.zCoord * 4.5)
-    //     return mc.theWorld.rayTraceBlocks(eyesPos, vector, false, false, true)
-    // }
+        obj.hitVec ?: return false
 
-    // fun Rotation.distanceRayTrace(): MovingObjectPosition? {
-    //     val vec = RotationUtils.getVectorForRotation(this)
-    //     val vector = eyesPos.addVector(vec.xCoord * 4.5, vec.yCoord * 4.5, vec.zCoord * 4.5)
-    //     val obj = mc.theWorld.rayTraceBlocks(eyesPos, vector, false, false, true)
-    //     return if(mc.thePlayer.getDistance(vector.xCoord, vector.yCoord, vector.zCoord) > 5) null else obj
-    // }
+        return (
+            obj.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && 
+            obj.blockPos == pos && 
+            obj.sideHit == facing
+        )
+    }
 
-    // /**
-    //  * Search rotation from blockPos
-    //  * 
-    //  * @author fmcpe
-    //  */
-    // fun BlockPos.fromPos(): Rotation? {
-    //     val blockData = get(this) ?: return null
-    //     val (posX, posY, posZ) = 
-    //         Vec3(blockData.blockPos).plus(0.5).plus(
-    //             Vec3(blockData.enumFacing.directionVec).times(0.5)
-    //             )
-
-    //     val (x, y, z) = Vec3(
-    //         posX - eyesPos.xCoord, 
-    //         posY - eyesPos.yCoord, 
-    //         posZ - eyesPos.zCoord
-    //     )
-
-    //     val dist = MathHelper.sqrt_double(x * x + z * z).toDouble()
-    //     val yaw = (atan2(z, x) * 180.0 / 3.141592653589793).toFloat() - 90.0f
-    //     val pitch = (-(atan2(y, dist) * 180.0 / 3.141592653589793)).toFloat()
-    //     return Rotation(yaw, pitch)
-    // }
-
-    // /**
-    //  * Check if [blockPos] is clickable
-    //  * 
-    //  * @author fmcpe
-    //  */
-    // fun BlockPos.isClickable() = getBlock(this)?.canCollideCheck(getState(this), false) ?: false &&
-    //         mc.theWorld.worldBorder.contains(this)
+    /**
+     * Raytrace from a rotation.
+     * 
+     * @author fmcpe
+     */
+    fun BlockPos.getHitVec(rotation: Rotation, facing: EnumFacing): Vec3? {
+        /* Correct HitVec */
+        val pos = BlockPos(
+            this.x + Math.random(), 
+            this.y + Math.random(),
+            this.z + Math.random()
+        ).offset(facing)
     
-    // /**
-    //  * EyesPos
-    //  * 
-    //  * @author fmcpe
-    //  */
-    // val eyesPos: Vec3
-    //     get() = Vec3(mc.thePlayer.posX, mc.thePlayer.entityBoundingBox.minY + mc.thePlayer.eyeHeight, mc.thePlayer.posZ)
+        val obj = distanceRayTrace(rotation) ?: return null
+    
+        val hitVec = if(isCorrect(rotation, this, facing)) 
+            Vec3(pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble()) 
+            else 
+            obj.hitVec
+    
+        return hitVec
+    }
 
-    // val lastPos: Vec3
-    //     get() = Vec3(mc.thePlayer.lastReportedPosX, mc.thePlayer.lastReportedPosY + mc.thePlayer.eyeHeight, mc.thePlayer.lastReportedPosZ)
+    fun distanceRayTrace(rotation: Rotation): MovingObjectPosition? {
+        val vec = RotationUtils.getVectorForRotation(rotation)
+        val vector = eyesPos.addVector(vec.xCoord * 4.5, vec.yCoord * 4.5, vec.zCoord * 4.5)
+        val obj = mc.theWorld.rayTraceBlocks(eyesPos, vector, false, false, true)
+        return if (mc.thePlayer.getDistance(vector.xCoord, vector.yCoord, vector.zCoord) > 5) null else obj
+    }
+
+    /**
+     * Search rotation from blockPos.
+     * 
+     * @author fmcpe
+     */
+    fun BlockPos.getRotations(side: EnumFacing, blockData: PlaceInfo?): PlaceRotation? {
+        blockData ?: return null
+
+        var xCoord = this.x + 0.5
+        var yCoord = this.y + 0.5
+        var zCoord = this.z + 0.5
+
+        xCoord += side.directionVec.x * 0.5
+        yCoord += side.directionVec.y * 0.5
+        zCoord += side.directionVec.z * 0.5
+
+        val rotation = RotationUtils.toRotation(
+            Vec3(xCoord, yCoord, zCoord),
+            false
+        )
+
+        val obj = distanceRayTrace(rotation) ?: return null
+
+        return PlaceRotation(PlaceInfo(obj.blockPos, obj.sideHit, obj.hitVec), rotation)
+    }
+
+    /**
+     * Check if [blockPos] is clickable.
+     * 
+     * @author fmcpe
+     */
+    fun BlockPos.isClickable() = getBlock(this)?.canCollideCheck(getState(this), false) ?: false &&
+            mc.theWorld.worldBorder.contains(this)
+
+    /**
+     * Eyes position.
+     * 
+     * @author fmcpe
+     */
+    val eyesPos: Vec3
+        get() = Vec3(mc.thePlayer.posX, mc.thePlayer.entityBoundingBox.minY + mc.thePlayer.eyeHeight, mc.thePlayer.posZ)
+
+    val lastPos: Vec3
+        get() = Vec3(mc.thePlayer.lastReportedPosX, mc.thePlayer.lastReportedPosY + mc.thePlayer.eyeHeight, mc.thePlayer.lastReportedPosZ)
 }
