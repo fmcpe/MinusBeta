@@ -381,11 +381,8 @@ class Scaffold: Module() {
     
 
     private fun place() {
-        if(clicks == 0 && placeableDelay.get())
+        if (clicks == 0 && placeableDelay.get())
             return
-        
-        if(targetPlace == null)
-            findBlock(expandLengthValue.get() > 1 && !towerStatus)
 
         if (lockRotation != null) {
             RotationUtils.setTargetRot(lockRotation!!, keepLengthValue.get())
@@ -410,15 +407,7 @@ class Scaffold: Module() {
         }
         
         if(correct(targetPlace!!.blockPos, targetPlace!!.enumFacing) || !raycast.get()){
-            if (mc.playerController.onPlayerRightClick(
-                    mc.thePlayer,
-                    mc.theWorld,
-                    itemStack,
-                    targetPlace!!.blockPos,
-                    targetPlace!!.enumFacing,
-                    targetPlace!!.vec3
-                )
-            ) {
+            if (mc.playerController.onPlayerRightClick(mc.thePlayer, mc.theWorld, itemStack, targetPlace!!.blockPos, targetPlace!!.enumFacing, targetPlace!!.vec3)) {
                 if (mc.thePlayer.onGround) {
                     mc.thePlayer.motionX *= speedModifierValue.get().toDouble()
                     mc.thePlayer.motionZ *= speedModifierValue.get().toDouble()

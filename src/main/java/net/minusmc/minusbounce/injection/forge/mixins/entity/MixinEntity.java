@@ -29,6 +29,8 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import static net.minusmc.minusbounce.utils.RotationUtils.targetRotation;
+
 import java.util.Random;
 import java.util.UUID;
 
@@ -240,7 +242,7 @@ public abstract class MixinEntity {
         if ((Entity) (Object) this != Minecraft.getMinecraft().thePlayer) 
             return;
         
-        final StrafeEvent event = new StrafeEvent(strafe, forward, friction, this.rotationYaw);
+        final StrafeEvent event = new StrafeEvent(strafe, forward, friction, this.rotationYaw, true);
         MinusBounce.eventManager.callEvent(event);
 
         if (event.isCancelled())
@@ -249,7 +251,7 @@ public abstract class MixinEntity {
         strafe = event.getStrafe();
         forward = event.getForward();
         friction = event.getFriction();
-        final float yaw = event.getYaw();
+        final float yaw = targetRotation != null && event.getCorrection() ? targetRotation.getYaw() : event.getYaw();
 
         float f = strafe * strafe + forward * forward;
 
