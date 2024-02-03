@@ -251,7 +251,7 @@ public abstract class MixinEntity {
         strafe = event.getStrafe();
         forward = event.getForward();
         friction = event.getFriction();
-        final float yaw = targetRotation != null && event.getCorrection() ? targetRotation.getYaw() : event.getYaw();
+        float yaw = targetRotation != null && event.getCorrection() ? targetRotation.getYaw() : event.getYaw();
 
         float f = strafe * strafe + forward * forward;
 

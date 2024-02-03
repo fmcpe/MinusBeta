@@ -5,16 +5,18 @@
  */
 package net.minusmc.minusbounce.utils.block
 
-import net.minusmc.minusbounce.utils.*
-import net.minusmc.minusbounce.utils.block.PlaceInfo.Companion.get
-import net.minusmc.minusbounce.injection.access.StaticStorage
-import net.minusmc.minusbounce.utils.extensions.*
-import net.minecraft.init.Blocks
 import net.minecraft.block.Block
+import net.minecraft.block.BlockAir
 import net.minecraft.block.material.Material
 import net.minecraft.block.state.IBlockState
+import net.minecraft.init.Blocks
 import net.minecraft.util.*
+import net.minusmc.minusbounce.injection.access.StaticStorage
+import net.minusmc.minusbounce.utils.*
+import net.minusmc.minusbounce.utils.block.PlaceInfo.Companion.get
+import net.minusmc.minusbounce.utils.extensions.*
 import kotlin.math.*
+
 
 object BlockUtils : MinecraftInstance() {
 
@@ -180,7 +182,6 @@ object BlockUtils : MinecraftInstance() {
                         if (checks && (eyesPos.squareDistanceTo(hitVec) > 18.0 || distanceSqPosVec > eyesPos.squareDistanceTo(posVec.add(dirVec)) || mc.theWorld.rayTraceBlocks(eyesPos, hitVec, false, true, false) != null)) {
                             continue
                         }
-
                         val diffX = hitVec.xCoord - eyesPos.xCoord
                         val diffY = hitVec.yCoord - eyesPos.yCoord
                         val diffZ = hitVec.zCoord - eyesPos.zCoord
@@ -207,37 +208,64 @@ object BlockUtils : MinecraftInstance() {
         }
         return placeRotation
     }
+    
+    /*
+        DOWN(0, 1, -1, "down", EnumFacing.AxisDirection.NEGATIVE, EnumFacing.Axis.Y, new Vec3i(0, -1, 0)),
+        UP(1, 0, -1, "up", EnumFacing.AxisDirection.POSITIVE, EnumFacing.Axis.Y, new Vec3i(0, 1, 0)),
+        NORTH(2, 3, 2, "north", EnumFacing.AxisDirection.NEGATIVE, EnumFacing.Axis.Z, new Vec3i(0, 0, -1)),
+        SOUTH(3, 2, 0, "south", EnumFacing.AxisDirection.POSITIVE, EnumFacing.Axis.Z, new Vec3i(0, 0, 1)),
+        WEST(4, 5, 1, "west", EnumFacing.AxisDirection.NEGATIVE, EnumFacing.Axis.X, new Vec3i(-1, 0, 0)),
+        EAST(5, 4, 3, "east", EnumFacing.AxisDirection.POSITIVE, EnumFacing.Axis.X, new Vec3i(1, 0, 0));
+    */
+    /**
+     * @author fmcpe, toidicakhia (optimization code)
+     */
+    // test lai cai
+    // Facing van the nma vec3 opposite
+    // Ben minh la facing opposite luon
+    // Con ben no la facing the nma vec3 la opposite hieu
+    // thi o day phai return cai EnumFacing + pos dc lồng vào bên trong
+    //vi du
+    // FacingInfo(EnumFacing, opposite)
+    // chuan me luon
+    fun BlockPos.facing(): EnumFacing? =
+        StaticStorage.facings()
+            .filter {it != EnumFacing.DOWN && getBlock(this.add(it.opposite.directionVec)) !is BlockAir}
+            .firstOrNull()
 
-/**
+    /**
      * Finding correct yaw and pitch for placing a block.
      * 
-     * @author fmcpe
+     * @author fmcpe, toidicakhia
      */
-    @JvmStatic
-    fun searchBlock(blockPosition: BlockPos, yaw: Float): PlaceRotation? {
+    fun getPlace(
+        pos: BlockPos,
+        yaw: Float
+    ): PlaceRotation? {
         var placeRotation: PlaceRotation? = null
+        val side = pos.facing() ?: return null
 
-        //side is blockFace
-        //side.opposite is the facing of the place ?
-        for (side in StaticStorage.facings()) {
-            val blockPos = blockPosition.offset(side)
+        val blockPos = pos.add(side.opposite.directionVec) // legit mc injection
 
-            if (!blockPos.isClickable())
-                continue
+        if (!blockPos.isClickable())
+            return null
 
-            for (pitch in -90.0..90.0 step 0.02) {
-                val rotation = Rotation(mc.thePlayer.rotationYaw - yaw, pitch.toFloat())
-                val hitVec = blockPos.getHitVec(rotation, side.opposite) ?: continue
+        for (pitch in -90.0..90.0 step 0.05) {
+            val rotation = Rotation(mc.thePlayer.rotationYaw - yaw, pitch.toFloat())
+            val hitVec = blockPos.getHitVec(rotation, side)
 
-                if (isCorrect(rotation, blockPos, side.opposite)) {
-                    if (placeRotation == null || rotation.pitch < placeRotation.rotation.pitch)
-                        placeRotation = PlaceRotation(PlaceInfo(blockPos, side.opposite, hitVec), rotation)
-                }
+            if (!isCorrect(rotation, blockPos, side)) continue
+
+            if (placeRotation == null || rotation.pitch < placeRotation.rotation.pitch) {
+                placeRotation = PlaceRotation(
+                    PlaceInfo(blockPos, side, hitVec),
+                    rotation
+                )
             }
-
-            if (placeRotation == null)
-                placeRotation = blockPos.getRotations(side.opposite, get(blockPos))
         }
+
+        if (placeRotation == null)
+            placeRotation = blockPos.getRotations(side, get(blockPos))
 
         return placeRotation
     }
@@ -247,16 +275,60 @@ object BlockUtils : MinecraftInstance() {
      * 
      * @author fmcpe
      */
-    fun isCorrect(rotation: Rotation, pos: BlockPos, facing: EnumFacing): Boolean {
-        val obj = distanceRayTrace(rotation) ?: return false
+    fun isCorrect(
+        rotation: Rotation?,
+        pos: BlockPos?,
+        facing: EnumFacing?
+    ): Boolean {
+        val obj =
+            if(rotation != null) {
+                distanceRayTrace(rotation)
+            } else {
+                mc.objectMouseOver
+            }
 
         obj.hitVec ?: return false
+        pos ?: return false
+        facing ?: return false
 
         return (
             obj.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && 
-            obj.blockPos == pos && 
-            obj.sideHit == facing
-        )
+            obj.blockPos == pos && obj.sideHit == facing &&
+            obj.sideHit != EnumFacing.DOWN
+                )
+    }
+
+    /**
+     * HitVec Correction
+     *
+     * @author fmcpe
+     */
+    fun BlockPos.getHitVec(
+        rotation: Rotation,
+        facing: EnumFacing
+    ): Vec3 {
+        /* Correct HitVec */
+        val pos =
+            BlockPos(
+                this.x + Math.random(),
+                this.y + Math.random(),
+                this.z + Math.random()
+            ).offset(facing)
+
+        val hitVec =
+            if(isCorrect(rotation, this, facing)) {
+                Vec3(
+                    pos.x.toDouble(),
+                    pos.y.toDouble(),
+                    pos.z.toDouble()
+                )
+            } else {
+                distanceRayTrace(
+                    rotation
+                ).hitVec
+            }
+
+        return hitVec
     }
 
     /**
@@ -264,30 +336,18 @@ object BlockUtils : MinecraftInstance() {
      * 
      * @author fmcpe
      */
-    fun BlockPos.getHitVec(rotation: Rotation, facing: EnumFacing): Vec3? {
-        /* Correct HitVec */
-        val pos = BlockPos(
-            this.x + Math.random(), 
-            this.y + Math.random(),
-            this.z + Math.random()
-        ).offset(facing)
-    
-        val obj = distanceRayTrace(rotation) ?: return null
-    
-        val hitVec = if(isCorrect(rotation, this, facing)) 
-            Vec3(pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble()) 
-            else 
-            obj.hitVec
-    
-        return hitVec
-    }
-
-    fun distanceRayTrace(rotation: Rotation): MovingObjectPosition? {
+    fun distanceRayTrace(rotation: Rotation): MovingObjectPosition {
         val vec = RotationUtils.getVectorForRotation(rotation)
         val vector = eyesPos.addVector(vec.xCoord * 4.5, vec.yCoord * 4.5, vec.zCoord * 4.5)
-        val obj = mc.theWorld.rayTraceBlocks(eyesPos, vector, false, false, true)
-        return if (mc.thePlayer.getDistance(vector.xCoord, vector.yCoord, vector.zCoord) > 5) null else obj
+        return mc.theWorld.rayTraceBlocks(eyesPos, vector, false, false, true)
     }
+
+    fun rayCast(
+        rotation: Rotation?,
+        pos: BlockPos?,
+        facing: EnumFacing?,
+        check: Boolean
+    ): Boolean = if(check) isCorrect(rotation, pos, facing) else true
 
     /**
      * Search rotation from blockPos.
@@ -297,22 +357,35 @@ object BlockUtils : MinecraftInstance() {
     fun BlockPos.getRotations(side: EnumFacing, blockData: PlaceInfo?): PlaceRotation? {
         blockData ?: return null
 
-        var xCoord = this.x + 0.5
-        var yCoord = this.y + 0.5
-        var zCoord = this.z + 0.5
+        val posVec =
+            Vec3(
+                this.x + 0.5,
+                this.y + 0.5,
+                this.z + 0.5
+            ).add(
+                    Vec3(
+                        side.directionVec.x * 0.5,
+                        side.directionVec.y * 0.5,
+                        side.directionVec.z * 0.5
+                    )
+                )
 
-        xCoord += side.directionVec.x * 0.5
-        yCoord += side.directionVec.y * 0.5
-        zCoord += side.directionVec.z * 0.5
+        val rotation =
+            RotationUtils.toRotation(
+                posVec,
+                false
+            )
 
-        val rotation = RotationUtils.toRotation(
-            Vec3(xCoord, yCoord, zCoord),
-            false
+        val obj = distanceRayTrace(rotation)
+
+        return PlaceRotation(
+            PlaceInfo(
+                obj.blockPos,
+                obj.sideHit,
+                obj.hitVec
+            ),
+            rotation
         )
-
-        val obj = distanceRayTrace(rotation) ?: return null
-
-        return PlaceRotation(PlaceInfo(obj.blockPos, obj.sideHit, obj.hitVec), rotation)
     }
 
     /**
@@ -320,8 +393,8 @@ object BlockUtils : MinecraftInstance() {
      * 
      * @author fmcpe
      */
-    fun BlockPos.isClickable() = getBlock(this)?.canCollideCheck(getState(this), false) ?: false &&
-            mc.theWorld.worldBorder.contains(this)
+    fun BlockPos.isClickable() =
+        getBlock(this)?.canCollideCheck(getState(this), false) ?: false && mc.theWorld.worldBorder.contains(this)
 
     /**
      * Eyes position.
@@ -333,4 +406,58 @@ object BlockUtils : MinecraftInstance() {
 
     val lastPos: Vec3
         get() = Vec3(mc.thePlayer.lastReportedPosX, mc.thePlayer.lastReportedPosY + mc.thePlayer.eyeHeight, mc.thePlayer.lastReportedPosZ)
+
+    /**
+     * @author fmcpe, toidicakhia, alan wood
+     *
+     */
+    fun getPlacePossibility(offsetX: Double, offsetY: Double, offsetZ: Double): BlockPos? {
+        val possibilities: MutableList<BlockPos> = ArrayList()
+        val range = (5 + (abs(offsetX) + abs(offsetZ))).toInt()
+
+        for (x in -range..range) {
+            for (y in -range..range) {
+                for (z in -range..range) {
+                    if (getBlock(BlockPos(mc.thePlayer).add(x, y, z)) is BlockAir) continue // thu lai xong ms sua ko ti nx loan het len
+
+                    for (x2 in -1..1 step 2)
+                        possibilities.add(
+                            BlockPos(
+                                mc.thePlayer.posX + x + x2,
+                                mc.thePlayer.posY + y,
+                                mc.thePlayer.posZ + z
+                            )
+                        )
+                    for (y2 in -1..1 step 2)
+                        possibilities.add(
+                            BlockPos(
+                                mc.thePlayer.posX + x,
+                                mc.thePlayer.posY + y + y2,
+                                mc.thePlayer.posZ + z
+                            )
+                        )
+                    for (z2 in -1..1 step 2)
+                        possibilities.add(
+                            BlockPos(
+                                mc.thePlayer.posX + x,
+                                mc.thePlayer.posY + y,
+                                mc.thePlayer.posZ + z + z2
+                            )
+                        )
+                }
+            }
+        }
+
+        //tutu
+
+        return possibilities
+            .filterNot { mc.thePlayer.getDistanceSq(it) > 5 || getBlock(it) !is BlockAir }
+            .sortedBy {
+                val d0 = (mc.thePlayer.posX + offsetX) - it.x
+                val d1 = (mc.thePlayer.posY - 1 + offsetY) - it.y
+                val d2 = (mc.thePlayer.posZ + offsetZ) - it.z
+                sqrt(d0 * d0 + d1 * d1 + d2 * d2)
+            }
+            .firstOrNull()
+    }
 }

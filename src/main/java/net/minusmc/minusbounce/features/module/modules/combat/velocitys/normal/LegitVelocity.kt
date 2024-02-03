@@ -1,57 +1,41 @@
 package net.minusmc.minusbounce.features.module.modules.combat.velocitys.normal
 
 import net.minusmc.minusbounce.event.*
-import net.minusmc.minusbounce.utils.*
-import net.minusmc.minusbounce.utils.extensions.*
-import net.minecraft.util.*
+import net.minusmc.minusbounce.utils.RotationUtils
 import net.minusmc.minusbounce.features.module.modules.combat.velocitys.VelocityMode
 import net.minecraft.network.play.server.S12PacketEntityVelocity
-import kotlin.math.*
+import net.minusmc.minusbounce.features.module.modules.combat.KillAura
+import net.minusmc.minusbounce.MinusBounce
 
-class LegitVelocity : VelocityMode("Legit") {
-    private var yaw: Float? = null
-
-    override fun onEnable(){
-        yaw = null
-    }
+class LegitVelocity : VelocityMode("LegitAura") {
+    protected val killAura: KillAura
+		get() = MinusBounce.moduleManager[KillAura::class.java]!!
 
     override fun onStrafe(event: StrafeEvent){
-        if(mc.thePlayer.hurtTime < 8) {
-            yaw = null
-            return
+        if(RotationUtils.targetRotation != null && killAura.state){
+            event.correction = true
         }
-
-        event.yaw = (yaw ?: return)
-        event.correction = false
     }
 
     override fun onJump(event: JumpEvent){
-        yaw ?: return
+        if(RotationUtils.targetRotation != null && killAura.state){
+            event.correction = true
+        }
+    }
 
-        event.yaw = yaw!!
-        event.correction = false
+    override fun onInput(event: MoveInputEvent){
+        if(RotationUtils.targetRotation != null && killAura.state){
+            event.forward = 1f
+            event.correction = false
+        }
     }
 
     override fun onPacket(event: PacketEvent) {
         val packet = event.packet
 
-        if (packet is S12PacketEntityVelocity && packet.entityID == mc.thePlayer.entityId)
-            yaw = BlockPos(mc.thePlayer).getRotations().yaw
+        if (packet is S12PacketEntityVelocity && packet.entityID == mc.thePlayer.entityId){
+            if(mc.thePlayer.onGround)
+                mc.thePlayer.jump()
+        }
     }
-
-    fun BlockPos.getRotations(): Rotation {
-        val (x, y, z) = Vec3(
-            this.x - eyesPos.xCoord,
-            this.y - eyesPos.yCoord, 
-            this.z - eyesPos.zCoord
-        )
-
-        val dist = MathHelper.sqrt_double(x * x + z * z).toDouble()
-        val yaw = (atan2(z, x) * 180.0 / 3.141592653589793).toFloat() - 90.0f
-        val pitch = (-(atan2(y, dist) * 180.0 / 3.141592653589793)).toFloat()
-        return Rotation(yaw, pitch)
-    }
-
-    val eyesPos: Vec3
-        get() = Vec3(mc.thePlayer.posX, mc.thePlayer.entityBoundingBox.minY + mc.thePlayer.eyeHeight, mc.thePlayer.posZ)
 }

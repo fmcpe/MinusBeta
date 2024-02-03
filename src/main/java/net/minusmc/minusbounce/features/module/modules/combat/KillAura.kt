@@ -129,20 +129,7 @@ class KillAura : Module() {
     }
 
     @EventTarget
-    fun onPostMotion(event: PostMotionEvent) {
-        target ?: return
-
-        updateHitable()
-        blockingMode.onPostMotion()
-    }
-
-    @EventTarget
-    fun onPacket(event: PacketEvent) {
-        blockingMode.onPacket(event)
-    }
-
-    @EventTarget
-    fun onUpdate(event: UpdateEvent) {
+    fun onUpdate(event: ClickEvent) {
         if (target == null) {
             stopBlocking()
             return
@@ -169,16 +156,6 @@ class KillAura : Module() {
                 event.cancelEvent()
             }
         }
-    }
-
-    @EventTarget
-    fun jump(event: JumpEvent){
-        event.correction = movementCorrection.get()
-    }
-
-    @EventTarget
-    fun input(event: MoveInputEvent){
-        event.correction = movementCorrection.get()
     }
 
     @EventTarget
@@ -432,5 +409,28 @@ class KillAura : Module() {
     @EventTarget
     fun onPreMotion(event: PreMotionEvent) {
         blockingMode.onPreMotion()
+    }
+
+    @EventTarget
+    fun jump(event: JumpEvent){
+        event.correction = movementCorrection.get()
+    }
+
+    @EventTarget
+    fun input(event: MoveInputEvent){
+        event.correction = movementCorrection.get()
+    }
+
+    @EventTarget
+    fun onPostMotion(event: PostMotionEvent) {
+        blockingMode.onPostMotion()
+        target ?: return
+
+        updateHitable()
+    }
+
+    @EventTarget
+    fun onPacket(event: PacketEvent) {
+        blockingMode.onPacket(event)
     }
 }

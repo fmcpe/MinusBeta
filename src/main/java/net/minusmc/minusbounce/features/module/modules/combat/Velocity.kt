@@ -95,6 +95,11 @@ class Velocity : Module() {
         mode.onStrafe(event)
     }
 
+    @EventTarget
+    fun onInput(event: MoveInputEvent) {
+        mode.onInput(event)
+    }
+
     override val tag: String
         get() = modeValue.get()
 

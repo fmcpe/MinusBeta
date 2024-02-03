@@ -57,8 +57,6 @@ public class MixinMovementInputFromOptions extends MixinMovementInput{
             true
         );
 
-        final float rotation = targetRotation != null ? targetRotation.getYaw() : event.getYaw();
-
         MinusBounce.eventManager.callEvent(event);
 
         final double sneakMultiplier = event.getSneakMultiplier();
@@ -66,6 +64,8 @@ public class MixinMovementInputFromOptions extends MixinMovementInput{
         this.moveStrafe = event.getStrafe();
         this.jump = event.getJump();
         this.sneak = event.getSneak();
+
+        final float rotation = targetRotation != null ? targetRotation.getYaw() : event.getYaw();
 
         if(event.getCorrection()){
             final float offset = (float) Math.toRadians(mc.thePlayer.rotationYaw - rotation);
