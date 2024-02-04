@@ -26,6 +26,9 @@ object BlockUtils : MinecraftInstance() {
     @JvmStatic
     fun getBlock(blockPos: BlockPos?): Block? = mc.theWorld?.getBlockState(blockPos)?.block
 
+    @JvmStatic
+    fun getBlock(vec3: Vec3): Block? = getBlock(BlockPos(vec3.xCoord, vec3.yCoord, vec3.zCoord))
+
     /**
      * Get material from [blockPos]
      */
@@ -208,47 +211,14 @@ object BlockUtils : MinecraftInstance() {
         }
         return placeRotation
     }
-    
-    /*
-        DOWN(0, 1, -1, "down", EnumFacing.AxisDirection.NEGATIVE, EnumFacing.Axis.Y, new Vec3i(0, -1, 0)),
-        UP(1, 0, -1, "up", EnumFacing.AxisDirection.POSITIVE, EnumFacing.Axis.Y, new Vec3i(0, 1, 0)),
-        NORTH(2, 3, 2, "north", EnumFacing.AxisDirection.NEGATIVE, EnumFacing.Axis.Z, new Vec3i(0, 0, -1)),
-        SOUTH(3, 2, 0, "south", EnumFacing.AxisDirection.POSITIVE, EnumFacing.Axis.Z, new Vec3i(0, 0, 1)),
-        WEST(4, 5, 1, "west", EnumFacing.AxisDirection.NEGATIVE, EnumFacing.Axis.X, new Vec3i(-1, 0, 0)),
-        EAST(5, 4, 3, "east", EnumFacing.AxisDirection.POSITIVE, EnumFacing.Axis.X, new Vec3i(1, 0, 0));
-    */
-    /**
-     * @author fmcpe, toidicakhia (optimization code)
-     */
-    // test lai cai
-    // Facing van the nma vec3 opposite
-    // Ben minh la facing opposite luon
-    // Con ben no la facing the nma vec3 la opposite hieu
-    // thi o day phai return cai EnumFacing + pos dc lồng vào bên trong
-    //vi du
-    // FacingInfo(EnumFacing, opposite)
-    // chuan me luon
-    fun BlockPos.facing(): EnumFacing? =
-        StaticStorage.facings()
-            .filter {it != EnumFacing.DOWN && getBlock(this.add(it.opposite.directionVec)) !is BlockAir}
-            .firstOrNull()
 
     /**
      * Finding correct yaw and pitch for placing a block.
      * 
      * @author fmcpe, toidicakhia
      */
-    fun getPlace(
-        pos: BlockPos,
-        yaw: Float
-    ): PlaceRotation? {
+    fun getPlace(blockPos: BlockPos, side: EnumFacing, yaw: Float): PlaceRotation? {
         var placeRotation: PlaceRotation? = null
-        val side = pos.facing() ?: return null
-
-        val blockPos = pos.add(side.opposite.directionVec) // legit mc injection
-
-        if (!blockPos.isClickable())
-            return null
 
         for (pitch in -90.0..90.0 step 0.05) {
             val rotation = Rotation(mc.thePlayer.rotationYaw - yaw, pitch.toFloat())
@@ -275,27 +245,20 @@ object BlockUtils : MinecraftInstance() {
      * 
      * @author fmcpe
      */
-    fun isCorrect(
-        rotation: Rotation?,
-        pos: BlockPos?,
-        facing: EnumFacing?
-    ): Boolean {
-        val obj =
-            if(rotation != null) {
-                distanceRayTrace(rotation)
-            } else {
-                mc.objectMouseOver
-            }
+    fun isCorrect(rotation: Rotation?, pos: BlockPos?, facing: EnumFacing?): Boolean {
+        val obj = if(rotation != null) {
+            distanceRayTrace(rotation)
+        } else {
+            mc.objectMouseOver
+        }
 
         obj.hitVec ?: return false
         pos ?: return false
         facing ?: return false
 
-        return (
-            obj.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && 
+        return obj.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && 
             obj.blockPos == pos && obj.sideHit == facing &&
             obj.sideHit != EnumFacing.DOWN
-                )
     }
 
     /**
@@ -411,53 +374,34 @@ object BlockUtils : MinecraftInstance() {
      * @author fmcpe, toidicakhia, alan wood
      *
      */
-    fun getPlacePossibility(offsetX: Double, offsetY: Double, offsetZ: Double): BlockPos? {
-        val possibilities: MutableList<BlockPos> = ArrayList()
-        val range = (5 + (abs(offsetX) + abs(offsetZ))).toInt()
+    @JvmStatic
+    fun getPlacePossibility(offsetX: Double, offsetY: Double, offsetZ: Double): Vec3? {
+        val possibilities = mutableListOf<Vec3>()
+        val range = 5 + (abs(offsetX) + abs(offsetZ)).toInt()
 
         for (x in -range..range) {
             for (y in -range..range) {
                 for (z in -range..range) {
-                    if (getBlock(BlockPos(mc.thePlayer).add(x, y, z)) is BlockAir) continue // thu lai xong ms sua ko ti nx loan het len
+                    val block = getBlock(BlockPos(mc.thePlayer).add(x, y, z))
+                    if (block is BlockAir) continue
 
                     for (x2 in -1..1 step 2)
-                        possibilities.add(
-                            BlockPos(
-                                mc.thePlayer.posX + x + x2,
-                                mc.thePlayer.posY + y,
-                                mc.thePlayer.posZ + z
-                            )
-                        )
+                        possibilities.add(Vec3(mc.thePlayer.posX + x + x2,mc.thePlayer.posY + y,mc.thePlayer.posZ + z))
                     for (y2 in -1..1 step 2)
-                        possibilities.add(
-                            BlockPos(
-                                mc.thePlayer.posX + x,
-                                mc.thePlayer.posY + y + y2,
-                                mc.thePlayer.posZ + z
-                            )
-                        )
+                        possibilities.add(Vec3(mc.thePlayer.posX + x, mc.thePlayer.posY + y + y2,mc.thePlayer.posZ + z))
                     for (z2 in -1..1 step 2)
-                        possibilities.add(
-                            BlockPos(
-                                mc.thePlayer.posX + x,
-                                mc.thePlayer.posY + y,
-                                mc.thePlayer.posZ + z + z2
-                            )
-                        )
+                        possibilities.add(Vec3(mc.thePlayer.posX + x, mc.thePlayer.posY + y,mc.thePlayer.posZ + z + z2))
                 }
             }
         }
 
-        //tutu
+        possibilities.removeIf { mc.thePlayer.getDistance(it.xCoord, it.yCoord, it.zCoord) > 5 || getBlock(it) !is BlockAir }
 
-        return possibilities
-            .filterNot { mc.thePlayer.getDistanceSq(it) > 5 || getBlock(it) !is BlockAir }
-            .sortedBy {
-                val d0 = (mc.thePlayer.posX + offsetX) - it.x
-                val d1 = (mc.thePlayer.posY - 1 + offsetY) - it.y
-                val d2 = (mc.thePlayer.posZ + offsetZ) - it.z
-                sqrt(d0 * d0 + d1 * d1 + d2 * d2)
-            }
-            .firstOrNull()
+        return possibilities.sortedBy {
+            val d0 = (mc.thePlayer.posX + offsetX) - it.xCoord
+            val d1 = (mc.thePlayer.posY - 1 + offsetY) - it.yCoord
+            val d2 = (mc.thePlayer.posZ + offsetZ) - it.zCoord
+            sqrt(d0 * d0 + d1 * d1 + d2 * d2)
+        }.firstOrNull()
     }
 }

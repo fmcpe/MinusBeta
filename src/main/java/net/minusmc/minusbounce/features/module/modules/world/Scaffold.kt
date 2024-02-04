@@ -173,9 +173,11 @@ class Scaffold : Module() {
         if (isNotBlock && isNotReplaceable)
             return
 
-        val blockPos = BlockUtils.getPlacePossibility(0.0, 0.0, 0.0) ?: return
+        val pos = BlockUtils.getPlacePossibility(0.0, 0.0, 0.0) ?: return
+        val side = pos.facing() ?: return
+        val blockPos = BlockPos(pos.xCoord, pos.yCoord, pos.zCoord).add(side.opposite.directionVec)
 
-        val placeRotation = BlockUtils.getPlace(blockPos, yaw.get()) ?: return // doan dau ngon nhung
+        val placeRotation = BlockUtils.getPlace(blockPos, side, yaw.get()) ?: return
         val targetPlace = placeRotation.placeInfo
 
         val lockRotation = when {
@@ -436,9 +438,10 @@ class Scaffold : Module() {
             )
 
             val placeInfo = get(blockPos)
+            val vec3 = BlockUtils.getPlacePossibility(0.0, 0.0, 0.0)?: return
             //trum debug
             RenderUtils.drawBlockBox(
-                BlockUtils.getPlacePossibility(0.0, 0.0, 0.0) ?: return,
+                BlockPos(vec3.xCoord, vec3.yCoord, vec3.zCoord),
                 Color(redValue.get(), greenValue.get(), blueValue.get(), 100),
                 false
             )

@@ -25,13 +25,20 @@ import net.minecraft.util.EnumWorldBlockLayer;
  */
 public class StaticStorage {
 
-    private static final EnumFacing[] facings = EnumFacing.values();
+    private static final EnumFacing[] facings = {
+        EnumFacing.SOUTH, EnumFacing.NORTH, EnumFacing.DOWN, EnumFacing.UP, EnumFacing.WEST, EnumFacing.EAST,
+    };
+    
     private static final EnumChatFormatting[] chatFormatting = EnumChatFormatting.values();
     private static final EnumParticleTypes[] particleTypes = EnumParticleTypes.values();
     private static final EnumWorldBlockLayer[] worldBlockLayers = EnumWorldBlockLayer.values();
 
     public static EnumFacing[] facings() {
         return facings;
+    }
+
+    public static EnumFacing[] facings2() {
+        return facings2;
     }
 
     public static ScaledResolution scaledResolution;
