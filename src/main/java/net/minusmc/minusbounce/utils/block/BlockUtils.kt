@@ -227,9 +227,9 @@ object BlockUtils : MinecraftInstance() {
 
         for (pitch in -90.0..90.0 step 0.05) {
             val rotation = Rotation(mc.thePlayer.rotationYaw - yaw, pitch.toFloat())
-            val hitVec = blockFace.getHitVec(rotation, side)
+            val hitVec = distanceRayTrace(rotation).hitVec
 
-            if (!isCorrect(rotation, blockFace, side)) continue
+            if (!rayCast(rotation, blockFace, side, true)) continue
 
             if (placeRotation == null || rotation.pitch < placeRotation.rotation.pitch) {
                 placeRotation = PlaceRotation(
@@ -250,53 +250,22 @@ object BlockUtils : MinecraftInstance() {
      * 
      * @author fmcpe
      */
-    fun isCorrect(rotation: Rotation?, pos: BlockPos?, facing: EnumFacing?): Boolean {
+    fun rayCast(
+        rotation: Rotation?,
+        pos: BlockPos?,
+        facing: EnumFacing?,
+        check: Boolean
+    ): Boolean {
         val obj = if(rotation != null) {
             distanceRayTrace(rotation)
         } else {
             mc.objectMouseOver
         }
 
-        obj.hitVec ?: return false
         pos ?: return false
         facing ?: return false
 
-        return obj.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && 
-            obj.blockPos == pos && obj.sideHit == facing &&
-            obj.sideHit != EnumFacing.DOWN
-    }
-
-    /**
-     * HitVec Correction
-     *
-     * @author fmcpe
-     */
-    fun BlockPos.getHitVec(
-        rotation: Rotation,
-        facing: EnumFacing
-    ): Vec3 {
-        /* Correct HitVec */
-        val pos =
-            BlockPos(
-                this.x + Math.random(),
-                this.y + Math.random(),
-                this.z + Math.random()
-            ).offset(facing)
-
-        val hitVec =
-            if(isCorrect(rotation, this, facing)) {
-                Vec3(
-                    pos.x.toDouble(),
-                    pos.y.toDouble(),
-                    pos.z.toDouble()
-                )
-            } else {
-                distanceRayTrace(
-                    rotation
-                ).hitVec
-            }
-
-        return hitVec
+        return obj.blockPos == pos && (obj.sideHit == facing || !check)
     }
 
     /**
@@ -309,13 +278,6 @@ object BlockUtils : MinecraftInstance() {
         val vector = eyesPos.addVector(vec.xCoord * 4.5, vec.yCoord * 4.5, vec.zCoord * 4.5)
         return mc.theWorld.rayTraceBlocks(eyesPos, vector, false, false, true)
     }
-
-    fun rayCast(
-        rotation: Rotation?,
-        pos: BlockPos?,
-        facing: EnumFacing?,
-        check: Boolean
-    ): Boolean = if(check) isCorrect(rotation, pos, facing) else true
 
     /**
      * Check if [blockPos] is clickable.

@@ -24,7 +24,7 @@ import net.minusmc.minusbounce.injection.access.StaticStorage
 import net.minusmc.minusbounce.ui.font.Fonts
 import net.minusmc.minusbounce.utils.*
 import net.minusmc.minusbounce.utils.block.BlockUtils
-import net.minusmc.minusbounce.utils.block.PlaceInfo.Companion.get
+import net.minusmc.minusbounce.utils.block.PlaceInfo.Companion.getEnumFacing
 import net.minusmc.minusbounce.utils.extensions.*
 import net.minusmc.minusbounce.utils.render.RenderUtils
 import net.minusmc.minusbounce.utils.timer.MSTimer
@@ -95,6 +95,7 @@ class Scaffold : Module() {
 
     // AutoBlock
     private var slot = -1
+    var lockRotation: Rotation? = null
 
     // Delay
     private val delayTimer = MSTimer()
@@ -173,45 +174,45 @@ class Scaffold : Module() {
             return
 
         val pos = BlockUtils.getPlacePossibility(0.0, 0.0, 0.0) ?: return
-        val placeInfo = get(pos) ?: return // t ghet loai ?: return vao trong tham so
+        val placeInfo = getEnumFacing(pos) ?: return
+
         val placeRotation = BlockUtils.getPlace(
             placeInfo,
             yaw.get()
         ) ?: return
 
-        //test thoi
-
         val targetPlace = placeRotation.placeInfo
 
-        val lockRotation =
-            when (rotationsValue.get().lowercase()) {
-                "normal" -> placeRotation.rotation
-                "aac" -> Rotation(
-                    mc.thePlayer.rotationYaw + if (mc.thePlayer.movementInput.moveForward < 0) 0 else 180,
-                    placeRotation.rotation.pitch
-                )
-                else -> null
-            }
-
-        if (lockRotation != null) {
+        if(!BlockUtils.rayCast(lockRotation, targetPlace.blockPos, targetPlace.enumFacing, true)){
+            lockRotation =
+                when (rotationsValue.get().lowercase()) {
+                    "normal" -> placeRotation.rotation
+                    "aac" -> Rotation(
+                        mc.thePlayer.rotationYaw + if (mc.thePlayer.movementInput.moveForward < 0) 0 else 180,
+                        placeRotation.rotation.pitch
+                    )
+                    else -> null
+                }
             RotationUtils.setTargetRot(lockRotation!!, keepLengthValue.get())
         }
 
-        if (mc.playerController.onPlayerRightClick(
-                mc.thePlayer,
-                mc.theWorld,
-                itemStack,
-                targetPlace.blockPos,
-                targetPlace.enumFacing,
-                targetPlace.vec3
-            )
-        ) {
-            if (mc.thePlayer.onGround) {
-                mc.thePlayer.motionX *= speedModifierValue.get().toDouble()
-                mc.thePlayer.motionZ *= speedModifierValue.get().toDouble()
-            }
+        if(BlockUtils.rayCast(RotationUtils.targetRotation, targetPlace.blockPos, targetPlace.enumFacing, false)){
+            if (mc.playerController.onPlayerRightClick(
+                    mc.thePlayer,
+                    mc.theWorld,
+                    itemStack,
+                    targetPlace.blockPos,
+                    targetPlace.enumFacing,
+                    targetPlace.vec3
+                )
+            ) {
+                if (mc.thePlayer.onGround) {
+                    mc.thePlayer.motionX *= speedModifierValue.get().toDouble()
+                    mc.thePlayer.motionZ *= speedModifierValue.get().toDouble()
+                }
 
-            mc.thePlayer.swingItem()
+                mc.thePlayer.swingItem()
+            }
         }
 
         if (itemStack != null && itemStack.stackSize === 0) {
@@ -424,10 +425,10 @@ class Scaffold : Module() {
                 mc.thePlayer.posZ + zOffset
             )
 
-            val placeInfo = get(blockPos)
+            val placeInfo = getEnumFacing(blockPos) ?: return
 
             RenderUtils.drawBlockBox(
-                placeInfo.blockPos,
+                placeInfo?.blockPos,
                 Color(redValue.get(), greenValue.get(), blueValue.get(), 100),
                 false
             )

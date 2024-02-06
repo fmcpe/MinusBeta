@@ -26,7 +26,7 @@ import net.minecraft.util.EnumWorldBlockLayer;
 public class StaticStorage {
 
     private static final EnumFacing[] facings = {
-        EnumFacing.SOUTH, EnumFacing.NORTH, EnumFacing.DOWN, EnumFacing.UP, EnumFacing.WEST, EnumFacing.EAST,
+            EnumFacing.WEST, EnumFacing.EAST, EnumFacing.UP, EnumFacing.DOWN, EnumFacing.SOUTH, EnumFacing.NORTH,
     };
 
     private static final EnumChatFormatting[] chatFormatting = EnumChatFormatting.values();
