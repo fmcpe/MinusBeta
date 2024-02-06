@@ -61,7 +61,6 @@ class Scaffold : Module() {
 
     val rotationsValue = ListValue("Rotation", arrayOf("Normal", "AAC", "None"), "Normal")
     private val yaw = FloatValue("Yaw-Offset", 180f, 0f, 180f, "°")
-    private val raycast = BoolValue("Raycast", true)
     private val turnSpeed =
         FloatRangeValue("TurnSpeed", 180f, 180f, 0f, 180f) { !rotationsValue.get().equals("None", true) }
     private val keepLengthValue = IntegerValue("KeepRotationLength", 0, 0, 20) {
@@ -174,61 +173,49 @@ class Scaffold : Module() {
             return
 
         val pos = BlockUtils.getPlacePossibility(0.0, 0.0, 0.0) ?: return
-        val side = pos.facing() ?: return
-        val blockPos = BlockPos(pos.xCoord, pos.yCoord, pos.zCoord).add(side.opposite.directionVec)
+        val placeInfo = get(pos) ?: return // t ghet loai ?: return vao trong tham so
+        val placeRotation = BlockUtils.getPlace(
+            placeInfo,
+            yaw.get()
+        ) ?: return
 
-        val placeRotation = BlockUtils.getPlace(blockPos, side, yaw.get()) ?: return
+        //test thoi
+
         val targetPlace = placeRotation.placeInfo
 
-        val lockRotation = when {
-            !BlockUtils.rayCast(
-                RotationUtils.targetRotation,
-                targetPlace.blockPos,
-                targetPlace.enumFacing,
-                raycast.get()
-            ) -> {
-                when (rotationsValue.get().lowercase()) {
-                    "normal" -> placeRotation.rotation
-                    "aac" -> Rotation(
-                        mc.thePlayer.rotationYaw + if (mc.thePlayer.movementInput.moveForward < 0) 0 else 180,
-                        placeRotation.rotation.pitch
-                    )
-                    else -> null
-                }
+        val lockRotation =
+            when (rotationsValue.get().lowercase()) {
+                "normal" -> placeRotation.rotation
+                "aac" -> Rotation(
+                    mc.thePlayer.rotationYaw + if (mc.thePlayer.movementInput.moveForward < 0) 0 else 180,
+                    placeRotation.rotation.pitch
+                )
+                else -> null
             }
-            else -> null
-        }
 
         if (lockRotation != null) {
             RotationUtils.setTargetRot(lockRotation!!, keepLengthValue.get())
         }
 
-        if (BlockUtils.rayCast(
-                null,
+        if (mc.playerController.onPlayerRightClick(
+                mc.thePlayer,
+                mc.theWorld,
+                itemStack,
                 targetPlace.blockPos,
                 targetPlace.enumFacing,
-                raycast.get()
-            )){
-            if (mc.playerController.onPlayerRightClick(
-                    mc.thePlayer,
-                    mc.theWorld,
-                    itemStack,
-                    targetPlace.blockPos,
-                    targetPlace.enumFacing,
-                    targetPlace.vec3
-                )
-            ) {
-                if (mc.thePlayer.onGround) {
-                    mc.thePlayer.motionX *= speedModifierValue.get().toDouble()
-                    mc.thePlayer.motionZ *= speedModifierValue.get().toDouble()
-                }
-
-                mc.thePlayer.swingItem()
+                targetPlace.vec3
+            )
+        ) {
+            if (mc.thePlayer.onGround) {
+                mc.thePlayer.motionX *= speedModifierValue.get().toDouble()
+                mc.thePlayer.motionZ *= speedModifierValue.get().toDouble()
             }
 
-            if (itemStack != null && itemStack.stackSize === 0) {
-                mc.thePlayer.inventory.mainInventory[mc.thePlayer.inventory.currentItem] = null
-            }
+            mc.thePlayer.swingItem()
+        }
+
+        if (itemStack != null && itemStack.stackSize === 0) {
+            mc.thePlayer.inventory.mainInventory[mc.thePlayer.inventory.currentItem] = null
         }
     }
 
@@ -438,10 +425,9 @@ class Scaffold : Module() {
             )
 
             val placeInfo = get(blockPos)
-            val vec3 = BlockUtils.getPlacePossibility(0.0, 0.0, 0.0)?: return
-            //trum debug
+
             RenderUtils.drawBlockBox(
-                BlockPos(vec3.xCoord, vec3.yCoord, vec3.zCoord),
+                placeInfo.blockPos,
                 Color(redValue.get(), greenValue.get(), blueValue.get(), 100),
                 false
             )

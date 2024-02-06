@@ -100,13 +100,13 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
     @Overwrite
     protected void jump() {
 
-        final JumpEvent event = new JumpEvent(this.getJumpUpwardsMotion(), this.rotationYaw, true);
+        final JumpEvent event = new JumpEvent(this.getJumpUpwardsMotion(), this.rotationYaw);
 
         MinusBounce.eventManager.callEvent(event);
         if (event.isCancelled())
             return;
 
-        float yaw = targetRotation != null && event.getCorrection() ? targetRotation.getYaw() : event.getYaw();
+        float yaw = event.getYaw();
 
         final TargetStrafe tsMod = MinusBounce.moduleManager.getModule(TargetStrafe.class);
         

@@ -52,9 +52,7 @@ public class MixinMovementInputFromOptions extends MixinMovementInput{
             this.moveStrafe, 
             this.jump, 
             this.sneak, 
-            0.3D,
-            mc.thePlayer.rotationYaw,
-            true
+            0.3D
         );
 
         MinusBounce.eventManager.callEvent(event);
@@ -64,18 +62,6 @@ public class MixinMovementInputFromOptions extends MixinMovementInput{
         this.moveStrafe = event.getStrafe();
         this.jump = event.getJump();
         this.sneak = event.getSneak();
-
-        final float rotation = targetRotation != null ? targetRotation.getYaw() : event.getYaw();
-
-        if(event.getCorrection()){
-            final float offset = (float) Math.toRadians(mc.thePlayer.rotationYaw - rotation);
-            
-            final float cosValue = MathHelper.cos(offset);
-            final float sinValue = MathHelper.sin(offset);
-
-            this.moveForward = Math.round(this.moveForward * cosValue + this.moveStrafe * sinValue);
-            this.moveStrafe = Math.round(this.moveStrafe * cosValue - this.moveForward * sinValue);
-        }
 
         if (this.sneak) {
             this.moveStrafe = (float) ((double) this.moveStrafe * sneakMultiplier);

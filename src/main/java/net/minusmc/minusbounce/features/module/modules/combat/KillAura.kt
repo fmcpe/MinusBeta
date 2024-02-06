@@ -91,7 +91,6 @@ class KillAura : Module() {
     private val raycastValue = BoolValue("RayCast", true)
 
     private val silentRotationValue = BoolValue("SilentRotation", true) { !rotations.get().equals("none", true) }
-    val movementCorrection = BoolValue("MovementCorrection", true)
     // Predict
     private val predictValue = BoolValue("Predict", true)
     private val predictSize = FloatRangeValue("PredictSize", 1f, 1f, 0.1f, 5f) {predictValue.get()}
@@ -145,7 +144,6 @@ class KillAura : Module() {
 
     @EventTarget
     fun onStrafe(event: StrafeEvent) {
-        event.correction = movementCorrection.get()
         val targetStrafe = MinusBounce.moduleManager[TargetStrafe::class.java]!!
         if (!targetStrafe.state) return
 
@@ -409,16 +407,6 @@ class KillAura : Module() {
     @EventTarget
     fun onPreMotion(event: PreMotionEvent) {
         blockingMode.onPreMotion()
-    }
-
-    @EventTarget
-    fun jump(event: JumpEvent){
-        event.correction = movementCorrection.get()
-    }
-
-    @EventTarget
-    fun input(event: MoveInputEvent){
-        event.correction = movementCorrection.get()
     }
 
     @EventTarget

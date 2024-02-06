@@ -27,10 +27,7 @@ import net.minusmc.minusbounce.MinusBounce;
 import net.minusmc.minusbounce.event.*;
 import net.minusmc.minusbounce.features.module.modules.combat.KillAura;
 import net.minusmc.minusbounce.features.module.modules.misc.AntiDesync;
-import net.minusmc.minusbounce.features.module.modules.movement.Fly;
-import net.minusmc.minusbounce.features.module.modules.movement.InvMove;
-import net.minusmc.minusbounce.features.module.modules.movement.NoSlow;
-import net.minusmc.minusbounce.features.module.modules.movement.Sprint;
+import net.minusmc.minusbounce.features.module.modules.movement.*;
 import net.minusmc.minusbounce.features.module.modules.world.Scaffold;
 import net.minusmc.minusbounce.injection.implementations.IEntityPlayerSP;
 import net.minusmc.minusbounce.utils.*;
@@ -311,10 +308,11 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
         float f = 0.8F;
         boolean flag2 = this.movementInput.moveForward >= f;
         this.movementInput.updatePlayerMoveState();
-        
+
         final NoSlow noSlow = MinusBounce.moduleManager.getModule(NoSlow.class);
         final KillAura killAura = MinusBounce.moduleManager.getModule(KillAura.class);
         final Sprint sprint = MinusBounce.moduleManager.getModule(Sprint.class);
+        final KeepSprint keepSprint = MinusBounce.moduleManager.getModule(KeepSprint.class);
 
         if (getHeldItem() != null && (this.isUsingItem() || (getHeldItem().getItem() instanceof ItemSword && killAura.getBlockingStatus())) && !this.isRiding()) {
             final SlowDownEvent slowDownEvent = new SlowDownEvent(0.2F, 0.2F);
@@ -330,8 +328,22 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
         this.pushOutOfBlocks(this.posX + (double) this.width * 0.35D, this.getEntityBoundingBox().minY + 0.5D, this.posZ + (double) this.width * 0.35D);
 
         boolean flag3 = (float) this.getFoodStats().getFoodLevel() > 6.0F || this.capabilities.allowFlying;
+        final boolean legit = !keepSprint.getState();
 
-        if (this.onGround && !flag1 && !flag2 && this.movementInput.moveForward >= f && !this.isSprinting() && flag3 && !this.isUsingItem() && !this.isPotionActive(Potion.blindness)) {
+        float strafe = this.movementInput.moveStrafe;
+        float forward = this.movementInput.moveForward;
+
+        float yaw = RotationUtils.targetRotation != null ? RotationUtils.targetRotation.getYaw() : this.rotationYaw;
+        final float offset = (float) Math.toRadians(this.rotationYaw - yaw);
+        final float cosValue = MathHelper.cos(offset);
+        final float sinValue = MathHelper.sin(offset);
+
+        if(legit){
+            strafe = Math.round(this.movementInput.moveStrafe * cosValue - this.movementInput.moveForward * sinValue);
+            forward = Math.round(this.movementInput.moveForward * cosValue + strafe * sinValue);
+        }
+
+        if (this.onGround && !flag1 && !flag2 && forward >= f && !this.isSprinting() && flag3 && !this.isUsingItem() && !this.isPotionActive(Potion.blindness)) {
             if (this.sprintToggleTimer <= 0 && (!this.mc.gameSettings.keyBindSprint.isKeyDown() || !sprint.getState())) {
                 this.sprintToggleTimer = 7;
             } else {
@@ -339,19 +351,19 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
             }
         }
 
-        if (!this.isSprinting() && this.movementInput.moveForward >= f && flag3 && (noSlow.getState() || !this.isUsingItem()) && !this.isPotionActive(Potion.blindness) && (this.mc.gameSettings.keyBindSprint.isKeyDown() || sprint.getState())) {
+        if (!this.isSprinting() && forward >= f && flag3 && (noSlow.getState() || !this.isUsingItem()) && !this.isPotionActive(Potion.blindness) && (this.mc.gameSettings.keyBindSprint.isKeyDown() || sprint.getState())) {
             this.setSprinting(true);
         }
 
-        if (this.isSprinting() && this.movementInput.moveForward < f || this.isCollidedHorizontally || !flag3) {
+        if (this.isSprinting() && (forward < f || this.isCollidedHorizontally || !flag3)) {
             this.setSprinting(false);
         }
-
-        if (scaffold.getState() && !scaffold.getCanSprint()) this.setSprinting(false);
         
         if (this.isSprinting() && noSlow.getState() && noSlow.getNoSprintValue().get() && noSlow.isSlowing()) {
             this.setSprinting(false);
         }
+
+        if (this.isSprinting() && scaffold.getState() && !scaffold.getCanSprint()) this.setSprinting(false);
 
         if (this.capabilities.allowFlying) {
             if (this.mc.playerController.isSpectatorMode()) {

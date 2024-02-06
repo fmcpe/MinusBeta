@@ -242,7 +242,7 @@ public abstract class MixinEntity {
         if ((Entity) (Object) this != Minecraft.getMinecraft().thePlayer) 
             return;
         
-        final StrafeEvent event = new StrafeEvent(strafe, forward, friction, this.rotationYaw, true);
+        final StrafeEvent event = new StrafeEvent(strafe, forward, friction, this.rotationYaw);
         MinusBounce.eventManager.callEvent(event);
 
         if (event.isCancelled())
@@ -251,7 +251,7 @@ public abstract class MixinEntity {
         strafe = event.getStrafe();
         forward = event.getForward();
         friction = event.getFriction();
-        float yaw = targetRotation != null && event.getCorrection() ? targetRotation.getYaw() : event.getYaw();
+        float yaw = event.getYaw();
 
         float f = strafe * strafe + forward * forward;
 
