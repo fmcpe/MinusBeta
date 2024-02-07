@@ -37,6 +37,5 @@ class PlaceInfo(val blockPos: BlockPos, val enumFacing: EnumFacing,
                 BlockUtils.getBlock(blockPos.add(0, 0, 1)) !is BlockAir -> PlaceInfo(blockPos.add(0, 0, 1), EnumFacing.NORTH)
                 else -> null
             }
-        
     }
 }

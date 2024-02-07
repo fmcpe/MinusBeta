@@ -297,40 +297,4 @@ object BlockUtils : MinecraftInstance() {
 
     val lastPos: Vec3
         get() = Vec3(mc.thePlayer.lastReportedPosX, mc.thePlayer.lastReportedPosY + mc.thePlayer.eyeHeight, mc.thePlayer.lastReportedPosZ)
-
-    /**
-     * @author fmcpe, toidicakhia, alan wood
-     *
-     */
-    @JvmStatic
-    fun getPlacePossibility(offsetX: Double, offsetY: Double, offsetZ: Double): BlockPos? {
-        //wtf
-        val possibilities = mutableListOf<BlockPos>()
-        val range = 5 + (abs(offsetX) + abs(offsetZ)).toInt()
-
-        for (x in -range..range) {
-            for (y in -range..range) {
-                for (z in -range..range) {
-                    val block = getBlock(BlockPos(mc.thePlayer).add(x, y, z))
-                    if (block is BlockAir) continue
-
-                    for (x2 in -1..1 step 2)
-                        possibilities.add(BlockPos(mc.thePlayer.posX + x + x2,mc.thePlayer.posY + y,mc.thePlayer.posZ + z))
-                    for (y2 in -1..1 step 2)
-                        possibilities.add(BlockPos(mc.thePlayer.posX + x, mc.thePlayer.posY + y + y2,mc.thePlayer.posZ + z))
-                    for (z2 in -1..1 step 2)
-                        possibilities.add(BlockPos(mc.thePlayer.posX + x, mc.thePlayer.posY + y,mc.thePlayer.posZ + z + z2))
-                }
-            }
-        }
-
-        possibilities.removeIf { mc.thePlayer.getDistanceSq(it) > 5 || getBlock(it) !is BlockAir }
-
-        return possibilities.sortedBy {
-            val d0 = (mc.thePlayer.posX + offsetX) - it.x
-            val d1 = (mc.thePlayer.posY - 1 + offsetY) - it.y
-            val d2 = (mc.thePlayer.posZ + offsetZ) - it.z
-            sqrt(d0 * d0 + d1 * d1 + d2 * d2)
-        }.firstOrNull()
-    }
 }
