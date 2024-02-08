@@ -6,22 +6,28 @@
 package net.minusmc.minusbounce.utils
 
 import net.minecraft.potion.Potion
-import net.minecraft.util.BlockPos
+import net.minecraft.block.BlockAir
 import net.minusmc.minusbounce.MinusBounce
-import net.minusmc.minusbounce.event.MoveEvent
-import net.minusmc.minusbounce.event.MoveInputEvent
+import net.minusmc.minusbounce.event.*
 import net.minusmc.minusbounce.features.module.modules.movement.TargetStrafe
+import net.minusmc.minusbounce.utils.*
+import net.minusmc.minusbounce.utils.block.BlockUtils
 import net.minecraft.util.*
-import kotlin.math.round
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.sin
-import kotlin.math.sqrt
+import kotlin.math.*
 
-object MovementUtils : MinecraftInstance() {
+object MovementUtils : MinecraftInstance(), Listenable {
     private var lastX = -999999.0
     private var lastZ = -999999.0
+    var offGroundTicks = 0
 
+    @EventTarget
+    fun onUpdate(event: PreUpdateEvent) {
+        if(BlockUtils.blockRelativeToPlayer(0.0, 0.0, 0.0) is BlockAir){
+            offGroundTicks++
+        } else {
+            offGroundTicks = 0
+        }
+    }
     val speed: Float
         get() = getSpeed(mc.thePlayer.motionX, mc.thePlayer.motionZ).toFloat()
 
@@ -297,4 +303,6 @@ object MovementUtils : MinecraftInstance() {
         mc.thePlayer.motionX = -sin(MathUtils.toRadians(forward)) * multiplier
         mc.thePlayer.motionZ = cos(MathUtils.toRadians(forward)) * multiplier
     }
+
+    override fun handleEvents() = true
 }

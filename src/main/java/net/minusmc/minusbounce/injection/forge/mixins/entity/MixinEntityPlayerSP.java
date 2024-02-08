@@ -184,7 +184,7 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
 
                 this.serverSneakState = sneaking;
             }
-
+            final boolean desync = MinusBounce.moduleManager.getModule(AntiDesync.class).getState();
             if (this.isCurrentViewEntity()) {                
                 double xDiff = event.getX() - this.lastReportedPosX;
                 double yDiff = event.getY() - this.lastReportedPosY;
@@ -192,11 +192,11 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
                 double yawDiff = event.getYaw() - this.lastReportedYaw;
                 double pitchDiff = event.getPitch() - this.lastReportedPitch;
 
-                boolean moved = xDiff * xDiff + yDiff * yDiff + zDiff * zDiff > 9.0E-4D || this.positionUpdateTicks >= 20;
-                boolean rotated = yawDiff != 0.0D || pitchDiff != 0.0D;
+                boolean moved = xDiff * xDiff + yDiff * yDiff + zDiff * zDiff > 9.0E-4D || this.positionUpdateTicks >= 20 || desync;
+                boolean rotated = yawDiff != 0.0D || pitchDiff != 0.0D || desync;
 
                 if (this.ridingEntity == null) {
-                    if ((moved && rotated) || MinusBounce.moduleManager.getModule(AntiDesync.class).getState()) {
+                    if (moved && rotated) {
                         this.sendQueue.addToSendQueue(new C03PacketPlayer.C06PacketPlayerPosLook(event.getX(), event.getY(), event.getZ(), event.getYaw(), event.getPitch(), event.getOnGround()));
                     } else if (moved) {
                         this.sendQueue.addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(event.getX(), event.getY(), event.getZ(), event.getOnGround()));
@@ -330,17 +330,14 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
         boolean flag3 = (float) this.getFoodStats().getFoodLevel() > 6.0F || this.capabilities.allowFlying;
         final boolean legit = !keepSprint.getState();
 
-        float strafe = this.movementInput.moveStrafe;
         float forward = this.movementInput.moveForward;
-
         float yaw = RotationUtils.targetRotation != null ? RotationUtils.targetRotation.getYaw() : this.rotationYaw;
         final float offset = (float) Math.toRadians(this.rotationYaw - yaw);
         final float cosValue = MathHelper.cos(offset);
         final float sinValue = MathHelper.sin(offset);
 
-        if(legit){
-            strafe = Math.round(this.movementInput.moveStrafe * cosValue - this.movementInput.moveForward * sinValue);
-            forward = Math.round(this.movementInput.moveForward * cosValue + strafe * sinValue);
+        if(legit) {
+            forward = this.movementInput.moveForward * cosValue + this.movementInput.moveStrafe * sinValue;
         }
 
         if (this.onGround && !flag1 && !flag2 && forward >= f && !this.isSprinting() && flag3 && !this.isUsingItem() && !this.isPotionActive(Potion.blindness)) {

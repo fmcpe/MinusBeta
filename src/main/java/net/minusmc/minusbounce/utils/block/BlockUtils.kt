@@ -26,6 +26,12 @@ object BlockUtils : MinecraftInstance() {
     @JvmStatic
     fun getBlock(blockPos: BlockPos?): Block? = mc.theWorld?.getBlockState(blockPos)?.block
 
+    fun blockRelativeToPlayer(offsetX: Double, offsetY: Double, offsetZ: Double): Block {
+        val playerPos = BlockPos(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ)
+        val offsetPos = playerPos.add(offsetX.toInt(), offsetY.toInt(), offsetZ.toInt())
+        return mc.theWorld.getBlockState(offsetPos).block
+    }
+
     @JvmStatic
     fun getBlock(vec3: Vec3): Block? = getBlock(BlockPos(vec3.xCoord, vec3.yCoord, vec3.zCoord))
 
@@ -216,45 +222,74 @@ object BlockUtils : MinecraftInstance() {
         return placeRotation
     }
 
+    fun getRot(pos: BlockPos): PlaceRotation? = pos.getRotations()
+
     /**
      * Finding correct yaw and pitch for placing a block
      * @author fmcpe, toidicakhia
      */
-    fun getPlace(placeInfo: PlaceInfo, yaw: Float): PlaceRotation? {
-        val blockFace = placeInfo.blockPos
-        val side = placeInfo.enumFacing
+    fun getPlace(pos: BlockPos, yaw: Float): PlaceRotation? {
+        val info = get(pos) ?: return null
+        val blockFace = info.blockPos
+        val side = info.enumFacing
         var placeRotation: PlaceRotation? = null
 
         for (pitch in -90.0..90.0 step 0.05) {
             val rotation = Rotation(mc.thePlayer.rotationYaw - yaw, pitch.toFloat())
-            val hitVec = distanceRayTrace(rotation).hitVec
 
-            if (!rayCast(rotation, blockFace, side, true)) continue
+            if (!rayCast(blockFace, side, true, rotation)) continue
 
             if (placeRotation == null || rotation.pitch < placeRotation.rotation.pitch) {
                 placeRotation = PlaceRotation(
-                    PlaceInfo(blockFace, side, hitVec),
+                    PlaceInfo(blockFace, side),
                     rotation
                 )
             }
         }
 
-        if (placeRotation == null)
-            placeRotation = blockFace.add(side.opposite.directionVec).getRotations()
-
         return placeRotation
     }
+
+//    fun getFacing(input: BlockPos, neighbor: BlockPos): EnumFacing {
+//        return when {
+//            input.x < neighbor.x -> EnumFacing.WEST
+//            input.x > neighbor.x -> EnumFacing.EAST
+//            input.z < neighbor.z -> EnumFacing.NORTH
+//            input.z > neighbor.z -> EnumFacing.SOUTH
+//            else -> EnumFacing.UP
+//        }
+//    }
+
+//
+//    fun getBlockData(input: BlockPos): PlaceInfo? {
+//        val blacklist = listOf(Blocks.AIR, Blocks.WATER, Blocks.LAVA)
+//
+//        val positions = listOf(
+//            input.add(0, -1, 0),
+//            input.add(-1, 0, 0),
+//            input.add(1, 0, 0),
+//            input.add(0, 0, -1),
+//            input.add(0, 0, 1),
+//            input.add(1, 0, 1),
+//            input.add(-1, 0, -1)
+//        )
+//
+//        return positions
+//            .firstOrNull { !mc.theWorld.getBlockState(it).block.isReplaceable(mc.theWorld, it) || !blacklist.contains(mc.theWorld.getBlockState(it).block)}?
+//            .let { PlaceInfo(it, getFacing(input, it)) }
+//    }
 
     /**
      * Checking if the rotation is correct from blockPos and facing.
      * 
      * @author fmcpe
      */
+    @JvmOverloads
     fun rayCast(
-        rotation: Rotation?,
         pos: BlockPos?,
         facing: EnumFacing?,
-        check: Boolean
+        check: Boolean,
+        rotation: Rotation? = null
     ): Boolean {
         val obj = if(rotation != null) {
             distanceRayTrace(rotation)

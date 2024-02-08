@@ -87,6 +87,8 @@ object MinusBounce {
         eventManager.registerListener(PacketUtils)
         eventManager.registerListener(SessionUtils())
         eventManager.registerListener(MacroManager)
+        eventManager.registerListener(BadPacketUtils)
+        eventManager.registerListener(MovementUtils)
         eventManager.registerListener(combatManager)
         eventManager.registerListener(sessionManager)
 

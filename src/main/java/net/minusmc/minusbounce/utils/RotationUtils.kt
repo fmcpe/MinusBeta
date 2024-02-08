@@ -70,8 +70,13 @@ object RotationUtils : MinecraftInstance(), Listenable {
      *
      * @param rotation your target rotation
      */
-    fun setTargetRot(rotation: Rotation, keepLength: Int) {
-        if (java.lang.Double.isNaN(rotation.yaw.toDouble()) || java.lang.Double.isNaN(rotation.pitch.toDouble()) || rotation.pitch > 90 || rotation.pitch < -90) return
+    fun setTargetRot(rotation: Rotation?, keepLength: Int) {
+        rotation ?: return
+
+        rotation.takeIf {
+            !it.yaw.isNaN() && !it.pitch.isNaN() && it.pitch in -90.0..90.0
+        } ?: return
+
         rotation.fixedSensitivity(mc.gameSettings.mouseSensitivity)
         targetRotation = rotation
         this.keepLength = keepLength
