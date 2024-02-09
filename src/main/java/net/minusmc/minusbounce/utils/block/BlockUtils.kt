@@ -209,7 +209,7 @@ object BlockUtils : MinecraftInstance() {
                             rotationVector.yCoord * 4,
                             rotationVector.zCoord * 4
                         )
-                        val obj = mc.theWorld.rayTraceBlocks(eyesPos, vector, false, false, true)
+                        val obj = mc.theWorld.rayTraceBlocks(eyesPos, vector, false, false, true) ?: continue
                         if (obj.typeOfHit != MovingObjectPosition.MovingObjectType.BLOCK || obj.blockPos != neighbor || obj.sideHit != side.opposite) {
                             continue
                         }
@@ -308,6 +308,7 @@ object BlockUtils : MinecraftInstance() {
      * 
      * @author fmcpe
      */
+    @JvmStatic
     fun distanceRayTrace(rotation: Rotation): MovingObjectPosition {
         val vec = RotationUtils.getVectorForRotation(rotation)
         val vector = eyesPos.addVector(vec.xCoord * 4.5, vec.yCoord * 4.5, vec.zCoord * 4.5)

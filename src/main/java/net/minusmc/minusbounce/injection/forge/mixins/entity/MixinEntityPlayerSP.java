@@ -328,16 +328,13 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
         this.pushOutOfBlocks(this.posX + (double) this.width * 0.35D, this.getEntityBoundingBox().minY + 0.5D, this.posZ + (double) this.width * 0.35D);
 
         boolean flag3 = (float) this.getFoodStats().getFoodLevel() > 6.0F || this.capabilities.allowFlying;
-        final boolean legit = !keepSprint.getState();
 
         float forward = this.movementInput.moveForward;
         float yaw = RotationUtils.targetRotation != null ? RotationUtils.targetRotation.getYaw() : this.rotationYaw;
         final float offset = (float) Math.toRadians(this.rotationYaw - yaw);
-        final float cosValue = MathHelper.cos(offset);
-        final float sinValue = MathHelper.sin(offset);
 
-        if(legit) {
-            forward = this.movementInput.moveForward * cosValue + this.movementInput.moveStrafe * sinValue;
+        if(!keepSprint.getState()) {
+            forward = Math.round(this.movementInput.moveForward * MathHelper.cos(offset) + this.movementInput.moveStrafe * MathHelper.sin(offset));
         }
 
         if (this.onGround && !flag1 && !flag2 && forward >= f && !this.isSprinting() && flag3 && !this.isUsingItem() && !this.isPotionActive(Potion.blindness)) {

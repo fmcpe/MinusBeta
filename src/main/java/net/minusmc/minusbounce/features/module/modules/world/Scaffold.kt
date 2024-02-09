@@ -46,7 +46,7 @@ class Scaffold: Module() {
 
     private val delayValue = IntRangeValue("Delay", 0, 0, 0, 10)
 
-    private val autoBlockMode = ListValue("AutoBlock", arrayOf("Spoof", "Switch", "Off"), "Spoof")
+    private val autoBlockMode = ListValue("AutoBlock", arrayOf("Spoof", "Switch"), "Spoof")
     private val sprintModeValue = ListValue("SprintMode", arrayOf("Always", "OnGround", "OffGround", "Off"), "Off")
 
     private val swingValue = ListValue("Swing", arrayOf("Normal", "Packet", "Off"), "Normal")
@@ -66,7 +66,7 @@ class Scaffold: Module() {
     }
 
     private val timerValue = FloatValue("Timer", 1F, 0.1F, 10F)
-    private val speedModifierValue = FloatValue("SpeedModifier", 1F, 0f, 2F, "x")
+    private val speedModifierValue = FloatValue("SpeedModifier", 1F, -1f, 2F, "x")
 
     // Tower
     private val onTowerValue = ListValue("OnTower", arrayOf("Always", "PressSpace", "Off"))
@@ -83,6 +83,8 @@ class Scaffold: Module() {
     private val greenValue = IntegerValue("Green", 120, 0, 255) { markValue.get() }
     private val blueValue = IntegerValue("Blue", 255, 0, 255) { markValue.get() }
 
+    private var lockRotation: Rotation? = null
+    private var placeInfo: MovingObjectPosition? = null
     // Launch pos
     private var launchY = 0
 
@@ -232,13 +234,6 @@ class Scaffold: Module() {
                 }
             }
         }
-
-        if (packet is C08PacketPlayerBlockPlacement) {
-            packet.facingX = packet.facingX.coerceIn(-1F, 1F)
-            packet.facingY = packet.facingY.coerceIn(-1F, 1F)
-            packet.facingZ = packet.facingZ.coerceIn(-1F, 1F)
-        }
-
     }
 
     @EventTarget
@@ -314,26 +309,25 @@ class Scaffold: Module() {
     }
 
     @EventTarget
-    fun click(event: PreUpdateEvent){ findBlock(expandLengthValue.get() > 1 && !towerStatus) }
-
-    @EventTarget
     fun onMove(event: MoveEvent){ event.isSafeWalk = safeWalkValue.get().equals("air", true) || safeWalkValue.get().equals("ground", true) && mc.thePlayer.onGround }
 
     @EventTarget
     fun onJump(event: JumpEvent){ if (towerStatus) event.cancelEvent() }
 
-    private fun findBlock(expand: Boolean) {
-        var blockPosition = when {
+    @EventTarget
+    fun findBlock(event: PreUpdateEvent) {
+        val expand = expandLengthValue.get() > 1 && !towerStatus
+        val blockPosition = when {
             !canSameY && mc.thePlayer.posY == mc.thePlayer.posY.toInt() + 0.5 -> BlockPos(mc.thePlayer)
-            canSameY && launchY <= mc.thePlayer.posY -> BlockPos(mc.thePlayer.posX, launchY - 1.0, mc.thePlayer.posZ)
-            else -> BlockPos(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ).down()
+            canSameY && launchY <= mc.thePlayer.posY -> BlockPos(mc.thePlayer.posX, launchY - 0.5, mc.thePlayer.posZ)
+            else -> BlockPos(mc.thePlayer.posX, mc.thePlayer.posY - 0.5, mc.thePlayer.posZ)
         }
 
         if (expand) {
             for (i in 0 until expandLengthValue.get()) {
                 val x = if (mc.thePlayer.horizontalFacing == EnumFacing.WEST) -i else if (mc.thePlayer.horizontalFacing == EnumFacing.EAST) i else 0
                 val z = if (mc.thePlayer.horizontalFacing == EnumFacing.NORTH) -i else if (mc.thePlayer.horizontalFacing == EnumFacing.SOUTH) i else 0
-                if (search(blockPosition!!.add(x, 0, z))) return
+                if (search(blockPosition.add(x, 0, z))) return
             }
         } else {
             if (!BlockUtils.isReplaceable(blockPosition) || search(blockPosition)) return
@@ -353,20 +347,20 @@ class Scaffold: Module() {
         var itemStack = mc.thePlayer.heldItem
 
         if (mc.thePlayer.heldItem == null || !(itemStack.item is ItemBlock && isBlockToScaffold(itemStack.item as ItemBlock))) {
-            if (autoBlockMode.get().equals("Off", true)) return
             blockSlot = InventoryUtils.findAutoBlockBlock()
             if (blockSlot == -1) return
+
             if (autoBlockMode.get().equals("Spoof", true)) mc.netHandler.addToSendQueue(C09PacketHeldItemChange(blockSlot - 36))
             else mc.thePlayer.inventory.currentItem = blockSlot - 36
+
             itemStack = mc.thePlayer.inventoryContainer.getSlot(blockSlot).stack
         }
 
-        if (isNotBlock || isNotReplaceable)
-            return
-
-        if (!BadPacketUtils.bad(false, true, false, false, true) &&
+        if (!isNotBlock &&
+            !isNotReplaceable &&
+            !BadPacketUtils.bad() &&
             MovementUtils.offGroundTicks > RandomUtils.nextInt(delayValue.getMinValue(), delayValue.getMaxValue()) &&
-            BlockUtils.rayCast(targetPlace.blockPos, targetPlace.enumFacing, true)) {
+            BlockUtils.rayCast(targetPlace.blockPos, targetPlace.enumFacing, true, RotationUtils.targetRotation)) {
 
             if (mc.playerController.onPlayerRightClick(
                     mc.thePlayer,
@@ -377,7 +371,7 @@ class Scaffold: Module() {
                     targetPlace.vec3
                 )
             ) {
-                if (mc.thePlayer.onGround) {
+                if (mc.thePlayer.onGround && speedModifierValue.get() >= 0f) {
                     mc.thePlayer.motionX *= speedModifierValue.get().toDouble()
                     mc.thePlayer.motionZ *= speedModifierValue.get().toDouble()
                 }
@@ -442,30 +436,39 @@ class Scaffold: Module() {
 
 
     private fun search(blockPosition: BlockPos): Boolean {
-        if (!BlockUtils.isReplaceable(blockPosition)) {
+        if (MovementUtils.offGroundTicks <= 0 || !BlockUtils.isReplaceable(blockPosition))
             return false
-        }
 
-        val placeRotation = BlockUtils.getPlace(blockPosition, yaw.get()) ?: BlockUtils.getRot(blockPosition) ?: return false
+        val placeRotation =
+            BlockUtils.getPlace(blockPosition, yaw.get()) ?: BlockUtils.getRot(blockPosition) ?: return false
 
         val vec = RotationUtils.getVec3(placeRotation.placeInfo.blockPos, placeRotation.placeInfo.enumFacing, true)
 
-        val placeInfo = BlockUtils.distanceRayTrace(RotationUtils.toRotation(vec, true))
+        if(placeInfo == null || !BlockUtils.rayCast(placeInfo!!.blockPos, placeInfo!!.sideHit, true, lockRotation)){
+            placeInfo = BlockUtils.distanceRayTrace(RotationUtils.toRotation(vec, true))
 
-        val info = PlaceInfo(placeInfo.blockPos, placeInfo.sideHit, placeInfo.hitVec)
-
-        val lockRotation = MovementUtils.offGroundTicks.takeIf { it > 0 && !BlockUtils.rayCast(placeInfo.blockPos, placeInfo.sideHit, true, RotationUtils.targetRotation) }?.let {
-            when (rotationsValue.get().lowercase()) {
+            lockRotation = when (rotationsValue.get().lowercase()) {
                 "normal" -> placeRotation.rotation
-                "aac" -> Rotation(mc.thePlayer.rotationYaw + if (mc.thePlayer.movementInput.moveForward < 0) 0 else 180, placeRotation.rotation.pitch)
+                "aac" -> Rotation(
+                    mc.thePlayer.rotationYaw + if (mc.thePlayer.movementInput.moveForward < 0) 0 else 180,
+                    placeRotation.rotation.pitch
+                )
+
                 else -> null
             }
-        }
 
-        RotationUtils.setTargetRot(lockRotation, keepLengthValue.get())
+            if(lockRotation != RotationUtils.targetRotation)
+                RotationUtils.setTargetRot(
+                    RotationUtils.limitAngleChange(
+                        RotationUtils.serverRotation!!,
+                        lockRotation,
+                        rotationSpeed
+                    ), keepLengthValue.get()
+                )
+        }
+        val info = PlaceInfo(placeInfo!!.blockPos, placeInfo!!.sideHit, placeInfo!!.hitVec)
 
         place(info)
-
         return true
     }
 
@@ -497,11 +500,7 @@ class Scaffold: Module() {
         }
 
     private val isNotBlock: Boolean
-        get() = if (!autoBlockMode.get().equals("off", true)) {
-            InventoryUtils.findAutoBlockBlock() == -1
-        } else {
-            mc.thePlayer.heldItem == null
-        }
+        get() = mc.thePlayer.heldItem == null
 
     private val isNotReplaceable: Boolean
         get() = !(mc.thePlayer.heldItem.item is ItemBlock && isBlockToScaffold(mc.thePlayer.heldItem.item as ItemBlock))

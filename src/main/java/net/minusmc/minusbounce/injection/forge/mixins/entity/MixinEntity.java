@@ -171,9 +171,6 @@ public abstract class MixinEntity {
     public float prevRotationYaw;
 
     @Shadow
-    protected abstract Vec3 getVectorForRotation(float pitch, float yaw);
-
-    @Shadow
     public abstract UUID getUniqueID();
 
     @Shadow
@@ -212,23 +209,12 @@ public abstract class MixinEntity {
      */
     @Overwrite
     public MovingObjectPosition rayTrace(double blockReachDistance, float partialTicks)
-    {   
+    {
         final LookEvent event = new LookEvent(this.rotationYaw, this.rotationPitch);
         MinusBounce.eventManager.callEvent(event);
-        
-        float yaw = event.getYaw();
-        float pitch = event.getPitch();
 
-        final float prevYaw = RotationUtils.serverRotation.getYaw();
-        final float prevPitch = RotationUtils.serverRotation.getPitch();
-
-        if (partialTicks != 1.0F) {
-            yaw = prevYaw + (yaw - prevYaw) * partialTicks;
-            pitch = prevPitch + (pitch - prevPitch) * partialTicks;
-        }
-
-        final Vec3 vec3 = this.getPositionEyes(partialTicks);
-        final Vec3 vec31 = this.getVectorForRotation(pitch, yaw);
+        final Vec3 vec3 = this.getPositionEyes(1F);
+        final Vec3 vec31 = RotationUtils.getVectorForRotation(new Rotation(event.getYaw(), event.getPitch()));
         final Vec3 vec32 = vec3.addVector(vec31.xCoord * blockReachDistance, vec31.yCoord * blockReachDistance, vec31.zCoord * blockReachDistance);
         
         return this.worldObj.rayTraceBlocks(vec3, vec32, false, false, true);
@@ -282,33 +268,6 @@ public abstract class MixinEntity {
     @Inject(method = "spawnRunningParticles", at = @At("HEAD"), cancellable = true)
     private void checkGroundState(CallbackInfo ci) {
         if (!this.onGround) ci.cancel();
-    }
-
-    /**
-     * interpolated look vector
-     * 
-     * @author fmcpe
-     */
-    @Overwrite
-    public Vec3 getLook(float partialTicks) {
-
-        final LookEvent event = new LookEvent(this.rotationYaw, this.rotationPitch);
-        System.out.println("Look event!!");
-        MinusBounce.eventManager.callEvent(event);
-
-        final float yaw = event.getYaw();
-        final float pitch = event.getPitch();
-        final float prevYaw = RotationUtils.serverRotation.getYaw();
-        final float prevPitch = RotationUtils.serverRotation.getPitch();
-        
-        if (partialTicks == 1.0F) {
-            return this.getVectorForRotation(pitch, yaw);
-        }
-        else {
-            float f = prevPitch + (pitch - prevPitch) * partialTicks;
-            float f1 = prevYaw + (yaw - prevYaw) * partialTicks;
-            return this.getVectorForRotation(f, f1);
-        }
     }
 
 

@@ -14,6 +14,7 @@ import net.minecraft.util.*
 import net.minusmc.minusbounce.event.*
 import net.minusmc.minusbounce.utils.RaycastUtils.IEntityFilter
 import net.minusmc.minusbounce.utils.RaycastUtils.raycastEntity
+import net.minusmc.minusbounce.utils.block.BlockUtils
 import java.util.*
 import java.util.concurrent.ThreadLocalRandom
 import kotlin.math.*
@@ -395,9 +396,12 @@ object RotationUtils : MinecraftInstance(), Listenable {
      * @param turnSpeed your turn speed
      * @return limited rotation
      */
-    fun limitAngleChange(currentRotation: Rotation, targetRotation: Rotation, turnSpeed: Float): Rotation {
+    fun limitAngleChange(currentRotation: Rotation, targetRotation: Rotation?, turnSpeed: Float): Rotation {
+        targetRotation ?: return currentRotation
+
         val yawDifference = getAngleDifference(targetRotation.yaw, currentRotation.yaw)
         val pitchDifference = getAngleDifference(targetRotation.pitch, currentRotation.pitch)
+
         return Rotation(
             currentRotation.yaw + if (yawDifference > turnSpeed) turnSpeed else max(yawDifference, -turnSpeed),
             currentRotation.pitch + if (pitchDifference > turnSpeed) turnSpeed else max(pitchDifference, -turnSpeed)
@@ -421,6 +425,7 @@ object RotationUtils : MinecraftInstance(), Listenable {
      * @param rotation your rotation
      * @return target vector
      */
+    @JvmStatic
     fun getVectorForRotation(rotation: Rotation): Vec3 {
         val yawCos = MathHelper.cos(-rotation.yaw * 0.017453292f - Math.PI.toFloat())
         val yawSin = MathHelper.sin(-rotation.yaw * 0.017453292f - Math.PI.toFloat())
