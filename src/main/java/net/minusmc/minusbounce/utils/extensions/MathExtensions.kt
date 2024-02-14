@@ -60,7 +60,7 @@ operator fun Vec3.div(number: Double) = times(1 / number)
 
 fun Vec3.toFloatTriple() = Triple(xCoord.toFloat(), yCoord.toFloat(), zCoord.toFloat())
 
-fun Float.toRadians() = this * 0.017453292f
+fun Float.toRadians() = this * 0.01745329251f
 fun Float.toRadiansD() = toRadians().toDouble()
 fun Float.toDegrees() = this * 57.29578f
 fun Float.toDegreesD() = toDegrees().toDouble()

@@ -123,38 +123,11 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
     @Shadow
     private float lastReportedPitch;
 
-    @Unique
-    private boolean lastOnGround;
-
-    @Unique
-    private int onGroundTicks;
-
-    @Unique
-    private int offGroundTicks;
-
-    @Override
-    public int getOnGroundTicks() {
-        return onGroundTicks;
-    }
-
-    @Override
-    public int getOffGroundTicks() {
-        return offGroundTicks;
-    }
-
     /**
      * @author CCBlueX
      */
     @Overwrite
     public void onUpdateWalkingPlayer() {
-        if (this.onGround) {
-            this.offGroundTicks = 0;
-            this.onGroundTicks++;
-        } else {
-            this.onGroundTicks = 0;
-            this.offGroundTicks++;
-        }
-
         try {
             PreMotionEvent event = new PreMotionEvent(this.posX, this.getEntityBoundingBox().minY, this.posZ, this.rotationYaw, this.rotationPitch, this.onGround);
             MinusBounce.eventManager.callEvent(event);
@@ -232,9 +205,6 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
                     this.lastReportedPitch = pitch;
                 }
             }
-
-            if (this.isCurrentViewEntity())
-                lastOnGround = event.getOnGround();
 
             MinusBounce.eventManager.callEvent(new PostMotionEvent());
         } catch (final Exception e) {

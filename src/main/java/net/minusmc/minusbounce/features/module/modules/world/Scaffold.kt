@@ -71,7 +71,6 @@ class Scaffold : Module() {
 
     val rotationsValue = ListValue("Rotation", arrayOf("Normal", "AAC", "None"), "Normal")
     val rayTrace = ListValue("RayTrace", arrayOf("None", "Normal", "Strict"), "None")
-    val rayCast = BoolValue("RayCast", false)
     val movementCorrection = BoolValue("MovementFix", true)
     private val yaw = FloatValue("Yaw-Offset", 180f, 0f, 180f, "°")
     private val turnSpeed =
@@ -476,7 +475,7 @@ class Scaffold : Module() {
 
 
     private fun search(blockPosition: BlockPos): Boolean {
-        if (rayCast.get() && MovementUtils.AABBOffGroundticks < 1 && (MovementUtils.offGroundTicks < 1 || !BlockUtils.isReplaceable(blockPosition))){
+        if (MovementUtils.AABBOffGroundticks < 1 || MovementUtils.offGroundTicks < 1 || !BlockUtils.isReplaceable(blockPosition)){
             return false
         }
 
