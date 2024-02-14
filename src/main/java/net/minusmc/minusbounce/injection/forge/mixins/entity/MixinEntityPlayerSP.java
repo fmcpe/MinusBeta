@@ -21,6 +21,7 @@ import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemSword;
 import net.minecraft.network.play.client.C03PacketPlayer;
 import net.minecraft.network.play.client.C0BPacketEntityAction;
+import net.minecraft.network.play.client.C0CPacketInput;
 import net.minecraft.potion.Potion;
 import net.minecraft.util.*;
 import net.minusmc.minusbounce.MinusBounce;
@@ -128,88 +129,92 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
      */
     @Overwrite
     public void onUpdateWalkingPlayer() {
-        try {
-            PreMotionEvent event = new PreMotionEvent(this.posX, this.getEntityBoundingBox().minY, this.posZ, this.rotationYaw, this.rotationPitch, this.onGround);
-            MinusBounce.eventManager.callEvent(event);
+        final PreMotionEvent event = new PreMotionEvent(
+                this.posX,
+                this.getEntityBoundingBox().minY,
+                this.posZ,
+                this.rotationYaw,
+                this.rotationPitch,
+                this.onGround
+        );
+        MinusBounce.eventManager.callEvent(event);
 
-            final InvMove inventoryMove = MinusBounce.moduleManager.getModule(InvMove.class);
-            final boolean fakeSprint = (inventoryMove.getState() && inventoryMove.isAACAP());
+        final InvMove inventoryMove = MinusBounce.moduleManager.getModule(InvMove.class);
+        final boolean fakeSprint = (inventoryMove.getState() && inventoryMove.isAACAP());
 
-            boolean sprinting = this.isSprinting() && !fakeSprint;
-            boolean sneaking = this.isSneaking();
+        boolean sprinting = this.isSprinting() && !fakeSprint;
+        boolean sneaking = this.isSneaking();
 
-            if (sprinting != this.serverSprintState) {
-                if (sprinting)
-                    this.sendQueue.addToSendQueue(new C0BPacketEntityAction((EntityPlayerSP) (Object) this, C0BPacketEntityAction.Action.START_SPRINTING));
-                else
-                    this.sendQueue.addToSendQueue(new C0BPacketEntityAction((EntityPlayerSP) (Object) this, C0BPacketEntityAction.Action.STOP_SPRINTING));
+        if (sprinting != this.serverSprintState) {
+            if (sprinting)
+                this.sendQueue.addToSendQueue(new C0BPacketEntityAction((EntityPlayerSP) (Object) this, C0BPacketEntityAction.Action.START_SPRINTING));
+            else
+                this.sendQueue.addToSendQueue(new C0BPacketEntityAction((EntityPlayerSP) (Object) this, C0BPacketEntityAction.Action.STOP_SPRINTING));
 
-                this.serverSprintState = sprinting;
-            }
-
-            if (sneaking != this.serverSneakState) {
-                if (sneaking)
-                    this.sendQueue.addToSendQueue(new C0BPacketEntityAction((EntityPlayerSP) (Object) this, C0BPacketEntityAction.Action.START_SNEAKING));
-                else
-                    this.sendQueue.addToSendQueue(new C0BPacketEntityAction((EntityPlayerSP) (Object) this, C0BPacketEntityAction.Action.STOP_SNEAKING));
-
-                this.serverSneakState = sneaking;
-            }
-            final boolean desync = MinusBounce.moduleManager.getModule(AntiDesync.class).getState();
-            if (this.isCurrentViewEntity()) {
-                float yaw = event.getYaw();
-                float pitch = event.getPitch();
-                float lastReportedYaw = RotationUtils.serverRotation.getYaw();
-                float lastReportedPitch = RotationUtils.serverRotation.getPitch();
-
-                if (RotationUtils.targetRotation != null) {
-                    yaw = RotationUtils.targetRotation.getYaw();
-                    pitch = RotationUtils.targetRotation.getPitch();
-                }
-
-                double xDiff = event.getX() - this.lastReportedPosX;
-                double yDiff = event.getY() - this.lastReportedPosY;
-                double zDiff = event.getZ() - this.lastReportedPosZ;
-                double yawDiff = yaw - lastReportedYaw;
-                double pitchDiff = pitch - lastReportedPitch;
-
-                boolean moved = xDiff * xDiff + yDiff * yDiff + zDiff * zDiff > 9.0E-4D || this.positionUpdateTicks >= 20;
-                boolean rotated = yawDiff != 0.0D || pitchDiff != 0.0D;
-
-                if (this.ridingEntity == null) {
-                    if (moved && rotated) {
-                        this.sendQueue.addToSendQueue(new C03PacketPlayer.C06PacketPlayerPosLook(event.getX(), event.getY(), event.getZ(), yaw, pitch, event.getOnGround()));
-                    } else if (moved) {
-                        this.sendQueue.addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(event.getX(), event.getY(), event.getZ(), event.getOnGround()));
-                    } else if (rotated) {
-                        this.sendQueue.addToSendQueue(new C03PacketPlayer.C05PacketPlayerLook(yaw, pitch, event.getOnGround()));
-                    } else {
-                        this.sendQueue.addToSendQueue(new C03PacketPlayer(event.getOnGround()));
-                    }
-                } else {
-                    this.sendQueue.addToSendQueue(new C03PacketPlayer.C06PacketPlayerPosLook(this.motionX, -999.0D, this.motionZ, yaw, pitch, event.getOnGround()));
-                    moved = false;
-                }
-
-                ++this.positionUpdateTicks;
-
-                if (moved) {
-                    this.lastReportedPosX = event.getX();
-                    this.lastReportedPosY = event.getY();
-                    this.lastReportedPosZ = event.getZ();
-                    this.positionUpdateTicks = 0;
-                }
-
-                if (rotated) {
-                    this.lastReportedYaw = yaw;
-                    this.lastReportedPitch = pitch;
-                }
-            }
-
-            MinusBounce.eventManager.callEvent(new PostMotionEvent());
-        } catch (final Exception e) {
-            e.printStackTrace();
+            this.serverSprintState = sprinting;
         }
+
+        if (sneaking != this.serverSneakState) {
+            if (sneaking)
+                this.sendQueue.addToSendQueue(new C0BPacketEntityAction((EntityPlayerSP) (Object) this, C0BPacketEntityAction.Action.START_SNEAKING));
+            else
+                this.sendQueue.addToSendQueue(new C0BPacketEntityAction((EntityPlayerSP) (Object) this, C0BPacketEntityAction.Action.STOP_SNEAKING));
+
+            this.serverSneakState = sneaking;
+        }
+
+        if (this.isCurrentViewEntity())
+        {
+            double d0 = event.getX() - this.lastReportedPosX;
+            double d1 = this.getEntityBoundingBox().minY - this.lastReportedPosY;
+            double d2 = event.getZ() - this.lastReportedPosZ;
+            double d3 = (double)(event.getYaw() - this.lastReportedYaw);
+            double d4 = (double)(event.getPitch() - this.lastReportedPitch);
+            boolean flag2 = d0 * d0 + d1 * d1 + d2 * d2 > 9.0E-4D || this.positionUpdateTicks >= 20;
+            boolean flag3 = d3 != 0.0D || d4 != 0.0D;
+
+            if (this.ridingEntity == null)
+            {
+                if (flag2 && flag3)
+                {
+                    this.sendQueue.addToSendQueue(new C03PacketPlayer.C06PacketPlayerPosLook(event.getX(), event.getY(), event.getZ(), event.getYaw(), event.getPitch(), event.getOnGround()));
+                }
+                else if (flag2)
+                {
+                    this.sendQueue.addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(event.getX(), event.getY(), event.getZ(), event.getOnGround()));
+                }
+                else if (flag3)
+                {
+                    this.sendQueue.addToSendQueue(new C03PacketPlayer.C05PacketPlayerLook(event.getYaw(), event.getPitch(), event.getOnGround()));
+                }
+                else
+                {
+                    this.sendQueue.addToSendQueue(new C03PacketPlayer(event.getOnGround()));
+                }
+            }
+            else
+            {
+                this.sendQueue.addToSendQueue(new C03PacketPlayer.C06PacketPlayerPosLook(this.motionX, -999.0D, this.motionZ, event.getYaw(), event.getPitch(), event.getOnGround()));
+                flag2 = false;
+            }
+
+            ++this.positionUpdateTicks;
+
+            if (flag2)
+            {
+                this.lastReportedPosX = event.getX();
+                this.lastReportedPosY = event.getY();
+                this.lastReportedPosZ = event.getZ();
+                this.positionUpdateTicks = 0;
+            }
+
+            if (flag3)
+            {
+                this.lastReportedYaw = event.getYaw();
+                this.lastReportedPitch = event.getPitch();
+            }
+        }
+        MinusBounce.eventManager.callEvent(new PostMotionEvent());
     }
 
     @Inject(method = "pushOutOfBlocks", at = @At("HEAD"), cancellable = true)

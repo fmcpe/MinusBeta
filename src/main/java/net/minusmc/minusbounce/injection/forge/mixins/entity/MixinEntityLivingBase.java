@@ -77,6 +77,10 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
     @Shadow
     public float swingProgress;
 
+    @Shadow public float moveStrafing;
+
+    @Shadow public float moveForward;
+
     @Inject(method = "updatePotionEffects", at = @At(value = "INVOKE", target = "Lnet/minecraft/potion/PotionEffect;onUpdate(Lnet/minecraft/entity/EntityLivingBase;)Z"),
         locals = LocalCapture.CAPTURE_FAILSOFT, cancellable = true)
     private void checkPotionEffect(CallbackInfo ci, Iterator<Integer> iterator, Integer integer, PotionEffect potioneffect) {
