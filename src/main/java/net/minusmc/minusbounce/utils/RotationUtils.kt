@@ -14,7 +14,8 @@ import net.minecraft.util.*
 import net.minusmc.minusbounce.event.*
 import net.minusmc.minusbounce.utils.RaycastUtils.IEntityFilter
 import net.minusmc.minusbounce.utils.RaycastUtils.raycastEntity
-import net.minusmc.minusbounce.utils.block.BlockUtils
+import net.minusmc.minusbounce.utils.movement.MoveFixUtils
+import net.minusmc.minusbounce.utils.movement.MovementFixType
 import java.util.*
 import java.util.concurrent.ThreadLocalRandom
 import kotlin.math.*
@@ -28,12 +29,32 @@ object RotationUtils : MinecraftInstance(), Listenable {
     var targetRotation: Rotation? = null
 
     @JvmField
-    public var serverRotation: Rotation? = Rotation(0f, 0f)
+    var serverRotation = Rotation(0f, 0f)
 
     private var x = random.nextDouble()
     private var y = random.nextDouble()
     private var z = random.nextDouble()
 
+    @EventTarget
+    fun onUpdate(event: PreUpdateEvent){
+        // Reason: it is nullable :(
+        this.serverRotation = Rotation(
+            mc.thePlayer.lastReportedYaw ?: 0f,
+            mc.thePlayer.lastReportedPitch ?: 0f
+        )
+    }
+
+    @EventTarget
+    fun onPacket(event: PacketEvent){
+        if(event.packet is C03PacketPlayer){
+            targetRotation?.let {
+                if(event.packet != null && (event.packet.yaw != serverRotation.yaw || event.packet.pitch != serverRotation.pitch)){
+                    event.packet.yaw = it.yaw
+                    event.packet.pitch = it.pitch
+                }
+            }
+        }
+    }
     @EventTarget 
     fun onPre(event: PreMotionEvent){
         targetRotation?.let {
@@ -69,16 +90,24 @@ object RotationUtils : MinecraftInstance(), Listenable {
     /**
      * Set your target rotation
      *
+     * @author fmcpe
      * @param rotation your target rotation
      */
-    fun setTargetRot(rotation: Rotation?, keepLength: Int) {
+    @JvmOverloads
+    fun setRotations(
+        rotation: Rotation?,
+        keepLength: Int,
+        fixType: MovementFixType? = MovementFixType.NONE
+    ) {
         rotation ?: return
+        fixType ?: return
 
         rotation.takeIf {
             !it.yaw.isNaN() && !it.pitch.isNaN() && it.pitch in -90.0..90.0
         } ?: return
 
         rotation.fixedSensitivity(mc.gameSettings.mouseSensitivity)
+        MoveFixUtils.type = fixType
         targetRotation = rotation
         this.keepLength = keepLength
     }
@@ -229,7 +258,7 @@ object RotationUtils : MinecraftInstance(), Listenable {
             -Math.toDegrees(atan((velocity * velocity - sqrt(velocity * velocity * velocity * velocity - 0.006f * (0.006f * (posSqrt * posSqrt) + 2 * posY * (velocity * velocity)))) / (0.006f * posSqrt)))
                 .toFloat()
         )
-        if (silent) setTargetRot(rotation) else limitAngleChange(
+        if (silent) setRotations(rotation) else limitAngleChange(
             Rotation(player.rotationYaw, player.rotationPitch), rotation, (10 +
                     Random().nextInt(6)).toFloat()
         ).toPlayer(mc.thePlayer)
@@ -408,6 +437,27 @@ object RotationUtils : MinecraftInstance(), Listenable {
         )
     }
 
+    fun limitAngleChange(
+        currentRotation: Rotation,
+        targetRotation: Rotation,
+        horizontalSpeed: Float,
+        verticalSpeed: Float
+    ): Rotation {
+        val yawDifference = getAngleDifference(targetRotation.yaw, currentRotation.yaw)
+        val pitchDifference = getAngleDifference(targetRotation.pitch, currentRotation.pitch)
+
+        return Rotation(
+            currentRotation.yaw + (if (yawDifference > horizontalSpeed) horizontalSpeed else max(
+                yawDifference,
+                -horizontalSpeed
+            )),
+            currentRotation.pitch + (if (pitchDifference > verticalSpeed) verticalSpeed else max(
+                pitchDifference,
+                -verticalSpeed
+            ))
+        )
+    }
+
     /**
      * Calculate difference between two angle points
      *
@@ -468,8 +518,8 @@ object RotationUtils : MinecraftInstance(), Listenable {
      *
      * @param rotation your target rotation
      */
-    fun setTargetRot(rotation: Rotation) {
-        setTargetRot(rotation, 0)
+    fun setRotations(rotation: Rotation) {
+        setRotations(rotation, 0)
     }
 
 

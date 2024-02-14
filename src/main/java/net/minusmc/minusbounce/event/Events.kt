@@ -111,14 +111,6 @@ class PreMotionEvent(var x: Double, var y: Double, var z: Double, var yaw: Float
 class PostMotionEvent: Event()
 
 /**
- * Called when player sprints or sneaks, after pre-motion event
- *
- * @param sprinting player's sprint state
- * @param sneaking player's sneak state
- */
-class ActionEvent(var sprinting: Boolean, var sneaking: Boolean) : Event()
-
-/**
  * Called in "onLivingUpdate" when the player is using a use item.
  *
  * @param strafe the applied strafe slow down

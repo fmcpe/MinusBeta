@@ -5,41 +5,32 @@
  */
 package net.minusmc.minusbounce.injection.forge.mixins.entity;
 
-import net.minusmc.minusbounce.MinusBounce;
-import net.minusmc.minusbounce.event.JumpEvent;
-import net.minusmc.minusbounce.features.module.modules.combat.KillAura;
-import net.minusmc.minusbounce.features.module.modules.misc.Patcher;
-import net.minusmc.minusbounce.features.module.modules.movement.NoJumpDelay;
-import net.minusmc.minusbounce.features.module.modules.movement.Sprint;
-import net.minusmc.minusbounce.features.module.modules.movement.TargetStrafe;
-import net.minusmc.minusbounce.features.module.modules.client.Animations;
-import net.minusmc.minusbounce.features.module.modules.render.AntiBlind;
-import net.minusmc.minusbounce.utils.MovementUtils;
-import net.minusmc.minusbounce.utils.RotationUtils;
 import net.minecraft.block.Block;
-import net.minecraft.client.entity.EntityPlayerSP;
-import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.item.ItemStack;
-import net.minecraft.network.play.server.S0BPacketAnimation;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.BlockPos;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.Vec3;
-import net.minecraft.world.WorldServer;
-import java.util.Iterator;
-import java.util.Map;
+import net.minusmc.minusbounce.MinusBounce;
+import net.minusmc.minusbounce.event.JumpEvent;
+import net.minusmc.minusbounce.event.LookEvent;
+import net.minusmc.minusbounce.features.module.modules.client.Animations;
+import net.minusmc.minusbounce.features.module.modules.movement.NoJumpDelay;
+import net.minusmc.minusbounce.features.module.modules.movement.TargetStrafe;
+import net.minusmc.minusbounce.features.module.modules.render.AntiBlind;
+import net.minusmc.minusbounce.utils.RotationUtils;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
+
+import java.util.Iterator;
 
 import static net.minusmc.minusbounce.utils.RotationUtils.targetRotation;
 @Mixin(EntityLivingBase.class)
@@ -98,24 +89,26 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
      */
     @Overwrite
     protected void jump() {
-
+        final TargetStrafe targetStrafe = MinusBounce.moduleManager.getModule(TargetStrafe.class);
         final JumpEvent event = new JumpEvent(this.getJumpUpwardsMotion(), this.rotationYaw);
 
         MinusBounce.eventManager.callEvent(event);
-        if (event.isCancelled())
+        if (event.isCancelled()) {
             return;
+        }
 
         float yaw = event.getYaw();
 
-        final TargetStrafe tsMod = MinusBounce.moduleManager.getModule(TargetStrafe.class);
-        
-        if (tsMod.getCanStrafe()) 
-            yaw = tsMod.getMovingYaw();
+        assert targetStrafe != null;
+        if (targetStrafe.getCanStrafe()) {
+            yaw = targetStrafe.getMovingYaw();
+        }
 
         this.motionY = event.getMotion();
 
-        if (this.isPotionActive(Potion.jump))
+        if (this.isPotionActive(Potion.jump)) {
             this.motionY += (double) ((float) (this.getActivePotionEffect(Potion.jump).getAmplifier() + 1) * 0.1F);
+        }
 
         if (this.isSprinting()) {
             final float f = yaw * 0.017453292F;
@@ -132,6 +125,20 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
             jumpTicks = 0;
     }
 
+    /**
+     * interpolated look vector
+     *
+     * @author fmcpe
+     */
+    @Overwrite
+    public Vec3 getLook(float partialTicks)
+    {
+        final LookEvent event = new LookEvent(this.rotationYaw, this.rotationPitch);
+        MinusBounce.eventManager.callEvent(event);
+
+        return this.getVectorForRotation(event.getPitch(), event.getYaw());
+    }
+
     @Inject(method = "isPotionActive(Lnet/minecraft/potion/Potion;)Z", at = @At("HEAD"), cancellable = true)
     private void isPotionActive(Potion p_isPotionActive_1_, final CallbackInfoReturnable<Boolean> callbackInfoReturnable) {
         final AntiBlind antiBlind = MinusBounce.moduleManager.getModule(AntiBlind.class);
@@ -140,7 +147,9 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
             callbackInfoReturnable.setReturnValue(false);
     }
 
-    //visionfx sucks
+    /**
+     * @reason visionfx sucks
+     */
     @Overwrite
     private int getArmSwingAnimationEnd() {
         int speed = MinusBounce.moduleManager.getModule(Animations.class).getState() ? 2 + (20 - Animations.INSTANCE.getSpeedSwing().get()) : 6;

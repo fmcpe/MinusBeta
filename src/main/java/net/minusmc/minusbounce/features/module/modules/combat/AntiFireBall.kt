@@ -30,7 +30,7 @@ class AntiFireBall : Module() {
         for (entity in mc.theWorld.loadedEntityList) {
             if (entity is EntityFireball && mc.thePlayer.getDistanceToEntity(entity) < 5.5 && timer.hasTimePassed(300)) {
                 if(rotationValue.get()) {
-                    RotationUtils.setTargetRot(RotationUtils.getRotations(entity))
+                    RotationUtils.setRotations(RotationUtils.getRotations(entity))
                 }
 
                 mc.thePlayer.sendQueue.addToSendQueue(C02PacketUseEntity(entity, C02PacketUseEntity.Action.ATTACK))

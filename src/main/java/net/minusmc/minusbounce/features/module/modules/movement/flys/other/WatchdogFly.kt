@@ -68,7 +68,7 @@ class WatchdogFly: FlyMode("Watchdog", FlyType.OTHER) {
             mc.thePlayer.motionY = -0.0015
         } else if (wdState < 3) {
             val rot = RotationUtils.getRotationFromPosition(mc.thePlayer.posX, mc.thePlayer.posZ, mc.thePlayer.posY - 1)
-            RotationUtils.setTargetRot(rot)
+            RotationUtils.setRotations(rot)
             event.yaw = rot.yaw
             event.pitch = rot.pitch
         } else

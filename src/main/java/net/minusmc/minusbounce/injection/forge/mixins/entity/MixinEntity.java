@@ -9,7 +9,6 @@ import net.minusmc.minusbounce.MinusBounce;
 import net.minusmc.minusbounce.event.StrafeEvent;
 import net.minusmc.minusbounce.event.LookEvent;
 import net.minusmc.minusbounce.features.module.modules.combat.HitBox;
-import net.minusmc.minusbounce.features.module.modules.misc.Patcher;
 import net.minusmc.minusbounce.utils.*;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
@@ -20,6 +19,7 @@ import net.minecraft.util.*;
 import net.minecraft.world.World;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.CapabilityDispatcher;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
@@ -60,6 +60,10 @@ public abstract class MixinEntity {
 
     @Shadow
     public abstract AxisAlignedBB getEntityBoundingBox();
+
+    @Shadow
+    @Final
+    public abstract Vec3 getVectorForRotation(float pitch, float yaw);
 
     @Shadow
     public abstract float getDistanceToEntity(Entity entityIn);
@@ -208,16 +212,12 @@ public abstract class MixinEntity {
      * @author fmcpe
      */
     @Overwrite
-    public MovingObjectPosition rayTrace(double blockReachDistance, float partialTicks)
+    public Vec3 getLook(float partialTicks)
     {
         final LookEvent event = new LookEvent(this.rotationYaw, this.rotationPitch);
         MinusBounce.eventManager.callEvent(event);
 
-        final Vec3 vec3 = this.getPositionEyes(1F);
-        final Vec3 vec31 = RotationUtils.getVectorForRotation(new Rotation(event.getYaw(), event.getPitch()));
-        final Vec3 vec32 = vec3.addVector(vec31.xCoord * blockReachDistance, vec31.yCoord * blockReachDistance, vec31.zCoord * blockReachDistance);
-        
-        return this.worldObj.rayTraceBlocks(vec3, vec32, false, false, true);
+        return this.getVectorForRotation(event.getPitch(), event.getYaw());
     }
 
     /**
@@ -237,7 +237,6 @@ public abstract class MixinEntity {
         strafe = event.getStrafe();
         forward = event.getForward();
         friction = event.getFriction();
-        float yaw = event.getYaw();
 
         float f = strafe * strafe + forward * forward;
 
@@ -253,8 +252,8 @@ public abstract class MixinEntity {
             f = friction / f;
             strafe = strafe * f;
             forward = forward * f;
-            float f1 = MathHelper.sin(yaw * (float)Math.PI / 180.0F);
-            float f2 = MathHelper.cos(yaw * (float)Math.PI / 180.0F);
+            float f1 = MathHelper.sin(event.getYaw() * (float)Math.PI / 180.0F);
+            float f2 = MathHelper.cos(event.getYaw() * (float)Math.PI / 180.0F);
             this.motionX += (double)(strafe * f2 - forward * f1);
             this.motionZ += (double)(forward * f2 + strafe * f1);
         }

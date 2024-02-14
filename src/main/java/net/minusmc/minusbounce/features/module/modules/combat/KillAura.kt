@@ -34,6 +34,7 @@ import org.lwjgl.opengl.GL11
 import java.util.*
 import kotlin.math.*
 import net.minusmc.minusbounce.features.module.modules.combat.killaura.KillAuraBlocking
+import net.minusmc.minusbounce.utils.movement.MovementFixType
 
 @ModuleInfo(name = "KillAura", spacedName = "Kill Aura", description = "Automatically attacks targets around you.", category = ModuleCategory.COMBAT, keyBind = Keyboard.KEY_R)
 class KillAura : Module() {
@@ -91,6 +92,7 @@ class KillAura : Module() {
     private val raycastValue = BoolValue("RayCast", true)
 
     private val silentRotationValue = BoolValue("SilentRotation", true) { !rotations.get().equals("none", true) }
+    private val movementCorrection = ListValue("MovementFix", arrayOf("None", "Normal", "Full"), "Full")
     // Predict
     private val predictValue = BoolValue("Predict", true)
     private val predictSize = FloatRangeValue("PredictSize", 1f, 1f, 0.1f, 5f) {predictValue.get()}
@@ -301,9 +303,13 @@ class KillAura : Module() {
             return true
 
         val defRotation = getTargetRotation(entity) ?: return false
-        
+        val correction = when (movementCorrection.get().lowercase()) {
+            "normal" -> MovementFixType.NORMAL
+            "full" -> MovementFixType.FULL
+            else -> MovementFixType.NONE
+        }
         if (silentRotationValue.get()) {
-            RotationUtils.setTargetRot(defRotation, 0)
+            RotationUtils.setRotations(defRotation, 0, correction)
         } else {
             defRotation.toPlayer(mc.thePlayer!!)
         }

@@ -6,7 +6,6 @@
 package net.minusmc.minusbounce.utils.block
 
 import net.minecraft.block.Block
-import net.minecraft.block.BlockAir
 import net.minecraft.block.material.Material
 import net.minecraft.block.state.IBlockState
 import net.minecraft.init.Blocks
@@ -228,28 +227,44 @@ object BlockUtils : MinecraftInstance() {
      * Finding correct yaw and pitch for placing a block
      * @author fmcpe, toidicakhia
      */
-    fun getPlace(pos: BlockPos, yaw: Float): PlaceRotation? {
+    fun getPlace(pos: BlockPos, last: Rotation?, yaw: Float): PlaceRotation? {
         val info = get(pos) ?: return null
+
         val blockFace = info.blockPos
         val side = info.enumFacing
-        var placeRotation: PlaceRotation? = null
+
+        val position = mutableListOf<MovingObjectPosition>()
+        val rotation = mutableListOf<Rotation>()
 
         for (pitch in -90.0..90.0 step 0.05) {
-            val rotation = Rotation(mc.thePlayer.rotationYaw - yaw, pitch.toFloat())
+            val traced = Rotation(mc.thePlayer.rotationYaw - yaw, pitch.toFloat())
 
-            if (!rayCast(blockFace, side, true, rotation)) continue
+            val obj = distanceRayTrace(traced)
 
-            if (placeRotation == null || rotation.pitch < placeRotation.rotation.pitch) {
-                placeRotation = PlaceRotation(
-                    PlaceInfo(blockFace, side),
-                    rotation
-                )
+            if (rayCast(blockFace, side, true, traced)) {
+                position.add(obj)
+                rotation.add(traced)
             }
         }
 
-        return placeRotation
+        val nearestPosition = position
+            .sortedBy {
+                mc.thePlayer.getDistanceSq(it.blockPos)
+            }
+            .firstOrNull() ?: return null
+
+        val nearestRotation = rotation
+            .filter { rayCast(nearestPosition.blockPos, nearestPosition.sideHit, true, it) }
+            .sortedBy { RotationUtils.getRotationDifference(it, last ?: RotationUtils.targetRotation ?: RotationUtils.serverRotation) }
+            .firstOrNull() ?: return null
+
+        return PlaceRotation(PlaceInfo(nearestPosition.blockPos, nearestPosition.sideHit, nearestPosition.hitVec), nearestRotation)
     }
 
+    private fun buildForward(): Boolean {
+        val realYaw = MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw)
+        return realYaw.toDouble() > 77.5 && realYaw.toDouble() < 102.5 || (!(realYaw.toDouble() <= 167.5) || !(realYaw >= -167.0f) || (realYaw.toDouble() < -77.5 && realYaw.toDouble() > -102.5 || realYaw.toDouble() > -12.5 && realYaw.toDouble() < 12.5))
+    }
 //    fun getFacing(input: BlockPos, neighbor: BlockPos): EnumFacing {
 //        return when {
 //            input.x < neighbor.x -> EnumFacing.WEST

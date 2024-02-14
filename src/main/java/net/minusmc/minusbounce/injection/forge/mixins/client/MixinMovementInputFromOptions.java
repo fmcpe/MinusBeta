@@ -23,6 +23,9 @@ public class MixinMovementInputFromOptions extends MixinMovementInput{
     @Final
     private GameSettings gameSettings;
 
+    /**
+     * @author fmcpe
+     */
     @Overwrite
     public void updatePlayerMoveState() {
         this.moveStrafe = 0.0F;
@@ -48,8 +51,8 @@ public class MixinMovementInputFromOptions extends MixinMovementInput{
         this.sneak = this.gameSettings.keyBindSneak.isKeyDown();
 
         final MoveInputEvent event = new MoveInputEvent(
-            this.moveForward, 
-            this.moveStrafe, 
+            this.moveForward,
+            this.moveStrafe,
             this.jump, 
             this.sneak, 
             0.3D
@@ -62,7 +65,7 @@ public class MixinMovementInputFromOptions extends MixinMovementInput{
         this.moveStrafe = event.getStrafe();
         this.jump = event.getJump();
         this.sneak = event.getSneak();
-
+        
         if (this.sneak) {
             this.moveStrafe = (float) ((double) this.moveStrafe * sneakMultiplier);
             this.moveForward = (float) ((double) this.moveForward * sneakMultiplier);

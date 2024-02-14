@@ -1120,7 +1120,7 @@ public abstract class MixinMinecraft {
      * @author CCBlueX
      */
     @Overwrite
-    private void sendClickBlockToController(boolean leftClick) {
+    public void sendClickBlockToController(boolean leftClick) {
         if(!leftClick)
             this.leftClickCounter = 0;
 
@@ -1140,6 +1140,7 @@ public abstract class MixinMinecraft {
                 this.playerController.resetBlockRemoving();
         }
     }
+    // li do luc nay build thanh cong phai stop
 
     /**
      * @author CCBlueX

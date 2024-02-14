@@ -25,7 +25,7 @@ class ZoneCraftFly: FlyMode("ZoneCraft", FlyType.OTHER) {
             }
         }
         
-        RotationUtils.setTargetRot(Rotation(mc.thePlayer.rotationYaw, 90f))
+        RotationUtils.setRotations(Rotation(mc.thePlayer.rotationYaw, 90f))
         mc.netHandler.networkManager.sendPacket(C08PacketPlayerBlockPlacement(BlockPos(mc.thePlayer.posX, mc.thePlayer.posY - 1, mc.thePlayer.posZ), 1, null, 0f, 1f, 0f))
 
     }

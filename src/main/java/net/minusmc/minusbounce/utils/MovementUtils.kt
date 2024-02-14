@@ -19,6 +19,7 @@ object MovementUtils : MinecraftInstance(), Listenable {
     private var lastX = -999999.0
     private var lastZ = -999999.0
     var offGroundTicks = 0
+    var AABBOffGroundticks = 0
 
     @EventTarget
     fun onUpdate(event: PreUpdateEvent) {
@@ -26,6 +27,12 @@ object MovementUtils : MinecraftInstance(), Listenable {
             offGroundTicks++
         } else {
             offGroundTicks = 0
+        }
+
+        if(mc.theWorld.getCollidingBoundingBoxes(mc.thePlayer, mc.thePlayer.entityBoundingBox.offset(0.0, -1.0, 0.0)).isEmpty()){
+            AABBOffGroundticks++
+        } else {
+            AABBOffGroundticks = 0
         }
     }
     val speed: Float

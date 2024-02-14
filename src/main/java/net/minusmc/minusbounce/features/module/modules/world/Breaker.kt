@@ -165,7 +165,7 @@ object Breaker : Module() {
 
         // Face block
         if (rotationsValue.get())
-            RotationUtils.setTargetRot(rotations.rotation)
+            RotationUtils.setRotations(rotations.rotation)
 
         when {
             // Destory block

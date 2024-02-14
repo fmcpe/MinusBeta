@@ -11,12 +11,7 @@ import net.minusmc.minusbounce.event.ClientShutdownEvent
 import net.minusmc.minusbounce.event.EventManager
 import net.minusmc.minusbounce.features.command.CommandManager
 import net.minusmc.minusbounce.features.module.ModuleManager
-import net.minusmc.minusbounce.features.module.modules.client.ClickGUI
-import net.minusmc.minusbounce.features.special.AntiForge
-import net.minusmc.minusbounce.features.special.BungeeCordSpoof
-import net.minusmc.minusbounce.features.special.CombatManager
-import net.minusmc.minusbounce.features.special.MacroManager
-import net.minusmc.minusbounce.features.special.SessionManager
+import net.minusmc.minusbounce.features.special.*
 import net.minusmc.minusbounce.file.FileManager
 import net.minusmc.minusbounce.plugin.PluginAPIVersion
 import net.minusmc.minusbounce.plugin.PluginManager
@@ -27,6 +22,7 @@ import net.minusmc.minusbounce.ui.client.hud.HUD.Companion.createDefault
 import net.minusmc.minusbounce.ui.font.Fonts
 import net.minusmc.minusbounce.utils.*
 import net.minusmc.minusbounce.utils.misc.sound.TipSoundManager
+import net.minusmc.minusbounce.utils.movement.MoveFixUtils
 
 object MinusBounce {
 
@@ -89,6 +85,7 @@ object MinusBounce {
         eventManager.registerListener(MacroManager)
         eventManager.registerListener(BadPacketUtils)
         eventManager.registerListener(MovementUtils)
+        eventManager.registerListener(MoveFixUtils)
         eventManager.registerListener(combatManager)
         eventManager.registerListener(sessionManager)
 

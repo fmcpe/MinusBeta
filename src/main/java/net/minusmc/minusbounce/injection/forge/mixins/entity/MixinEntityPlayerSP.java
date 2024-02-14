@@ -162,10 +162,8 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
             final InvMove inventoryMove = MinusBounce.moduleManager.getModule(InvMove.class);
             final boolean fakeSprint = (inventoryMove.getState() && inventoryMove.isAACAP());
 
-            ActionEvent actionEvent = new ActionEvent(this.isSprinting() && !fakeSprint, this.isSneaking());
-
-            boolean sprinting = actionEvent.getSprinting();
-            boolean sneaking = actionEvent.getSneaking();
+            boolean sprinting = this.isSprinting() && !fakeSprint;
+            boolean sneaking = this.isSneaking();
 
             if (sprinting != this.serverSprintState) {
                 if (sprinting)
@@ -222,7 +220,6 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
                 if (rotated) {
                     this.lastReportedYaw = event.getYaw();
                     this.lastReportedPitch = event.getPitch();
-                    RotationUtils.serverRotation = new Rotation(this.lastReportedYaw, this.lastReportedPitch);
                 }
             }
 
@@ -329,15 +326,7 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
 
         boolean flag3 = (float) this.getFoodStats().getFoodLevel() > 6.0F || this.capabilities.allowFlying;
 
-        float forward = this.movementInput.moveForward;
-        float yaw = RotationUtils.targetRotation != null ? RotationUtils.targetRotation.getYaw() : this.rotationYaw;
-        final float offset = (float) Math.toRadians(this.rotationYaw - yaw);
-
-        if(!keepSprint.getState()) {
-            forward = Math.round(this.movementInput.moveForward * MathHelper.cos(offset) + this.movementInput.moveStrafe * MathHelper.sin(offset));
-        }
-
-        if (this.onGround && !flag1 && !flag2 && forward >= f && !this.isSprinting() && flag3 && !this.isUsingItem() && !this.isPotionActive(Potion.blindness)) {
+        if (this.onGround && !flag1 && !flag2 && this.movementInput.moveForward >= f && !this.isSprinting() && flag3 && !this.isUsingItem() && !this.isPotionActive(Potion.blindness)) {
             if (this.sprintToggleTimer <= 0 && (!this.mc.gameSettings.keyBindSprint.isKeyDown() || !sprint.getState())) {
                 this.sprintToggleTimer = 7;
             } else {
@@ -345,11 +334,11 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
             }
         }
 
-        if (!this.isSprinting() && forward >= f && flag3 && (noSlow.getState() || !this.isUsingItem()) && !this.isPotionActive(Potion.blindness) && (this.mc.gameSettings.keyBindSprint.isKeyDown() || sprint.getState())) {
+        if (!this.isSprinting() && this.movementInput.moveForward >= f && flag3 && (noSlow.getState() || !this.isUsingItem()) && !this.isPotionActive(Potion.blindness) && (this.mc.gameSettings.keyBindSprint.isKeyDown() || sprint.getState())) {
             this.setSprinting(true);
         }
 
-        if (this.isSprinting() && (forward < f || this.isCollidedHorizontally || !flag3)) {
+        if (this.isSprinting() && (this.movementInput.moveForward < f || this.isCollidedHorizontally || !flag3)) {
             this.setSprinting(false);
         }
         
@@ -357,7 +346,9 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
             this.setSprinting(false);
         }
 
-        if (this.isSprinting() && scaffold.getState() && !scaffold.getCanSprint()) this.setSprinting(false);
+        if (this.isSprinting() && scaffold.getState() && !scaffold.getCanSprint()){
+            this.setSprinting(false);
+        }
 
         if (this.capabilities.allowFlying) {
             if (this.mc.playerController.isSpectatorMode()) {
