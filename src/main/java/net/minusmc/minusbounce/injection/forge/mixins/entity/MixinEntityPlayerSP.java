@@ -183,28 +183,38 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
                 this.serverSneakState = sneaking;
             }
             final boolean desync = MinusBounce.moduleManager.getModule(AntiDesync.class).getState();
-            if (this.isCurrentViewEntity()) {                
+            if (this.isCurrentViewEntity()) {
+                float yaw = event.getYaw();
+                float pitch = event.getPitch();
+                float lastReportedYaw = RotationUtils.serverRotation.getYaw();
+                float lastReportedPitch = RotationUtils.serverRotation.getPitch();
+
+                if (RotationUtils.targetRotation != null) {
+                    yaw = RotationUtils.targetRotation.getYaw();
+                    pitch = RotationUtils.targetRotation.getPitch();
+                }
+
                 double xDiff = event.getX() - this.lastReportedPosX;
                 double yDiff = event.getY() - this.lastReportedPosY;
                 double zDiff = event.getZ() - this.lastReportedPosZ;
-                double yawDiff = event.getYaw() - this.lastReportedYaw;
-                double pitchDiff = event.getPitch() - this.lastReportedPitch;
+                double yawDiff = yaw - lastReportedYaw;
+                double pitchDiff = pitch - lastReportedPitch;
 
-                boolean moved = xDiff * xDiff + yDiff * yDiff + zDiff * zDiff > 9.0E-4D || this.positionUpdateTicks >= 20 || desync;
-                boolean rotated = yawDiff != 0.0D || pitchDiff != 0.0D || desync;
+                boolean moved = xDiff * xDiff + yDiff * yDiff + zDiff * zDiff > 9.0E-4D || this.positionUpdateTicks >= 20;
+                boolean rotated = yawDiff != 0.0D || pitchDiff != 0.0D;
 
                 if (this.ridingEntity == null) {
                     if (moved && rotated) {
-                        this.sendQueue.addToSendQueue(new C03PacketPlayer.C06PacketPlayerPosLook(event.getX(), event.getY(), event.getZ(), event.getYaw(), event.getPitch(), event.getOnGround()));
+                        this.sendQueue.addToSendQueue(new C03PacketPlayer.C06PacketPlayerPosLook(event.getX(), event.getY(), event.getZ(), yaw, pitch, event.getOnGround()));
                     } else if (moved) {
                         this.sendQueue.addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(event.getX(), event.getY(), event.getZ(), event.getOnGround()));
                     } else if (rotated) {
-                        this.sendQueue.addToSendQueue(new C03PacketPlayer.C05PacketPlayerLook(event.getYaw(), event.getPitch(), event.getOnGround()));
+                        this.sendQueue.addToSendQueue(new C03PacketPlayer.C05PacketPlayerLook(yaw, pitch, event.getOnGround()));
                     } else {
                         this.sendQueue.addToSendQueue(new C03PacketPlayer(event.getOnGround()));
                     }
                 } else {
-                    this.sendQueue.addToSendQueue(new C03PacketPlayer.C06PacketPlayerPosLook(this.motionX, -999.0D, this.motionZ, event.getYaw(), event.getPitch(), event.getOnGround()));
+                    this.sendQueue.addToSendQueue(new C03PacketPlayer.C06PacketPlayerPosLook(this.motionX, -999.0D, this.motionZ, yaw, pitch, event.getOnGround()));
                     moved = false;
                 }
 
@@ -218,8 +228,8 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
                 }
 
                 if (rotated) {
-                    this.lastReportedYaw = event.getYaw();
-                    this.lastReportedPitch = event.getPitch();
+                    this.lastReportedYaw = yaw;
+                    this.lastReportedPitch = pitch;
                 }
             }
 
