@@ -36,13 +36,18 @@ object RotationUtils : MinecraftInstance(), Listenable {
     private var z = random.nextDouble()
 
     @EventTarget
-    fun onPacket(event: PacketEvent){
-        if(event.packet is C03PacketPlayer){
-            if(event.packet.rotating){
-                this.serverRotation = Rotation(event.packet.yaw, event.packet.pitch)
+    fun onPacket(event: PacketEvent) {
+        val packet = event.packet
+        if (packet is C03PacketPlayer) {
+            if (targetRotation != null && (targetRotation!!.yaw != serverRotation!!.yaw || targetRotation!!.pitch != serverRotation!!.pitch)) {
+                packet.yaw = targetRotation!!.yaw
+                packet.pitch = targetRotation!!.pitch
+                packet.rotating = true
             }
+            if (packet.rotating) serverRotation = Rotation(packetPlayer.yaw, packetPlayer.pitch)
         }
     }
+    
     @EventTarget 
     fun onPre(event: PreMotionEvent){
         targetRotation?.let {
