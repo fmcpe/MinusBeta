@@ -10,8 +10,10 @@ package net.minusmc.minusbounce.utils.extensions
 
 import net.minecraft.client.gui.ScaledResolution
 import net.minecraft.entity.Entity
+import net.minecraft.util.AxisAlignedBB
 import net.minecraft.util.Vec3
 import net.minecraft.util.Vec3i
+import net.minusmc.minusbounce.utils.Rotation
 
 /**
  * Provides:
@@ -50,6 +52,29 @@ operator fun ScaledResolution.component2() = this.scaledHeight
 
 /**
  * Provides:
+ * ```
+ * val (yaw, pitch) = Rotation
+ */
+operator fun Rotation.component1(): Float = this.yaw
+operator fun Rotation.component2(): Float = this.pitch
+
+/**
+ * Provides
+ * ```
+ * sin(Float), cos(Float), tan(Float) = Double
+ *
+ * sin(Deg), cos(Deg), tan(Deg) = Rad (Double)
+ */
+fun sinD(n: Float): Double = kotlin.math.sin(n).toDouble()
+fun cosD(n: Float): Double = kotlin.math.cos(n).toDouble()
+fun tanD(n: Float): Double = kotlin.math.tan(n).toDouble()
+
+fun sinR(n: Float): Double = kotlin.math.sin(n.toRadiansD())
+fun cosR(n: Float): Double = kotlin.math.cos(n.toRadiansD())
+fun tanR(n: Float): Double = kotlin.math.tan(n.toRadiansD())
+
+/**
+ * Provides:
  * `vec + othervec`, `vec - othervec`, `vec * number`, `vec / number`
  * */
 operator fun Vec3.plus(num: Double): Vec3 = add(Vec3(num, num, num))
@@ -57,8 +82,10 @@ operator fun Vec3.plus(vec: Vec3): Vec3 = add(vec)
 operator fun Vec3.minus(vec: Vec3): Vec3 = subtract(vec)
 operator fun Vec3.times(number: Double) = Vec3(xCoord * number, yCoord * number, zCoord * number)
 operator fun Vec3.div(number: Double) = times(1 / number)
+fun Vec3.plus(x: Double, y: Double, z: Double): Vec3 = add(Vec3(x, y, z))
 
 fun Vec3.toFloatTriple() = Triple(xCoord.toFloat(), yCoord.toFloat(), zCoord.toFloat())
+fun AxisAlignedBB.expand(d: Double): AxisAlignedBB = expand(d, d, d)
 
 fun Float.toRadians() = this * 0.01745329251f
 fun Float.toRadiansD() = toRadians().toDouble()

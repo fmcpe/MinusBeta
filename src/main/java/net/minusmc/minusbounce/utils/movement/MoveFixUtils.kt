@@ -31,7 +31,7 @@ object MoveFixUtils : MinecraftInstance(), Listenable {
 
         targetRotation?.let{
             if(type == MovementFixType.FULL) {
-                val offset = (mc.thePlayer.rotationYaw - it.yaw).toRadians()
+                val offset = (mc.thePlayer.rotationYaw - it.yaw) * 0.01745329251994329576f
 
                 event.forward = round(forward * cos(offset) + strafe * sin(offset))
                 event.strafe = round(strafe * cos(offset) - forward * sin(offset))

@@ -319,6 +319,48 @@ object BlockUtils : MinecraftInstance() {
     }
 
     /**
+     * Thanks Grim!
+     * What?? Some funcs already in mcp. Waste 2 hours of converting code :sad_face:
+     *
+     * i don't know ? inject it into C08 :)?
+     * @author fmcpe
+     * @author MWHunter
+     */
+    fun didRayTraceHit(
+        place: BlockPos,
+        check: Boolean,
+    ): Boolean {
+        val (rotX, rotY) = RotationUtils.serverRotation
+        val playerPos = Vec3(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ)
+        val blockAxis = AxisAlignedBB(place, place.add(1, 1, 1))
+        val possiblePos = mutableListOf<Vec3>(
+            playerPos.plus(0.0, 1.54, 0.0),
+            playerPos.plus(0.0, 1.62, 0.0)
+        )
+
+        if(mc.thePlayer.entityBoundingBox.expand(2.0001E-4).intersectsWith(blockAxis)){
+            return true
+        }
+
+        for (pos in possiblePos){
+            val multiplied = pos.add(
+                Vec3(
+                    -cosR(rotY) * sinR(rotX),
+                    -sinR(rotY),
+                    cosR(rotY) * cosR(rotX)
+                )
+                .multiply(6.0)
+            )
+
+            if(blockAxis.calculateIntercept(pos, multiplied) != null){
+                return true
+            }
+        }
+
+        return false
+    }
+
+    /**
      * Raytrace from a rotation.
      * 
      * @author fmcpe

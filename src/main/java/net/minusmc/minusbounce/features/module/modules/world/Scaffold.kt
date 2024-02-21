@@ -12,6 +12,7 @@ import net.minecraft.client.renderer.RenderHelper
 import net.minecraft.client.settings.GameSettings
 import net.minecraft.item.ItemBlock
 import net.minecraft.item.ItemStack
+import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement
 import net.minecraft.network.play.client.C09PacketHeldItemChange
 import net.minecraft.network.play.client.C0APacketAnimation
 import net.minecraft.network.play.client.C0BPacketEntityAction
@@ -56,6 +57,7 @@ class Scaffold : Module() {
         get() = towerModes.find { towerModeValue.get().equals(it.modeName, true) } ?: throw NullPointerException()
 
     private val delayValue = IntRangeValue("Delay", 0, 0, 0, 10)
+    private val airTicks = IntegerValue("AirCollide", 0, 0, 10)
 
     private val autoBlockMode = ListValue("AutoBlock", arrayOf("Spoof", "Switch"), "Spoof")
     private val sprintModeValue = ListValue("SprintMode", arrayOf("Always", "OnGround", "OffGround", "Off"), "Off")
@@ -240,6 +242,9 @@ class Scaffold : Module() {
         mc.thePlayer ?: return
         val packet = event.packet
 
+        if(packet is C08PacketPlayerBlockPlacement){
+            ClientUtils.displayChatMessage("${BlockUtils.didRayTraceHit(packet.position, true)}")
+        }
         if (packet is S2FPacketSetSlot) {
             if (packet.func_149174_e() == null) {
                 event.cancelEvent()
@@ -401,7 +406,7 @@ class Scaffold : Module() {
         if (!isNotBlock && !isNotReplaceable && !BadPacketUtils.bad() && MovementUtils.offGroundTicks > RandomUtils.nextInt(
                 delayValue.getMinValue(),
                 delayValue.getMaxValue())
-            && (!canDoFullRayTrace || !BlockUtils.rayCast(placeInfo!!.blockPos, placeInfo!!.enumFacing, true))
+            && BlockUtils.didRayTraceHit(targetPlace.blockPos, canDoFullRayTrace)
         ) {
 
             if (mc.playerController.onPlayerRightClick(
@@ -475,7 +480,7 @@ class Scaffold : Module() {
 
 
     private fun search(blockPosition: BlockPos): Boolean {
-        if (MovementUtils.AABBOffGroundticks < 1 || MovementUtils.offGroundTicks < 1 || !BlockUtils.isReplaceable(blockPosition)){
+        if (MovementUtils.AABBOffGroundticks < airTicks.get() || MovementUtils.offGroundTicks < 1 || !BlockUtils.isReplaceable(blockPosition)){
             return false
         }
 

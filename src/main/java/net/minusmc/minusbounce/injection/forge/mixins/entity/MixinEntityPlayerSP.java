@@ -21,17 +21,14 @@ import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemSword;
 import net.minecraft.network.play.client.C03PacketPlayer;
 import net.minecraft.network.play.client.C0BPacketEntityAction;
-import net.minecraft.network.play.client.C0CPacketInput;
 import net.minecraft.potion.Potion;
 import net.minecraft.util.*;
 import net.minusmc.minusbounce.MinusBounce;
 import net.minusmc.minusbounce.event.*;
 import net.minusmc.minusbounce.features.module.modules.combat.KillAura;
-import net.minusmc.minusbounce.features.module.modules.misc.AntiDesync;
 import net.minusmc.minusbounce.features.module.modules.movement.*;
 import net.minusmc.minusbounce.features.module.modules.world.Scaffold;
 import net.minusmc.minusbounce.injection.implementations.IEntityPlayerSP;
-import net.minusmc.minusbounce.utils.*;
 import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -103,29 +100,30 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
      */
     @Overwrite
     protected boolean isCurrentViewEntity() {
-        return (mc.getRenderViewEntity()!=null && mc.getRenderViewEntity().equals(this)) || (MinusBounce.moduleManager != null && MinusBounce.moduleManager.getModule(Fly.class).getState());
+        return (mc.getRenderViewEntity() != null && mc.getRenderViewEntity().equals(this)) || (MinusBounce.moduleManager != null && MinusBounce.moduleManager.getModule(Fly.class).getState());
     }
 
     @Shadow
-    private double lastReportedPosX;
+    public double lastReportedPosX;
 
     @Shadow
-    private int positionUpdateTicks;
+    public int positionUpdateTicks;
 
     @Shadow
-    private double lastReportedPosY;
+    public double lastReportedPosY;
 
     @Shadow
-    private double lastReportedPosZ;
+    public double lastReportedPosZ;
 
     @Shadow
-    private float lastReportedYaw;
+    public float lastReportedYaw;
 
     @Shadow
-    private float lastReportedPitch;
+    public float lastReportedPitch;
 
     /**
-     * @author CCBlueX
+     * @author fmcpe
+     * @reason PreMotionEvent
      */
     @Overwrite
     public void onUpdateWalkingPlayer() {
@@ -168,8 +166,8 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
             double d0 = event.getX() - this.lastReportedPosX;
             double d1 = this.getEntityBoundingBox().minY - this.lastReportedPosY;
             double d2 = event.getZ() - this.lastReportedPosZ;
-            double d3 = (double)(event.getYaw() - this.lastReportedYaw);
-            double d4 = (double)(event.getPitch() - this.lastReportedPitch);
+            double d3 = event.getYaw() - this.lastReportedYaw;
+            double d4 = event.getPitch() - this.lastReportedPitch;
             boolean flag2 = d0 * d0 + d1 * d1 + d2 * d2 > 9.0E-4D || this.positionUpdateTicks >= 20;
             boolean flag3 = d3 != 0.0D || d4 != 0.0D;
 
@@ -294,7 +292,6 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
         final NoSlow noSlow = MinusBounce.moduleManager.getModule(NoSlow.class);
         final KillAura killAura = MinusBounce.moduleManager.getModule(KillAura.class);
         final Sprint sprint = MinusBounce.moduleManager.getModule(Sprint.class);
-        final KeepSprint keepSprint = MinusBounce.moduleManager.getModule(KeepSprint.class);
 
         if (getHeldItem() != null && (this.isUsingItem() || (getHeldItem().getItem() instanceof ItemSword && killAura.getBlockingStatus())) && !this.isRiding()) {
             final SlowDownEvent slowDownEvent = new SlowDownEvent(0.2F, 0.2F);
