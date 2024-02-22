@@ -5,13 +5,14 @@
  */
 package net.minusmc.minusbounce.utils
 
+import net.minecraft.client.Minecraft
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityLivingBase
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.entity.projectile.EntityEgg
-import net.minecraft.network.play.client.C03PacketPlayer
 import net.minecraft.util.*
 import net.minusmc.minusbounce.event.*
+import net.minusmc.minusbounce.injection.implementations.IEntityPlayerSP
 import net.minusmc.minusbounce.utils.RaycastUtils.IEntityFilter
 import net.minusmc.minusbounce.utils.RaycastUtils.raycastEntity
 import net.minusmc.minusbounce.utils.movement.MoveFixUtils
@@ -25,30 +26,118 @@ object RotationUtils : MinecraftInstance(), Listenable {
     private val random = Random()
     private var keepLength = 0
 
-    @JvmField
-    var targetRotation: Rotation? = null
+    private var active: Boolean = false
+    private var smoothed: Boolean = false
+
+    private lateinit var lastRotations: Rotation
+    private lateinit var rotations: Rotation
+    private var rotationSpeed: Float = 0f
 
     @JvmField
-    var serverRotation = Rotation(0f, 0f)
+    var targetRotation: Rotation? = null
 
     private var x = random.nextDouble()
     private var y = random.nextDouble()
     private var z = random.nextDouble()
 
     @EventTarget
-    fun onPacket(event: PacketEvent){
-        if(event.packet is C03PacketPlayer){
-            if(event.packet.rotating){
-                this.serverRotation = Rotation(event.packet.yaw, event.packet.pitch)
-            }
+    fun onUpdate(event: PreUpdateEvent){
+        if (!active || targetRotation == null || !::lastRotations.isInitialized || !::rotations.isInitialized) {
+            rotations = Rotation(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch)
+            lastRotations = rotations
+            targetRotation = rotations
         }
+
+        if (active) {
+            if (!smoothed) {
+                targetRotation = this.smooth(lastRotations, rotations, rotationSpeed + Math.random().toFloat())
+            }
+            smoothed = true
+            mc.entityRenderer.getMouseOver(1f)
+        }
+
+        if (random.nextGaussian() > 0.8) x = Math.random()
+        if (random.nextGaussian() > 0.8) y = Math.random()
+        if (random.nextGaussian() > 0.8) z = Math.random()
     }
+
     @EventTarget 
     fun onPre(event: PreMotionEvent){
-        targetRotation?.let {
-            event.yaw = it.yaw
-            event.pitch = it.pitch
+        if (active && targetRotation != null) {
+            keepLength--
+
+            targetRotation?.let {
+                event.yaw = it.yaw
+                event.pitch = it.pitch
+
+                //KeepLength, reset
+                if(keepLength <= 0) {
+                    if (abs((it.yaw - mc.thePlayer.rotationYaw) % 360) < 1 && abs(it.pitch - mc.thePlayer.rotationPitch) < 1) {
+                        active = false
+
+                        val rotation = Rotation(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch)
+                        rotation.fixedSensitivity(mc.gameSettings.mouseSensitivity, lastRotations)
+
+                        mc.thePlayer.rotationYaw = rotation.yaw + MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw - rotation.yaw)
+                    }
+                }
+
+                lastRotations = it
+            }
+        } else {
+            lastRotations = Rotation(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch)
         }
+
+        rotations = Rotation(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch)
+        smoothed = false
+    }
+
+    private fun smooth(lastRotation: Rotation, targetRotation: Rotation, speed: Float): Rotation {
+        var yaw = targetRotation.yaw
+        var pitch = targetRotation.pitch
+        val lastYaw = lastRotation.yaw
+        val lastPitch = lastRotation.pitch
+
+        if (speed != 0f) {
+            val rotationSpeed = speed
+
+            val deltaYaw = MathHelper.wrapAngleTo180_float(targetRotation.yaw - lastRotation.yaw)
+            val deltaPitch = pitch - lastPitch
+
+            val distance = sqrt(deltaYaw * deltaYaw + deltaPitch * deltaPitch)
+            val distributionYaw = abs(deltaYaw / distance)
+            val distributionPitch = abs(deltaPitch / distance)
+
+            val maxYaw = rotationSpeed * distributionYaw
+            val maxPitch = rotationSpeed * distributionPitch
+
+            val moveYaw = max(min(deltaYaw, maxYaw), -maxYaw)
+            val movePitch = max(min(deltaPitch, maxPitch), -maxPitch)
+
+            yaw = lastYaw + moveYaw
+            pitch = lastPitch + movePitch
+
+            for (i in 1..(Minecraft.getDebugFPS() / 20 + (Math.random() * 10).toInt())) {
+                if (abs(moveYaw) + abs(movePitch) > 1) {
+                    yaw += (Math.random().toFloat() - 0.5f) / 1000f
+                    pitch -= Math.random().toFloat() / 200f
+                }
+
+                /*
+                 * Fixing GCD
+                 */
+                val rotations = Rotation(yaw, pitch)
+                rotations.fixedSensitivity(mc.gameSettings.mouseSensitivity)
+
+                /*
+                 * Setting rotations
+                 */
+                yaw = rotations.yaw
+                pitch = rotations.pitch.coerceIn(-90F, 90F)
+            }
+        }
+
+        return Rotation(yaw, pitch)
     }
 
     @EventTarget 
@@ -57,22 +146,6 @@ object RotationUtils : MinecraftInstance(), Listenable {
             event.yaw = it.yaw
             event.pitch = it.pitch
         }
-    }
-
-    @EventTarget
-    fun onTick(event: PreUpdateEvent){
-        if (targetRotation != null){
-            keepLength--
-
-            if(keepLength <= 0){
-                targetRotation = null
-                keepLength = 0
-            }
-        }
-
-        if (random.nextGaussian() > 0.8) x = Math.random()
-        if (random.nextGaussian() > 0.8) y = Math.random()
-        if (random.nextGaussian() > 0.8) z = Math.random()
     }
 
     /**
@@ -85,6 +158,7 @@ object RotationUtils : MinecraftInstance(), Listenable {
     fun setRotations(
         rotation: Rotation?,
         keepLength: Int,
+        speed: Float ? = 180f,
         fixType: MovementFixType? = MovementFixType.NONE
     ) {
         rotation ?: return
@@ -95,8 +169,10 @@ object RotationUtils : MinecraftInstance(), Listenable {
         } ?: return
 
         rotation.fixedSensitivity(mc.gameSettings.mouseSensitivity)
+
         MoveFixUtils.type = fixType
-        targetRotation = rotation
+        this.rotationSpeed = speed!!
+        this.targetRotation = rotation
         this.keepLength = keepLength
     }
 
@@ -390,9 +466,7 @@ object RotationUtils : MinecraftInstance(), Listenable {
      * @param rotation your rotation
      * @return difference between rotation
      */
-    fun getRotationDifference(rotation: Rotation): Double {
-        return if (serverRotation == null) 0.0 else getRotationDifference(rotation, serverRotation)
-    }
+    fun getRotationDifference(rotation: Rotation) = getRotationDifference(rotation, lastRotations)
 
     /**
      * Calculate difference between two rotations

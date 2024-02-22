@@ -1,6 +1,7 @@
 package net.minusmc.minusbounce.injection.implementations;
 
+import net.minusmc.minusbounce.utils.Rotation;
+
 public interface IEntityPlayerSP {
-	int getOnGroundTicks();
-	int getOffGroundTicks();
+	Rotation getServerRotation();
 }

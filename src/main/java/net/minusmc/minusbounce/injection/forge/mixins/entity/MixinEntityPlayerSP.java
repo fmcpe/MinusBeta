@@ -29,12 +29,14 @@ import net.minusmc.minusbounce.features.module.modules.combat.KillAura;
 import net.minusmc.minusbounce.features.module.modules.movement.*;
 import net.minusmc.minusbounce.features.module.modules.world.Scaffold;
 import net.minusmc.minusbounce.injection.implementations.IEntityPlayerSP;
+import net.minusmc.minusbounce.utils.Rotation;
 import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import javax.annotation.Nullable;
 import java.util.List;
 
 @Mixin(EntityPlayerSP.class)
@@ -123,7 +125,15 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
 
     /**
      * @author fmcpe
-     * @reason PreMotionEvent
+     *
+     * Another impl for serverRotation
+     */
+    @Override
+    public Rotation getServerRotation(){ return new Rotation(lastReportedYaw, lastReportedPitch); }
+
+    /**
+     * @author fmcpe
+     * @reason PreMotionEvent. MCP
      */
     @Overwrite
     public void onUpdateWalkingPlayer() {

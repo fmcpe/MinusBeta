@@ -6,24 +6,17 @@
 package net.minusmc.minusbounce.features.module.modules.combat
 
 import net.minusmc.minusbounce.MinusBounce
-import net.minecraft.enchantment.EnchantmentHelper
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityLivingBase
 import net.minecraft.entity.item.EntityArmorStand
 import net.minecraft.item.ItemSword
 import net.minecraft.network.play.client.*
-import net.minecraft.potion.Potion
 import net.minecraft.util.*
 import net.minecraft.world.WorldSettings
 import net.minusmc.minusbounce.event.*
 import net.minusmc.minusbounce.features.module.*
-import net.minusmc.minusbounce.features.module.modules.exploit.Disabler
 import net.minusmc.minusbounce.features.module.modules.movement.TargetStrafe
-import net.minusmc.minusbounce.features.module.modules.player.Blink
-import net.minusmc.minusbounce.features.module.modules.render.FreeCam
-import net.minusmc.minusbounce.features.module.modules.world.Scaffold
 import net.minusmc.minusbounce.utils.*
-import net.minusmc.minusbounce.utils.EntityUtils.isAlive
 import net.minusmc.minusbounce.utils.EntityUtils.isSelected
 import net.minusmc.minusbounce.utils.extensions.*
 import net.minusmc.minusbounce.utils.misc.RandomUtils
@@ -31,7 +24,6 @@ import net.minusmc.minusbounce.utils.timer.*
 import net.minusmc.minusbounce.value.*
 import org.lwjgl.input.Keyboard
 import org.lwjgl.opengl.GL11
-import java.util.*
 import kotlin.math.*
 import net.minusmc.minusbounce.features.module.modules.combat.killaura.KillAuraBlocking
 import net.minusmc.minusbounce.utils.movement.MovementFixType
@@ -290,7 +282,7 @@ class KillAura : Module() {
         if (mc.playerController.currentGameType != WorldSettings.GameType.SPECTATOR)
             mc.thePlayer.attackTargetEntityWithCurrentItem(entity)
 
-        if (mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.ENTITY){
+        if (mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.ENTITY && interactValue.get()){
             mc.playerController.isPlayerRightClickingOnEntity(mc.thePlayer, mc.objectMouseOver.entityHit, mc.objectMouseOver)
             mc.playerController.interactWithEntitySendPacket(mc.thePlayer, mc.objectMouseOver.entityHit)
         }
@@ -308,8 +300,10 @@ class KillAura : Module() {
             "full" -> MovementFixType.FULL
             else -> MovementFixType.NONE
         }
+
+        val rotationSpeed = (Math.random() * (turnSpeed.getMaxValue() - turnSpeed.getMinValue()) + turnSpeed.getMinValue()).toFloat()
         if (silentRotationValue.get()) {
-            RotationUtils.setRotations(defRotation, 0, correction)
+            RotationUtils.setRotations(defRotation, 0, rotationSpeed, correction)
         } else {
             defRotation.toPlayer(mc.thePlayer!!)
         }
@@ -327,7 +321,6 @@ class KillAura : Module() {
             )
         }
 
-        val rotationSpeed = (Math.random() * (turnSpeed.getMaxValue() - turnSpeed.getMinValue()) + turnSpeed.getMinValue()).toFloat()
         return when (rotations.get().lowercase()) {
             "vanilla" -> {
                 val (_, rotation) = RotationUtils.searchCenter(
@@ -339,32 +332,18 @@ class KillAura : Module() {
                         rangeValue.get()
                 ) ?: return null
 
-                val limitedRotation = RotationUtils.limitAngleChange(RotationUtils.serverRotation!!, rotation, rotationSpeed)
-
-                limitedRotation
+                rotation
             }
-            "backtrack" -> {
-                val rotation = RotationUtils.otherRotation(boundingBox, RotationUtils.getCenter(entity.entityBoundingBox), predictValue.get(), throughWallsValue.get(), rangeValue.get())
-                val limitedRotation = RotationUtils.limitAngleChange(RotationUtils.serverRotation!!, rotation, rotationSpeed)
-
-                limitedRotation
-            }
-            "grim" -> {
-                val rotation = RotationUtils.calculate(getNearestPointBB(mc.thePlayer.getPositionEyes(1F), boundingBox))
-                val limitedRotation = RotationUtils.limitAngleChange(RotationUtils.serverRotation!!, rotation, rotationSpeed)
-
-                limitedRotation
-            }
+            "backtrack" -> RotationUtils.otherRotation(boundingBox, RotationUtils.getCenter(entity.entityBoundingBox), predictValue.get(), throughWallsValue.get(), rangeValue.get())
+            "grim" -> RotationUtils.calculate(getNearestPointBB(mc.thePlayer.getPositionEyes(1F), boundingBox))
             "intave" -> {
                 val rotation: Rotation? = RotationUtils.getAngles(entity)
                 val amount = intaveRandomAmount.get()
                 val yaw = rotation!!.yaw + Math.random() * amount - amount / 2
                 val pitch = rotation.pitch + Math.random() * amount - amount / 2
-                val limitedRotation = RotationUtils.limitAngleChange(RotationUtils.serverRotation!!, Rotation(yaw.toFloat(), pitch.toFloat()), rotationSpeed)
-
-                limitedRotation
+                Rotation(yaw.toFloat(), pitch.toFloat())
             }
-            else -> RotationUtils.serverRotation
+            else -> serverRotation
         }
     }
     private fun updateHitable() {

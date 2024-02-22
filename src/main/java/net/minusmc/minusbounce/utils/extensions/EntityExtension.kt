@@ -63,7 +63,7 @@ fun Entity.rayTraceWithCustomRotation(blockReachDistance: Double, rotation: Rota
 }
 
 fun Entity.rayTraceWithServerSideRotation(blockReachDistance: Double): MovingObjectPosition? {
-    return this.rayTraceWithCustomRotation(blockReachDistance, RotationUtils.serverRotation!!)
+    return this.rayTraceWithCustomRotation(blockReachDistance, MinecraftInstance.serverRotation!!)
 }
 
 fun Entity.getLookCustom(yaw: Float, pitch: Float): Vec3 {

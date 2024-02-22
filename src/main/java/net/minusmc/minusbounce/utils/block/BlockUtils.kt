@@ -255,7 +255,7 @@ object BlockUtils : MinecraftInstance() {
 
         val nearestRotation = rotation
             .filter { rayCast(nearestPosition.blockPos, nearestPosition.sideHit, true, it) }
-            .sortedBy { RotationUtils.getRotationDifference(it, last ?: RotationUtils.targetRotation ?: RotationUtils.serverRotation) }
+            .sortedBy { RotationUtils.getRotationDifference(it, last ?: RotationUtils.targetRotation ?: serverRotation) }
             .firstOrNull() ?: return null
 
         return PlaceRotation(PlaceInfo(nearestPosition.blockPos, nearestPosition.sideHit, nearestPosition.hitVec), nearestRotation)
@@ -328,9 +328,9 @@ object BlockUtils : MinecraftInstance() {
      */
     fun didRayTraceHit(
         place: BlockPos,
-        check: Boolean,
+        check: Boolean
     ): Boolean {
-        val (rotX, rotY) = RotationUtils.serverRotation
+        val (rotX, rotY) = serverRotation!!
         val playerPos = Vec3(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ)
         val blockAxis = AxisAlignedBB(place, place.add(1, 1, 1))
         val possiblePos = mutableListOf<Vec3>(

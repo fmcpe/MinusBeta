@@ -29,8 +29,6 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import static net.minusmc.minusbounce.utils.RotationUtils.targetRotation;
-
 import java.util.Random;
 import java.util.UUID;
 

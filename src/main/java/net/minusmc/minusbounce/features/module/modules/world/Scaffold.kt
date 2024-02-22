@@ -12,14 +12,12 @@ import net.minecraft.client.renderer.RenderHelper
 import net.minecraft.client.settings.GameSettings
 import net.minecraft.item.ItemBlock
 import net.minecraft.item.ItemStack
-import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement
 import net.minecraft.network.play.client.C09PacketHeldItemChange
 import net.minecraft.network.play.client.C0APacketAnimation
 import net.minecraft.network.play.client.C0BPacketEntityAction
 import net.minecraft.network.play.server.S2FPacketSetSlot
 import net.minecraft.util.BlockPos
 import net.minecraft.util.EnumFacing
-import net.minecraft.util.MovingObjectPosition
 import net.minusmc.minusbounce.event.*
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
@@ -32,7 +30,6 @@ import net.minusmc.minusbounce.utils.block.BlockUtils
 import net.minusmc.minusbounce.utils.block.PlaceInfo
 import net.minusmc.minusbounce.utils.extensions.iterator
 import net.minusmc.minusbounce.utils.misc.RandomUtils
-import net.minusmc.minusbounce.utils.movement.MoveFixUtils
 import net.minusmc.minusbounce.utils.movement.MovementFixType
 import net.minusmc.minusbounce.utils.render.RenderUtils
 import net.minusmc.minusbounce.value.*
@@ -156,7 +153,7 @@ class Scaffold : Module() {
 
         mc.timer.timerSpeed = 1f
 
-        RotationUtils.setRotations(RotationUtils.serverRotation!!, 0)
+        RotationUtils.setRotations(serverRotation!!, 0)
         if (slot != mc.thePlayer.inventory.currentItem) mc.netHandler.addToSendQueue(C09PacketHeldItemChange(mc.thePlayer.inventory.currentItem))
     }
 
@@ -242,9 +239,6 @@ class Scaffold : Module() {
         mc.thePlayer ?: return
         val packet = event.packet
 
-        if(packet is C08PacketPlayerBlockPlacement){
-            ClientUtils.displayChatMessage("${BlockUtils.didRayTraceHit(packet.position, true)}")
-        }
         if (packet is S2FPacketSetSlot) {
             if (packet.func_149174_e() == null) {
                 event.cancelEvent()
@@ -501,8 +495,9 @@ class Scaffold : Module() {
         }
 
         RotationUtils.setRotations(
-            RotationUtils.limitAngleChange(RotationUtils.serverRotation, lockRotation, rotationSpeed),
+            lockRotation,
             keepLengthValue.get(),
+            rotationSpeed,
             if(movementCorrection.get()) MovementFixType.FULL else MovementFixType.NONE
         )
 

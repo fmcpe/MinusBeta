@@ -6,10 +6,14 @@
 package net.minusmc.minusbounce.utils
 
 import net.minecraft.client.Minecraft
+import net.minusmc.minusbounce.injection.implementations.IEntityPlayerSP
 
 open class MinecraftInstance {
     companion object {
         @JvmField
         val mc: Minecraft = Minecraft.getMinecraft()
+
+        val serverRotation: Rotation
+            get() = (mc.thePlayer as IEntityPlayerSP).serverRotation
     }
 }
