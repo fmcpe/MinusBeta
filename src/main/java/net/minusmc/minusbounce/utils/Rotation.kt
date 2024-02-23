@@ -13,15 +13,18 @@ import kotlin.math.*
 
 /**
  * Rotations
+ *
+ * Rotation() = Rotation(Float.NaN, Float.NaN)
  */
-data class Rotation(var yaw: Float, var pitch: Float) {
+data class Rotation(var yaw: Float = Float.NaN, var pitch: Float = Float.NaN) {
 
     /**
      * Set rotations to [player]
      */
     fun toPlayer(p: EntityPlayer) {
-        if(yaw.isNaN() && pitch.isNaN() && pitch !in -90.0..90.0)
+        if(isNan()){
             return
+        }
 
         fixedSensitivity(MinecraftInstance.mc.gameSettings.mouseSensitivity)
 
@@ -36,8 +39,12 @@ data class Rotation(var yaw: Float, var pitch: Float) {
     @JvmOverloads
     fun fixedSensitivity(
         s: Float,
-        rotation : Rotation? = (MinecraftInstance.mc.thePlayer as IEntityPlayerSP).serverRotation
+        rotation : Rotation? = MinecraftInstance.serverRotation
     ) {
+        if(isNan()) {
+            return
+        }
+
         rotation?.let{
             val f = s * (1f + Math.random().toFloat() / 10000000f) * 0.6F + 0.2F
             val m = f * f * f * 8.0F * 0.15f
@@ -57,6 +64,11 @@ data class Rotation(var yaw: Float, var pitch: Float) {
         val f3 = sin(-pitch * 0.017453292)
         return Vec3(f1 * f2, f3, f * f2)
     }
+
+    /**
+     * Nan checks
+     */
+    fun isNan() = yaw.isNaN() || pitch.isNaN() || pitch !in -90.0..90.0
 
     override fun toString(): String {
         return "Rotation(yaw=$yaw, pitch=$pitch)"

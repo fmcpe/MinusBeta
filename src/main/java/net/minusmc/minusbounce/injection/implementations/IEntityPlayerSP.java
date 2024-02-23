@@ -4,4 +4,6 @@ import net.minusmc.minusbounce.utils.Rotation;
 
 public interface IEntityPlayerSP {
 	Rotation getServerRotation();
+
+	Rotation getPlayerRotation();
 }

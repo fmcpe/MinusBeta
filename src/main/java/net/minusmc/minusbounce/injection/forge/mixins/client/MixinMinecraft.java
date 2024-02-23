@@ -285,15 +285,6 @@ public abstract class MixinMinecraft {
             displayHeight = 622;
     }
 
-    @Inject(method = "getRenderViewEntity", at = @At("HEAD"))
-    public void getRenderViewEntity(CallbackInfoReturnable<Entity> cir){
-        if(renderViewEntity instanceof EntityLivingBase && RotationUtils.targetRotation != null){
-            final EntityLivingBase entityLivingBase = (EntityLivingBase) renderViewEntity;
-            final float yaw = RotationUtils.targetRotation.getYaw();
-            entityLivingBase.rotationYawHead = entityLivingBase.prevRotationYawHead = entityLivingBase.renderYawOffset = entityLivingBase.prevRenderYawOffset = yaw;
-        }
-    }
-
     @Inject(method = "startGame", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;checkGLError(Ljava/lang/String;)V", ordinal = 2, shift = At.Shift.AFTER))
     private void startGame(CallbackInfo callbackInfo) {
         MinusBounce.INSTANCE.startClient();

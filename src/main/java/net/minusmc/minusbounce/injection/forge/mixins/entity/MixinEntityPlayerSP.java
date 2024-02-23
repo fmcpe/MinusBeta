@@ -21,6 +21,7 @@ import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemSword;
 import net.minecraft.network.play.client.C03PacketPlayer;
 import net.minecraft.network.play.client.C0BPacketEntityAction;
+import net.minecraft.network.play.client.C0CPacketInput;
 import net.minecraft.potion.Potion;
 import net.minecraft.util.*;
 import net.minusmc.minusbounce.MinusBounce;
@@ -126,10 +127,13 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
     /**
      * @author fmcpe
      *
-     * Another impl for serverRotation
+     * Another impl for serverRotation, currRotation
      */
     @Override
     public Rotation getServerRotation(){ return new Rotation(lastReportedYaw, lastReportedPitch); }
+
+    @Override
+    public Rotation getPlayerRotation(){ return new Rotation(rotationYaw, rotationPitch); }
 
     /**
      * @author fmcpe
@@ -700,14 +704,31 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
         }
     }
 
-    @Inject(method = "onUpdate()V", at = @At("HEAD"), cancellable = true)
-    public void onUpdateCallback(CallbackInfo callbackInfo) {
-        final PreUpdateEvent event = new PreUpdateEvent();
-        MinusBounce.eventManager.callEvent(event);
-
-        if (event.isCancelled())
+    /**
+     * Called to update the entity's position/logic.
+     *
+     * @author fmcpe
+     * @reason PreUpdateEvent
+     */
+    @Overwrite
+    public void onUpdate()
+    {
+        if (this.worldObj.isBlockLoaded(new BlockPos(this.posX, 0.0D, this.posZ)))
         {
-            callbackInfo.cancel();
+            final PreUpdateEvent event = new PreUpdateEvent();
+            MinusBounce.eventManager.callEvent(event);
+
+            super.onUpdate();
+
+            if (this.isRiding())
+            {
+                this.sendQueue.addToSendQueue(new C03PacketPlayer.C05PacketPlayerLook(this.rotationYaw, this.rotationPitch, this.onGround));
+                this.sendQueue.addToSendQueue(new C0CPacketInput(this.moveStrafing, this.moveForward, this.movementInput.jump, this.movementInput.sneak));
+            }
+            else
+            {
+                this.onUpdateWalkingPlayer();
+            }
         }
     }
 }

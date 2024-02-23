@@ -22,7 +22,6 @@ import net.minusmc.minusbounce.ui.client.hud.HUD.Companion.createDefault
 import net.minusmc.minusbounce.ui.font.Fonts
 import net.minusmc.minusbounce.utils.*
 import net.minusmc.minusbounce.utils.misc.sound.TipSoundManager
-import net.minusmc.minusbounce.utils.movement.MoveFixUtils
 
 object MinusBounce {
 
@@ -85,7 +84,6 @@ object MinusBounce {
         eventManager.registerListener(MacroManager)
         eventManager.registerListener(BadPacketUtils)
         eventManager.registerListener(MovementUtils)
-        eventManager.registerListener(MoveFixUtils)
         eventManager.registerListener(combatManager)
         eventManager.registerListener(sessionManager)
 

@@ -57,6 +57,10 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
     }
 
     @Shadow
+    public void onUpdate() {
+    }
+
+    @Shadow
     protected abstract void updateFallState(double y, boolean onGroundIn, Block blockIn, BlockPos pos);
 
     @Shadow
