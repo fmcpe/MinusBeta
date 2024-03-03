@@ -25,6 +25,7 @@ object RotationUtils : MinecraftInstance(), Listenable {
 
     private var active: Boolean = false
     private var smoothed: Boolean = false
+    private var silent: Boolean = false
     private var lastRotations: Rotation? = null
     private var rotations: Rotation? = null
     private var rotationSpeed: Float = 0f
@@ -80,11 +81,6 @@ object RotationUtils : MinecraftInstance(), Listenable {
         }
 
         smoothed = true
-
-        /*
-         * Updating MouseOver
-         */
-        mc.entityRenderer.getMouseOver(1.0F)
     }
 
     @EventTarget(priority = -2)
@@ -107,8 +103,14 @@ object RotationUtils : MinecraftInstance(), Listenable {
     @EventTarget(priority = -2)
     fun onMotion(event: PreMotionEvent) {
         if (active && targetRotation != null) {
-            event.yaw = targetRotation!!.yaw
-            event.pitch = targetRotation!!.pitch
+            keepLength--
+
+            if(!this.silent){
+                event.yaw = targetRotation!!.yaw
+                event.pitch = targetRotation!!.pitch
+            } else {
+                targetRotation!!.toPlayer(mc.thePlayer)
+            }
 
             mc.thePlayer.renderYawOffset = targetRotation!!.yaw
             mc.thePlayer.rotationYawHead = targetRotation!!.yaw
@@ -124,7 +126,10 @@ object RotationUtils : MinecraftInstance(), Listenable {
             lastRotations = Rotation(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch)
         }
 
-        rotations = Rotation(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch)
+        if(keepLength <= 0) {
+            rotations = Rotation(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch)
+            keepLength = 0
+        }
         smoothed = false
     }
 
@@ -144,19 +149,21 @@ object RotationUtils : MinecraftInstance(), Listenable {
      */
     @JvmOverloads
     fun setRotations(
-        rotation: Rotation?,
+        rotation: Rotation,
         keepLength: Int,
         speed: Float = 180f,
-        fixType: MovementFixType = MovementFixType.NONE
+        fixType: MovementFixType = MovementFixType.NONE,
+        silent: Boolean = false
     ) {
-        if(rotation!!.isNan()){
+        if(rotation.isNan()){
             return
         }
 
-        this.type = fixType
+        this.type = if(silent) fixType else MovementFixType.NONE
         this.rotationSpeed = speed
         this.rotations = rotation
         this.keepLength = keepLength
+        this.silent = silent
         active = true
 
         smooth()

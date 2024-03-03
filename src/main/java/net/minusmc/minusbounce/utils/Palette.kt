@@ -29,16 +29,5 @@ enum class Palette(private val colorSupplier: Supplier<Color>) {
             hsb[2] = brightness % 2.0f
             return Color(Color.HSBtoRGB(hsb[0], hsb[1], hsb[2]))
         }
-
-        fun fade2(color: Color, index: Int, count: Int): Color {
-            val hsb = FloatArray(3)
-            Color.RGBtoHSB(color.red, color.green, color.blue, hsb)
-            var brightness =
-                abs((((System.currentTimeMillis() % 2000L).toFloat() / 1000.0f + index.toFloat() / count.toFloat() * 2.0f) % 2.0f - 1.0f).toDouble())
-                    .toFloat()
-            brightness = 0.5f + 0.5f * brightness
-            hsb[2] = brightness % 2.0f
-            return Color(Color.HSBtoRGB(hsb[0], hsb[1], hsb[2]))
-        }
     }
 }

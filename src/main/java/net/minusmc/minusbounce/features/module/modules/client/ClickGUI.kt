@@ -5,14 +5,11 @@
  */
 package net.minusmc.minusbounce.features.module.modules.client
 
-import net.minusmc.minusbounce.MinusBounce
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
-import net.minusmc.minusbounce.ui.client.clickgui.ClickGui
-import net.minusmc.minusbounce.utils.ClassUtils
+import net.minusmc.minusbounce.ui.client.clickgui.dropdown.DropDownClickGui
 import net.minusmc.minusbounce.utils.render.ColorUtils
-import net.minusmc.minusbounce.utils.render.RenderUtils
 import net.minusmc.minusbounce.value.BoolValue
 import net.minusmc.minusbounce.value.FloatValue
 import net.minusmc.minusbounce.value.IntegerValue
@@ -55,7 +52,7 @@ object ClickGUI: Module() {
         }
 
     fun changeClickGui() {
-        mc.displayGuiScreen(ClickGui())
+        mc.displayGuiScreen(DropDownClickGui())
     }
 
     override fun onEnable() {

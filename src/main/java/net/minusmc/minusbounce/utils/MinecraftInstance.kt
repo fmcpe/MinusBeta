@@ -17,8 +17,6 @@ open class MinecraftInstance {
             get() = (mc.thePlayer as IEntityPlayerSP).serverRotation
 
         val playerRotation: Rotation?
-            get() = (mc.thePlayer as IEntityPlayerSP).playerRotation // a dm
-        // m o gui thi lam deo j co player
-        //thi t o gui lam deo gi co serverRotation
+            get() = (mc.thePlayer as IEntityPlayerSP).playerRotation
     }
 }

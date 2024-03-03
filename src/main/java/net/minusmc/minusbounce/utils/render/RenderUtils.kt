@@ -1273,6 +1273,13 @@ object RenderUtils : MinecraftInstance() {
         drawBorder(x, y, x2, y2, width, color1)
     }
 
+    //Insane override func xd
+    fun drawBorderedRect(
+        x: Number, y: Number, x2: Number, y2: Number, width: Number,
+        color1: Int, color2: Int
+    ){
+        drawBorderedRect(x.toFloat(), y.toFloat(), x2.toFloat(), y2.toFloat(), width.toFloat(), color1, color2)
+    }
     fun drawBorder(x: Float, y: Float, x2: Float, y2: Float, width: Float, color1: Int) {
         GL11.glEnable(GL11.GL_BLEND)
         GL11.glDisable(GL11.GL_TEXTURE_2D)

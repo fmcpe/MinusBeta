@@ -11,6 +11,7 @@ package net.minusmc.minusbounce.utils.extensions
 import net.minecraft.client.gui.ScaledResolution
 import net.minecraft.entity.Entity
 import net.minecraft.util.AxisAlignedBB
+import net.minecraft.util.BlockPos
 import net.minecraft.util.Vec3
 import net.minecraft.util.Vec3i
 import net.minusmc.minusbounce.utils.Rotation
@@ -78,14 +79,18 @@ fun tanR(n: Float): Double = kotlin.math.tan(n.toRadiansD())
  * `vec + othervec`, `vec - othervec`, `vec * number`, `vec / number`
  * */
 operator fun Vec3.plus(num: Double): Vec3 = add(Vec3(num, num, num))
+fun Vec3.plus(x: Double, y: Double, z: Double): Vec3 = add(Vec3(x, y, z))
 operator fun Vec3.plus(vec: Vec3): Vec3 = add(vec)
 operator fun Vec3.minus(vec: Vec3): Vec3 = subtract(vec)
 operator fun Vec3.times(number: Double) = Vec3(xCoord * number, yCoord * number, zCoord * number)
 operator fun Vec3.div(number: Double) = times(1 / number)
-fun Vec3.plus(x: Double, y: Double, z: Double): Vec3 = add(Vec3(x, y, z))
+
+operator fun Vec3i.plus(n: Double) = Vec3i(x + n, y + n, z + n)
+operator fun Vec3i.times(n: Double) = Vec3i(x * n, y * n, z * n)
 
 fun Vec3.toFloatTriple() = Triple(xCoord.toFloat(), yCoord.toFloat(), zCoord.toFloat())
 fun AxisAlignedBB.expand(d: Double): AxisAlignedBB = expand(d, d, d)
+operator fun BlockPos.plus(i: Int): BlockPos = add(i, i, i)
 
 fun Float.toRadians() = this * 0.01745329251f
 fun Float.toRadiansD() = toRadians().toDouble()

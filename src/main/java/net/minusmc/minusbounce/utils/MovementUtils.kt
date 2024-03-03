@@ -7,12 +7,8 @@ package net.minusmc.minusbounce.utils
 
 import net.minecraft.potion.Potion
 import net.minecraft.block.BlockAir
-import net.minusmc.minusbounce.MinusBounce
 import net.minusmc.minusbounce.event.*
-import net.minusmc.minusbounce.features.module.modules.movement.TargetStrafe
-import net.minusmc.minusbounce.utils.*
 import net.minusmc.minusbounce.utils.block.BlockUtils
-import net.minecraft.util.*
 import kotlin.math.*
 
 object MovementUtils : MinecraftInstance(), Listenable {
@@ -86,20 +82,10 @@ object MovementUtils : MinecraftInstance(), Listenable {
         )
     }
 
-    fun getDirection(): Double {
-        val ts = MinusBounce.moduleManager[TargetStrafe::class.java]!!
-        return if (ts.canStrafe) 
-            ts.getMovingDir()
-        else
-            getRawDirection()
-    }
+    fun getDirection() = getRawDirection()
 
     fun getRawDirection(): Double {
         return getDirectionRotation(mc.thePlayer.rotationYaw, mc.thePlayer.moveStrafing, mc.thePlayer.moveForward).toDouble()
-    }
-
-    fun getRawDirection(yaw: Float): Float {
-        return getDirectionRotation(yaw, mc.thePlayer.moveStrafing, mc.thePlayer.moveForward).toFloat()
     }
 
     fun getRawDirection(yaw: Float, strafe: Float, forward: Float): Float {

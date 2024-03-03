@@ -18,9 +18,7 @@ import net.minusmc.minusbounce.event.JumpEvent;
 import net.minusmc.minusbounce.event.LookEvent;
 import net.minusmc.minusbounce.features.module.modules.client.Animations;
 import net.minusmc.minusbounce.features.module.modules.movement.NoJumpDelay;
-import net.minusmc.minusbounce.features.module.modules.movement.TargetStrafe;
 import net.minusmc.minusbounce.features.module.modules.render.AntiBlind;
-import net.minusmc.minusbounce.utils.RotationUtils;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
@@ -97,19 +95,11 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
      */
     @Overwrite
     protected void jump() {
-        final TargetStrafe targetStrafe = MinusBounce.moduleManager.getModule(TargetStrafe.class);
         final JumpEvent event = new JumpEvent(this.getJumpUpwardsMotion(), this.rotationYaw);
 
         MinusBounce.eventManager.callEvent(event);
         if (event.isCancelled()) {
             return;
-        }
-
-        float yaw = event.getYaw();
-
-        assert targetStrafe != null;
-        if (targetStrafe.getCanStrafe()) {
-            yaw = targetStrafe.getMovingYaw();
         }
 
         this.motionY = event.getMotion();
@@ -119,7 +109,7 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
         }
 
         if (this.isSprinting()) {
-            final float f = yaw * 0.017453292F;
+            final float f = event.getYaw() * 0.017453292F;
             this.motionX -= (double) (MathHelper.sin(f) * 0.2F);
             this.motionZ += (double) (MathHelper.cos(f) * 0.2F);
         }
