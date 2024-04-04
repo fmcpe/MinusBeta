@@ -10,6 +10,7 @@ import net.minusmc.minusbounce.features.command.Command
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
 import net.minusmc.minusbounce.utils.ClientUtils
+import java.util.*
 
 class HideCommand : Command("hide", emptyArray()) {
 
@@ -18,7 +19,7 @@ class HideCommand : Command("hide", emptyArray()) {
      */
     override fun execute(args: Array<String>) {
         if (args.size > 1) {
-            when (args[1].toLowerCase()) {
+            when (args[1].lowercase(Locale.getDefault())) {
                 "list" -> {
                     chat("§c§lHidden")
                     MinusBounce.moduleManager.modules.filter { !it.array }.forEach {

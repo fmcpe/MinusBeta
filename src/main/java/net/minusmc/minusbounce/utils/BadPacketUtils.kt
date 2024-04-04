@@ -38,8 +38,7 @@ object BadPacketUtils : MinecraftInstance(), Listenable {
 
     @EventTarget
     fun onPacket(event: PacketEvent){
-        val packet = event.packet
-        when (packet) {
+        when (val packet = event.packet) {
             is C09PacketHeldItemChange -> slot = true
             is C0APacketAnimation -> swing = true
             is C02PacketUseEntity -> attack = true

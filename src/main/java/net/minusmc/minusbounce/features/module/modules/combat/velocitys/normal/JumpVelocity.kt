@@ -7,6 +7,7 @@ import net.minecraft.util.MathHelper
 
 class JumpVelocity : VelocityMode("Jump") {
     override fun onPacket(event: PacketEvent) {
+        mc.thePlayer ?: return
         if (event.packet is S12PacketEntityVelocity) {
             if (mc.thePlayer.hurtTime > 0 && mc.thePlayer.onGround) {
                 mc.thePlayer.motionY = 0.42

@@ -119,7 +119,7 @@ class TargetMark : Module() {
                 return
             }
             val colour = getColor(entity)
-            val r = colour!!.red / 255.0f
+            val r = colour.red / 255.0f
             val g = colour.green / 255.0f
             val b = colour.blue / 255.0f
             pre3D()
@@ -144,7 +144,7 @@ class TargetMark : Module() {
             ) currentTarget?.let {
                 RenderUtils.drawPlatform(
                     it,
-                    if (aura!!.hitable) ColorUtils.reAlpha(getColor(currentTarget)!!, colorAlphaValue.get()) else Color(
+                    if (aura!!.hitable) ColorUtils.reAlpha(getColor(currentTarget), colorAlphaValue.get()) else Color(
                         255,
                         0,
                         0,
@@ -157,7 +157,7 @@ class TargetMark : Module() {
             ) currentTarget?.let {
                 RenderUtils.drawEntityBox(
                     it,
-                    if (aura!!.hitable) ColorUtils.reAlpha(getColor(currentTarget)!!, colorAlphaValue.get()) else Color(
+                    if (aura!!.hitable) ColorUtils.reAlpha(getColor(currentTarget), colorAlphaValue.get()) else Color(
                         255,
                         0,
                         0,
@@ -169,7 +169,7 @@ class TargetMark : Module() {
         }
     }
 
-    fun getColor(ent: Entity?): Color? {
+    fun getColor(ent: Entity?): Color {
         if (ent is EntityLivingBase) {
             if (colorModeValue.get().equals("Health", true)) return BlendUtils.getHealthColor(
                 ent.health,

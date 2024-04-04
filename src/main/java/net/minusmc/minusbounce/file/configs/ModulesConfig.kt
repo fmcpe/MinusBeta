@@ -22,7 +22,7 @@ class ModulesConfig(file: File?) : FileConfig(file!!) {
         val jsonElement = JsonParser().parse(BufferedReader(FileReader(file)))
         if (jsonElement is JsonNull) return
         val entryIterator: Iterator<Map.Entry<String, JsonElement>> =
-            jsonElement.getAsJsonObject().entrySet().iterator()
+            jsonElement.asJsonObject.entrySet().iterator()
         while (entryIterator.hasNext()) {
             val (key, value) = entryIterator.next()
             val module = MinusBounce.moduleManager.getModule(key)

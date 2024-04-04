@@ -130,5 +130,5 @@ abstract class Panel(val name: String, var x: Int, var y: Int, val width: Int, v
     }
 
     private val maxElements: Int
-        get() = MinusBounce.moduleManager[ClickGUI::class.java!!]!!.maxElementsValue.get()
+        get() = MinusBounce.moduleManager[ClickGUI::class.java]!!.maxElementsValue.get()
 }

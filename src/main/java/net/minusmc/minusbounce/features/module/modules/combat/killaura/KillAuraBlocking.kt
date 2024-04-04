@@ -9,11 +9,11 @@ import net.minusmc.minusbounce.MinusBounce
 
 abstract class KillAuraBlocking(val modeName: String): MinecraftInstance() {
 	protected val killAura: KillAura
-		get() = MinusBounce.moduleManager[KillAura::class.java]!!
+        get() = MinusBounce.moduleManager[KillAura::class.java]!!
 		 
 	protected var blockingStatus: Boolean
 		get() = killAura.blockingStatus
-		set(value: Boolean) {
+		set(value) {
 			killAura.blockingStatus = value
 		}
 

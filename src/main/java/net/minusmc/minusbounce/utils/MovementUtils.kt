@@ -14,8 +14,6 @@ import kotlin.math.*
 object MovementUtils : MinecraftInstance(), Listenable {
     private var lastX = -999999.0
     private var lastZ = -999999.0
-    var offGroundTicks = 0
-    var AABBOffGroundticks = 0
 
     @EventTarget
     fun onUpdate(event: PreUpdateEvent) {

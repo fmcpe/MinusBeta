@@ -127,7 +127,7 @@ public abstract class MixinEntityRenderer {
                     GlStateManager.rotate(entity.prevRotationPitch + (entity.rotationPitch - entity.prevRotationPitch) * partialTicks, -1.0F, 0.0F, 0.0F);
                 }
             }else if(this.mc.gameSettings.thirdPersonView > 0) {
-                double d3 = (double) (this.thirdPersonDistanceTemp + (this.thirdPersonDistance - this.thirdPersonDistanceTemp) * partialTicks);
+                double d3 = this.thirdPersonDistanceTemp + (this.thirdPersonDistance - this.thirdPersonDistanceTemp) * partialTicks;
 
                 if(this.mc.gameSettings.debugCamEnable) {
                     GlStateManager.translate(0.0F, 0.0F, (float) (-d3));
@@ -204,7 +204,7 @@ public abstract class MixinEntityRenderer {
         {
             if (this.mc.theWorld != null)
             {   
-                final Reach reach = (Reach) MinusBounce.moduleManager.getModule(Reach.class);
+                final Reach reach = MinusBounce.moduleManager.getModule(Reach.class);
 
                 this.mc.mcProfiler.startSection("pick");
                 this.mc.pointedEntity = null;
@@ -245,7 +245,7 @@ public abstract class MixinEntityRenderer {
                 this.pointedEntity = null;
                 Vec3 vec33 = null;
                 float f = 1.0F;
-                List<Entity> list = this.mc.theWorld.getEntitiesInAABBexcluding(entity, entity.getEntityBoundingBox().addCoord(vec31.xCoord * d0, vec31.yCoord * d0, vec31.zCoord * d0).expand((double)f, (double)f, (double)f), Predicates.and(EntitySelectors.NOT_SPECTATING, new Predicate<Entity>()
+                List<Entity> list = this.mc.theWorld.getEntitiesInAABBexcluding(entity, entity.getEntityBoundingBox().addCoord(vec31.xCoord * d0, vec31.yCoord * d0, vec31.zCoord * d0).expand(f, f, f), Predicates.and(EntitySelectors.NOT_SPECTATING, new Predicate<Entity>()
                 {
                     public boolean apply(Entity p_apply_1_)
                     {
@@ -256,9 +256,9 @@ public abstract class MixinEntityRenderer {
 
                 for (int j = 0; j < list.size(); ++j)
                 {
-                    Entity entity1 = (Entity)list.get(j);
+                    Entity entity1 = list.get(j);
                     float f1 = entity1.getCollisionBorderSize();
-                    AxisAlignedBB axisalignedbb = entity1.getEntityBoundingBox().expand((double)f1, (double)f1, (double)f1);
+                    AxisAlignedBB axisalignedbb = entity1.getEntityBoundingBox().expand(f1, f1, f1);
                     MovingObjectPosition movingobjectposition = axisalignedbb.calculateIntercept(vec3, vec32);
 
                     if (axisalignedbb.isVecInside(vec3))
@@ -297,7 +297,7 @@ public abstract class MixinEntityRenderer {
                 if (this.pointedEntity != null && flag && vec3.distanceTo(vec33) > vecCombat)
                 {
                     this.pointedEntity = null;
-                    this.mc.objectMouseOver = new MovingObjectPosition(MovingObjectPosition.MovingObjectType.MISS, vec33, (EnumFacing)null, new BlockPos(vec33));
+                    this.mc.objectMouseOver = new MovingObjectPosition(MovingObjectPosition.MovingObjectType.MISS, vec33, null, new BlockPos(vec33));
                 }
 
                 if (this.pointedEntity != null && (d2 < d1 || this.mc.objectMouseOver == null))

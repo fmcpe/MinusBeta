@@ -11,7 +11,7 @@ class NCPTower: TowerScaffold("NCP") {
 		if (mc.thePlayer.posY % 1 <= 0.00153598) {
 	        mc.thePlayer.setPosition(mc.thePlayer.posX, truncate(mc.thePlayer.posY), mc.thePlayer.posZ)
 	        mc.thePlayer.motionY = 0.42
-	    } else if (mc.thePlayer.posY % 1 < 0.1 && MovementUtils.offGroundTicks > 0)
+	    } else if (mc.thePlayer.posY % 1 < 0.1 && offGroundTicks > 0)
 	        mc.thePlayer.setPosition(mc.thePlayer.posX, truncate(mc.thePlayer.posY), mc.thePlayer.posZ)
 	}
 }

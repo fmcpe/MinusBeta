@@ -105,10 +105,10 @@ class FollowTargetHud : Module() {
     private fun renderNameTag(entity: EntityLivingBase, tag: String) {
         xChange = translateX.get() * 20
 
-        if (entity != MinusBounce.combatManager.target && entity.getName() != entityKeep) {
+        if (entity != MinusBounce.combatManager.target && entity.name != entityKeep) {
             return
         } else if ( entity == MinusBounce.combatManager.target) {
-            entityKeep = entity.getName()
+            entityKeep = entity.name
             targetTicks++
             if (targetTicks >= zoomTicks.get() + 2) {
                 targetTicks = zoomTicks.get() + 1
@@ -282,11 +282,11 @@ class FollowTargetHud : Module() {
                     if (!fdpText.get()) addedLen = 110f
 
                     if (fdpRed.get()) {
-                        RenderUtils.drawRect(0f + xChange, 0f, addedLen + xChange, 47f, Color(212, 63, 63, 90).rgb)
-                        RenderUtils.drawRoundedRect(0f + xChange, 0f, healthPercent * addedLen + xChange, 47f, 3f, Color(245, 52, 27, 90).rgb)
+                        drawRect(0f + xChange, 0f, addedLen + xChange, 47f, Color(212, 63, 63, 90).rgb)
+                        drawRoundedRect(0f + xChange, 0f, healthPercent * addedLen + xChange, 47f, 3f, Color(245, 52, 27, 90).rgb)
                     } else {
-                        RenderUtils.drawRect(0f + xChange, 0f, addedLen + xChange, 47f, Color(0, 0, 0, 120).rgb)
-                        RenderUtils.drawRoundedRect(0f + xChange, 0f, healthPercent * addedLen + xChange, 47f, 3f, Color(0, 0, 0, 90).rgb)
+                        drawRect(0f + xChange, 0f, addedLen + xChange, 47f, Color(0, 0, 0, 120).rgb)
+                        drawRoundedRect(0f + xChange, 0f, healthPercent * addedLen + xChange, 47f, 3f, Color(0, 0, 0, 90).rgb)
                     }
 
                     drawShadow(0f, 0f, addedLen + xChange, 47f)
@@ -298,11 +298,11 @@ class FollowTargetHud : Module() {
                     }
                 } else {
                     if (fdpRed.get()) {
-                        RenderUtils.drawRect(0f + xChange, 0f, 47f + xChange, 120f + xChange, Color(212, 63, 63, 90).rgb)
-                        RenderUtils.drawRoundedRect(healthPercent*120f + xChange, 0f, 47f + xChange, 0f, 3f, Color(245, 52, 27, 90).rgb)
+                        drawRect(0f + xChange, 0f, 47f + xChange, 120f + xChange, Color(212, 63, 63, 90).rgb)
+                        drawRoundedRect(healthPercent*120f + xChange, 0f, 47f + xChange, 0f, 3f, Color(245, 52, 27, 90).rgb)
                     } else {
-                        RenderUtils.drawRect(0f + xChange, 0f, 47f + xChange, 120f, Color(0, 0, 0, 120).rgb)
-                        RenderUtils.drawRoundedRect(0f + xChange, 0f, 47f + xChange, healthPercent * 120f, 3f, Color(0, 0, 0, 90).rgb)
+                        drawRect(0f + xChange, 0f, 47f + xChange, 120f, Color(0, 0, 0, 120).rgb)
+                        drawRoundedRect(0f + xChange, 0f, 47f + xChange, healthPercent * 120f, 3f, Color(0, 0, 0, 90).rgb)
                     }
                 }
 

@@ -137,11 +137,11 @@ class Arraylist(x: Double = 1.0, y: Double = 2.0, scale: Float = 1F,
                     "slide" -> {
                         if (module.state) {
                             if (module.slide < width) {
-                                module.slide = net.minusmc.minusbounce.utils.render.AnimationUtils.animate(width.toDouble(), module.slide.toDouble(), animationSpeed.get().toDouble() * 0.025 * delta.toDouble()).toFloat()
+                                module.slide = AnimationUtils.animate(width.toDouble(), module.slide.toDouble(), animationSpeed.get().toDouble() * 0.025 * delta.toDouble()).toFloat()
                                 module.slideStep = delta / 1F
                             }
                         } else if (module.slide > 0) {
-                            module.slide = net.minusmc.minusbounce.utils.render.AnimationUtils.animate(-width.toDouble(), module.slide.toDouble(), animationSpeed.get().toDouble() * 0.025 * delta.toDouble()).toFloat()
+                            module.slide = AnimationUtils.animate(-width.toDouble(), module.slide.toDouble(), animationSpeed.get().toDouble() * 0.025 * delta.toDouble()).toFloat()
                             module.slideStep = 0F
                         }
                     }
@@ -190,7 +190,7 @@ class Arraylist(x: Double = 1.0, y: Double = 2.0, scale: Float = 1F,
                             }
                         }
                     }
-                    "slide", "rise" -> module.arrayY = net.minusmc.minusbounce.utils.render.AnimationUtils.animate(yPos.toDouble(), module.arrayY.toDouble(), animationSpeed.get().toDouble() * 0.025 * delta.toDouble()).toFloat()
+                    "slide", "rise" -> module.arrayY = AnimationUtils.animate(yPos.toDouble(), module.arrayY.toDouble(), animationSpeed.get().toDouble() * 0.025 * delta.toDouble()).toFloat()
                     "astolfo" -> {
                         if (module.arrayY < yPos) {
                             module.arrayY += animationSpeed.get() / 2F * delta

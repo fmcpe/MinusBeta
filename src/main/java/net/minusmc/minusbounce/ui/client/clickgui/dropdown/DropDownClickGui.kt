@@ -37,7 +37,7 @@ class DropDownClickGui: GuiScreen() {
 	var mouseDown = false
     var rightMouseDown = false
     val guiColor: Int
-        get() = ClickGUI.accentColor!!.rgb
+        get() = accentColor!!.rgb
 
     var yPos = 0
 
@@ -87,7 +87,7 @@ class DropDownClickGui: GuiScreen() {
 
         when (clickGuiModule.backgroundValue.get().lowercase()) {
             "default" -> drawDefaultBackground()
-            "gradient" -> drawGradientRect(0, 0, width, height, ColorUtils.reAlpha(ClickGUI.accentColor!!, clickGuiModule.gradEndValue.get()).rgb, ColorUtils.reAlpha(ClickGUI.accentColor!!, clickGuiModule.gradStartValue.get()).rgb)
+            "gradient" -> drawGradientRect(0, 0, width, height, ColorUtils.reAlpha(accentColor!!, clickGuiModule.gradEndValue.get()).rgb, ColorUtils.reAlpha(accentColor!!, clickGuiModule.gradStartValue.get()).rgb)
         }
 
         GlStateManager.disableAlpha()

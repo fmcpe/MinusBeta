@@ -21,6 +21,7 @@ import net.minecraft.util.EnumFacing
 import net.minecraft.network.play.client.C0APacketAnimation
 import net.minecraft.network.play.client.C09PacketHeldItemChange
 import net.minecraft.network.play.server.S08PacketPlayerPosLook
+import net.minecraft.util.Vec3
 
 
 class WatchdogFly: FlyMode("Watchdog", FlyType.OTHER) {
@@ -67,7 +68,7 @@ class WatchdogFly: FlyMode("Watchdog", FlyType.OTHER) {
 
             mc.thePlayer.motionY = -0.0015
         } else if (wdState < 3) {
-            val rot = RotationUtils.getRotationFromPosition(mc.thePlayer.posX, mc.thePlayer.posZ, mc.thePlayer.posY - 1)
+            val rot = RotationUtils.toRotation(Vec3(mc.thePlayer.posX, mc.thePlayer.posZ, mc.thePlayer.posY - 1))
             RotationUtils.setRotations(rot)
             event.yaw = rot.yaw
             event.pitch = rot.pitch
@@ -82,7 +83,7 @@ class WatchdogFly: FlyMode("Watchdog", FlyType.OTHER) {
                 mc.thePlayer.inventoryContainer.getSlot(expectItemStack).stack, 
                 BlockPos(mc.thePlayer.posX, mc.thePlayer.posY - 2, mc.thePlayer.posZ), 
                 EnumFacing.UP, 
-                RotationUtils.getVectorForRotation(RotationUtils.getRotationFromPosition(mc.thePlayer.posX, mc.thePlayer.posZ, mc.thePlayer.posY - 1))))
+                RotationUtils.getVectorForRotation(RotationUtils.toRotation(Vec3(mc.thePlayer.posX, mc.thePlayer.posZ, mc.thePlayer.posY - 1)))))
                 mc.netHandler.addToSendQueue(C0APacketAnimation())
             wdState = 3
         }

@@ -17,7 +17,7 @@ object ClassUtils {
     val capeFiles = mutableListOf<String>()
 
     fun initCacheClass() {
-        val files = Loader.instance().discoverer.getNonModLibs()
+        val files = Loader.instance().discoverer.nonModLibs
         val jarFiles = files.filter { it.extension.equals("jar", true) }
         jarFiles.forEach {
             val jarFile = JarFile(it)

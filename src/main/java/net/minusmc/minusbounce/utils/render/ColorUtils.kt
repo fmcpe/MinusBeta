@@ -120,7 +120,7 @@ object ColorUtils {
     @JvmStatic
     fun TwoRainbow(offset: Long, alpha: Float): Color {
         var currentColor = Color(Color.HSBtoRGB((System.nanoTime() + offset) / 8.9999999E10F % 1, 0.75F, 0.8F))
-        return Color(currentColor.getRed() / 255.0F * 1.0F, currentColor.getGreen() / 255.0F * 1.0F, currentColor.getBlue() / 255.0F * 1.0F, alpha)
+        return Color(currentColor.red / 255.0F * 1.0F, currentColor.green / 255.0F * 1.0F, currentColor.blue / 255.0F * 1.0F, alpha)
     }
 
     @JvmStatic
@@ -148,7 +148,7 @@ object ColorUtils {
         glColor4f(r, g, b, a)
     }
     @JvmStatic
-    fun getColor(n: Int): String? {
+    fun getColor(n: Int): String {
         if (n != 1) {
             if (n == 2) {
                 return "\u00a7a"

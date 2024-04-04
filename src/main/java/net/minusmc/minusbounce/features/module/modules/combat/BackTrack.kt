@@ -1,482 +1,253 @@
-/*
- * MinusBounce Hacked Client
- * A free open source mixin-based injection hacked client for Minecraft using Minecraft Forge.
- * https://github.com/MinusMC/MinusBounce
- */
 package net.minusmc.minusbounce.features.module.modules.combat
 
+import net.minecraft.entity.EntityLivingBase
+import net.minecraft.network.Packet
+import net.minecraft.network.play.client.C0FPacketConfirmTransaction
+import net.minecraft.network.play.server.*
+import net.minecraft.util.Vec3
 import net.minusmc.minusbounce.MinusBounce
-import net.minusmc.minusbounce.event.*
+import net.minusmc.minusbounce.event.EventTarget
+import net.minusmc.minusbounce.event.PacketEvent
+import net.minusmc.minusbounce.event.PostMotionEvent
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
-import net.minusmc.minusbounce.ui.client.hud.element.elements.Notification
 import net.minusmc.minusbounce.utils.EntityUtils
-import net.minusmc.minusbounce.utils.PacketUtils
-import net.minusmc.minusbounce.utils.Rotation
-import net.minusmc.minusbounce.utils.extensions.*
-import net.minusmc.minusbounce.utils.render.RenderUtils
 import net.minusmc.minusbounce.utils.timer.MSTimer
 import net.minusmc.minusbounce.value.BoolValue
 import net.minusmc.minusbounce.value.FloatValue
 import net.minusmc.minusbounce.value.IntegerValue
-import net.minusmc.minusbounce.value.ListValue
-import net.minecraft.client.entity.EntityOtherPlayerMP
-import net.minecraft.client.renderer.GlStateManager
-import net.minecraft.entity.Entity
-import net.minecraft.entity.EntityLivingBase
-import net.minecraft.entity.player.EntityPlayer
-import net.minecraft.network.Packet
-import net.minecraft.network.ThreadQuickExitException
-import net.minecraft.network.play.INetHandlerPlayClient
-import net.minecraft.network.play.INetHandlerPlayServer
-import net.minecraft.network.play.client.C02PacketUseEntity
-import net.minecraft.network.play.client.C03PacketPlayer
-import net.minecraft.network.play.server.S08PacketPlayerPosLook
-import net.minecraft.network.play.server.S12PacketEntityVelocity
-import net.minecraft.network.play.server.S14PacketEntity
-import net.minecraft.network.play.server.S19PacketEntityStatus
-import net.minecraft.util.AxisAlignedBB
-import net.minecraft.util.Vec3
-import org.lwjgl.opengl.GL11.*
-import java.awt.Color
-import java.util.concurrent.LinkedBlockingQueue
-import kotlin.math.ceil
+import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.math.abs
 
 
-@ModuleInfo(name = "BackTrack", description = "Lets you attack people in their previous locations.", category = ModuleCategory.COMBAT)
+@ModuleInfo("BackTrack", "Back Track", "Let you attack in their previous position", ModuleCategory.COMBAT)
 class BackTrack : Module() {
+    private val delay = IntegerValue("Delay", 500, 100, 2000)
+    private val minRange = FloatValue("Range", 2.8f, 1f, 6f)
 
-    private val minDistance: FloatValue = object : FloatValue("MinDistance", 2.9f, 1f, 4f) {
-        override fun onChanged(oldValue: Float, newValue: Float) {
-            if (newValue > maxStartDistance.get()) set(maxStartDistance.get())
-        }
-    }
-    private val maxStartDistance : FloatValue = object : FloatValue("MaxStartDistance", 3.2f, 2f, 4f) {
-        override fun onChanged(oldValue: Float, newValue: Float) {
-            if (newValue < minDistance.get()) set(minDistance.get())
-            else if (newValue > maxDistance.get()) set(maxDistance.get())
-        }
-    }
-    private val maxDistance: FloatValue = object : FloatValue("MaxActiveDistance", 5f, 2f, 6f) {
-        override fun onChanged(oldValue: Float, newValue: Float) {
-            if (newValue < maxStartDistance.get()) set(maxStartDistance.get())
-        }
-    }
-    private val minTime : IntegerValue = object : IntegerValue("MinTime", 100, 0, 500) {
-        override fun onChanged(oldValue: Int, newValue: Int) {
-            if (newValue > maxTime.get()) set(maxTime.get())
-        }
-    }
-    private val maxTime : IntegerValue = object : IntegerValue("MaxTime", 200, 0, 1000) {
-        override fun onChanged(oldValue: Int, newValue: Int) {
-            if (newValue < minTime.get()) set(minTime.get())
-        }
-    }
-    private val smartPacket = BoolValue("Smart", true)
-    private val maxHurtTime = IntegerValue("MaxHurtTime", 6, 0, 10)
-    private val hurtTimeWithPing = BoolValue("CalculateHurtTimeWithPing", true)
-    private val minAttackReleaseRange = FloatValue("MinAttackReleaseRange", 3.2F, 2f, 6f)
+    private val delayPing = BoolValue("Ping", true)
+    private val delayVelocity = BoolValue("Velocity", true) { delayPing.get() }
 
-    private val onlyKillAura = BoolValue("OnlyKillAura", true)
-    private val onlyPlayer = BoolValue("OnlyPlayer", true)
-    private val resetOnVelocity = BoolValue("ResetOnVelocity", true)
-    private val resetOnLagging = BoolValue("ResetOnLagging", true)
-    private val rangeCheckMode = ListValue("RangeCheckMode", arrayOf("RayCast", "DirectDistance"), "DirectDistance")
+    private val delayedPackets = CopyOnWriteArrayList<DelayedPacket>()
 
-    private val reverse = BoolValue("Reverse", false)
-    private val reverseRange = FloatValue("ReverseStartRange", 2.9f, 1f, 6f)
+    private var lastTarget: EntityLivingBase? = null
 
-    private val reverseMaxRange = FloatValue("ReverseMaxRange", 3.0f, 1f, 6f)
-    private val reverseSelfMaxHurtTime = IntegerValue("ReverseSelfMaxHurtTime", 1, 0, 10)
-    private val reverseTargetMaxHurtTime = IntegerValue("ReverseTargetMaxHurtTime", 10, 0, 10)
-    private val maxReverseTime = IntegerValue("MaxReverseTime", 100, 1, 500)
+    private var lastCursorTarget: EntityLivingBase? = null
 
-    private val espMode = ListValue("ESPMode", arrayOf("FullBox", "OutlineBox", "NormalBox", "OtherOutlineBox", "OtherFullBox", "Model", "None"), "Box")
+    private var cursorTargetTicks = 0
 
-    private val storageSendPackets = ArrayList<Packet<INetHandlerPlayServer>>()
-    private val storagePackets = ArrayList<Packet<INetHandlerPlayClient>>()
-    private val storageEntities = ArrayList<Entity>()
+    private var lastVelocity: Vec3? = null
 
-    private val killAura = MinusBounce.moduleManager.getModule(KillAura::class.java)
-    private var timer = MSTimer()
-    private val reverseTimer = MSTimer()
-    private var hasAttackInReversing = false
-    private var lastPosition = Vec3(0.0, 0.0, 0.0)
-    private var attacked : Entity? = null
-
-    private val packets = LinkedBlockingQueue<Packet<INetHandlerPlayServer>>()
-
-    var needFreeze = false
-    var reversing = false
-
-    @EventTarget(priority = -1)
     fun onPacket(event: PacketEvent) {
-        mc.thePlayer ?: return
         val packet = event.packet
-        val theWorld = mc.theWorld!!
-        if (packet.javaClass.name.contains("net.minecraft.network.play.server.", true)) {
-            if (packet is S14PacketEntity) {
-                val entity = packet.getEntity(theWorld) ?: return
-                if (entity !is EntityLivingBase) return
-                if (onlyPlayer.get() && entity !is EntityPlayer) return
-                entity.serverPosX += packet.func_149062_c().toInt()
-                entity.serverPosY += packet.func_149061_d().toInt()
-                entity.serverPosZ += packet.func_149064_e().toInt()
-                val x = entity.serverPosX.toDouble() / 32.0
-                val y = entity.serverPosY.toDouble() / 32.0
-                val z = entity.serverPosZ.toDouble() / 32.0
-                if ((!onlyKillAura.get() || killAura!!.state || needFreeze) && EntityUtils.isSelected(entity, true)) {
-                    val afterBB = AxisAlignedBB(x - 0.4F, y - 0.1F, z - 0.4F, x + 0.4F, y + 1.9F, z + 0.4F)
-                    var afterRange: Double
-                    var beforeRange: Double
-                    if (rangeCheckMode.get() == "RayCast") {
-                        afterRange = afterBB.getLookingTargetRange(mc.thePlayer!!)
-                        beforeRange = entity.getLookDistanceToEntityBox()
-                        if (afterRange == Double.MAX_VALUE) {
-                            val eyes = mc.thePlayer!!.getPositionEyes(1F)
-                            afterRange = getNearestPointBB(eyes, afterBB).distanceTo(eyes) + 0.075
-                        }
-                        if (beforeRange == Double.MAX_VALUE) beforeRange =
-                            mc.thePlayer!!.getDistanceToEntityBox(entity) + 0.075
-                    } else {
-                        val eyes = mc.thePlayer!!.getPositionEyes(1F)
-                        afterRange = getNearestPointBB(eyes, afterBB).distanceTo(eyes)
-                        beforeRange = mc.thePlayer!!.getDistanceToEntityBox(entity)
-                    }
-
-                    if (beforeRange <= maxStartDistance.get()) {
-                        if (afterRange in minDistance.get()..maxDistance.get() && (!smartPacket.get() || afterRange > beforeRange + 0.02) && entity.hurtTime <= calculatedMaxHurtTime) {
-                            if (!needFreeze) {
-                                timer.reset()
-                                needFreeze = true
-                                stopReverse()
-                            }
-                            if (!storageEntities.contains(entity)) storageEntities.add(entity)
-                            event.cancelEvent()
-                            return
-                        }
-                    } else {
-                        if (smartPacket.get()) {
-                            if (afterRange < beforeRange) {
-                                if (needFreeze) releasePackets()
-                            }
-                        }
-                    }
-                }
-                if (needFreeze) {
-                    if (!storageEntities.contains(entity)) storageEntities.add(entity)
-                    event.cancelEvent()
-                    return
-                }
-                if (!event.isCancelled && !needFreeze) {
-                    MinusBounce.eventManager.callEvent(EntityMovementEvent(entity))
-                    val f =
-                        if (packet.func_149060_h()) (packet.func_149066_f() * 360).toFloat() / 256.0f else entity.rotationYaw
-                    val f1 =
-                        if (packet.func_149060_h()) (packet.func_149063_g() * 360).toFloat() / 256.0f else entity.rotationPitch
-                    entity.setPositionAndRotation2(x, y, z, f, f1, 3, false)
-                    entity.onGround = packet.onGround
-                }
-                event.cancelEvent()
-                //                storageEntities.add(entity)
-            } else {
-                if ((packet is S12PacketEntityVelocity && resetOnVelocity.get()) || (packet is S08PacketPlayerPosLook && resetOnLagging.get())) {
-                    storagePackets.add(packet as Packet<INetHandlerPlayClient>)
-                    event.cancelEvent()
-                    releasePackets()
-                    return
-                }
-                if (needFreeze && !event.isCancelled) {
-                    if (packet is S19PacketEntityStatus) {
-                        if (packet.opCode == 2.toByte()) return
-                    }
-                    storagePackets.add(packet as Packet<INetHandlerPlayClient>)
-                    event.cancelEvent()
-                }
+        if (mc.thePlayer == null || mc.thePlayer.ticksExisted < 5) {
+            if (!delayedPackets.isEmpty()) {
+                delayedPackets.clear()
             }
+        }
+
+        if (currentTarget !== lastTarget) {
+            clearPackets()
+        }
+
+        if (currentTarget == null) {
+            clearPackets()
         } else {
-            if (reversing) {
-                event.cancelEvent()
-                storageSendPackets.add(packet as Packet<INetHandlerPlayServer>)
-                if (reverseTimer.hasTimePassed(maxReverseTime.get().toLong())) {
-                    stopReverse()
-                }
-            }
-            if (packet is C02PacketUseEntity) {
-                if (packet.action == C02PacketUseEntity.Action.ATTACK) {
-                    if (needFreeze) attacked = packet.getEntityFromWorld(theWorld)
-                    if (reversing) hasAttackInReversing = true
-                }
-            } else if (packet is C03PacketPlayer) {
-                if (!needFreeze && reverse.get()) {
-                    val vec = Vec3(packet.x, packet.y, packet.z)
-                    MinusBounce.combatManager.target?.let {
-                        val loc = Vec3(it.posX, it.posY + it.eyeHeight, it.posZ)
-                        val bp = getNearestPointBB(loc, mc.thePlayer.entityBoundingBox.expand(0.1, 0.1, 0.1))
-                        val distance = loc.distanceTo(bp)
-                        if (reversing) {
-                            val lastBB = AxisAlignedBB(
-                                lastPosition.xCoord - 0.4f,
-                                lastPosition.yCoord - 0.1f,
-                                lastPosition.zCoord - 0.4f,
-                                lastPosition.xCoord + 0.4f,
-                                lastPosition.yCoord + 1.9f,
-                                lastPosition.zCoord + 0.4f
-                            )
-                            val d = getNearestPointBB(loc, lastBB).distanceTo(loc)
-                            if (distance > d || distance > reverseMaxRange.get() || (it.hurtTime <= (1 + (mc.thePlayer.getPing() / 50.0).toInt()) && hasAttackInReversing)) {
-                                stopReverse()
-                            } else {
-                                val rot = (if (it is EntityOtherPlayerMP) Rotation(
-                                    it.otherPlayerMPYaw.toFloat(), // loi nay check lai scriptapi neu bi thi a xu ly cai nay cho
-                                    it.otherPlayerMPPitch.toFloat()
-                                ) else Rotation(it.rotationYaw, it.rotationPitch)).toDirection().multiply(4.0).add(loc)
-                                val movingObjectPosition = lastBB.calculateIntercept(loc, rot) ?: return@let
-                                val m2 =
-                                    mc.thePlayer.entityBoundingBox.expand(0.11, 0.1, 0.11).calculateIntercept(loc, rot)
-                                if (movingObjectPosition.hitVec != null) {
-                                    val d2 = movingObjectPosition.hitVec.distanceTo(loc)
-                                    if (d2 <= 3.0 && (m2?.hitVec == null || m2.hitVec.distanceTo(loc) > d2)) stopReverse()
-                                }
-                            }
-                        } else if (distance <= reverseRange.get() &&
-                            it.hurtTime <= reverseTargetMaxHurtTime.get() && mc.thePlayer.hurtTime <= reverseSelfMaxHurtTime.get() &&
-                            loc.distanceTo(bp) >= distance && (!onlyKillAura.get() || killAura!!.state)
-                        ) {
-                            reversing = true
-                            lastPosition = vec
-                            hasAttackInReversing = false
-                            reverseTimer.reset()
-                        }
+            if (packet is S14PacketEntity) {
+                if (packet.getEntity(mc.netHandler.clientWorldController) === currentTarget) {
+                    val x = (currentTarget!!.serverPosX + packet.posX) / 32.0
+                    val y = (currentTarget!!.serverPosY + packet.posY) / 32.0
+                    val z = (currentTarget!!.serverPosZ + packet.posZ) / 32.0
+
+                    if (getDistanceCustomPosition(x, y, z, currentTarget!!.eyeHeight.toDouble()) >= minRange.get()
+                    ) {
+                        event.cancelEvent()
+                        delayedPackets.add(DelayedPacket(packet))
                     }
                 }
-            }
-        }
-    }
+            } else if (packet is S18PacketEntityTeleport) {
+                if (packet.entityId == currentTarget!!.entityId) {
+                    val serverX = packet.x.toDouble()
+                    val serverY = packet.y.toDouble()
+                    val serverZ = packet.z.toDouble()
 
-    @EventTarget 
-    fun onPostMotion(event: PostMotionEvent) {
-        if (needFreeze) {
-            if (timer.hasTimePassed(maxTime.get().toLong())) {
-                releasePackets()
-                return
-            }
-            if (storageEntities.isNotEmpty()) {
-                var release = false // for-each
-                for (entity in storageEntities) {
-                    val x = entity.serverPosX.toDouble() / 32.0
-                    val y = entity.serverPosY.toDouble() / 32.0
-                    val z = entity.serverPosZ.toDouble() / 32.0
-                    val entityBB = AxisAlignedBB(x - 0.4F, y -0.1F, z - 0.4F, x + 0.4F, y + 1.9F, z + 0.4F)
-                    var range = entityBB.getLookingTargetRange(mc.thePlayer!!)
-                    if (range == Double.MAX_VALUE) {
-                        val eyes = mc.thePlayer!!.getPositionEyes(1F)
-                        range = getNearestPointBB(eyes, entityBB).distanceTo(eyes) + 0.075
+                    val d0 = serverX / 32.0
+                    val d1 = serverY / 32.0
+                    val d2 = serverZ / 32.0
+
+                    val x: Double
+                    val y: Double
+                    val z: Double
+
+                    if (abs(serverX - d0) < 0.03125 && abs(serverY - d1) < 0.015625 && abs(
+                            serverZ - d2
+                        ) < 0.03125
+                    ) {
+                        x = currentTarget!!.posX
+                        y = currentTarget!!.posY
+                        z = currentTarget!!.posZ
+                    } else {
+                        x = d0
+                        y = d1
+                        z = d2
                     }
-                    if (range <= minDistance.get()) {
-                        release = true
-                        break
+
+                    if (getDistanceCustomPosition(
+                            x,
+                            y,
+                            z,
+                            currentTarget!!.eyeHeight.toDouble()
+                        ) >= minRange.get()
+                    ) {
+                        event.cancelEvent()
+                        delayedPackets.add(DelayedPacket(packet))
                     }
-                    val entity1 = attacked
-                    if (entity1 != entity) continue
-                    if (timer.hasTimePassed(minTime.get().toLong())) {
-                        if (range >= minAttackReleaseRange.get()) {
-                            release = true
-                            break
-                        }
-                    }
                 }
-                if (release) releasePackets()
-            }
-        }
-    }
-
-    @EventTarget
-    fun onWorld(event: WorldEvent) {
-        attacked = null
-        storageEntities.clear()
-        if (event.worldClient == null) storagePackets.clear()
-    }
-
-    @EventTarget
-    fun onRender3D(event: Render3DEvent) {
-        if (reversing) {
-            val renderManager = mc.renderManager
-
-            val vec = lastPosition.addVector(-renderManager.renderPosX, -renderManager.renderPosY, -renderManager.renderPosZ)
-            RenderUtils.drawAxisAlignedBB(AxisAlignedBB(vec.xCoord - 0.4, vec.yCoord + 0.2, vec.zCoord - 0.4, vec.xCoord + 0.4, vec.yCoord, vec.zCoord + 0.4), Color(37, 126, 255, 70))
-        }
-
-        if (espMode.get() == "None" || !needFreeze) return
-
-        if (espMode.get() == "Model") {
-            glPushMatrix()
-            glDisable(GL_TEXTURE_2D)
-            glDisable(GL_DEPTH_TEST)
-            GlStateManager.disableAlpha()
-            for (entity in storageEntities) {
-                if (entity !is EntityOtherPlayerMP) return
-                val mp = EntityOtherPlayerMP(mc.theWorld, entity.gameProfile)
-                mp.posX = entity.serverPosX / 32.0
-                mp.posY = entity.serverPosY / 32.0
-                mp.posZ = entity.serverPosZ / 32.0
-                mp.prevPosX = mp.posX
-                mp.prevPosY = mp.posY
-                mp.prevPosZ = mp.posZ
-                mp.lastTickPosX = mp.posX
-                mp.lastTickPosY = mp.posY
-                mp.lastTickPosZ = mp.posZ
-                mp.rotationYaw = entity.rotationYaw
-                mp.rotationPitch = entity.rotationPitch
-                mp.rotationYawHead = entity.rotationYawHead
-                mp.prevRotationYaw = mp.rotationYaw
-                mp.prevRotationPitch = mp.rotationPitch
-                mp.prevRotationYawHead = mp.rotationYawHead
-                mp.isInvisible = false
-                mp.swingProgress = entity.swingProgress
-                mp.swingProgressInt = entity.swingProgressInt
-                mp.hurtTime = entity.hurtTime
-                mp.hurtResistantTime = entity.hurtResistantTime
-                mc.renderManager.renderEntitySimple(mp, event.partialTicks)
-            }
-            GlStateManager.enableAlpha()
-            glEnable(GL_TEXTURE_2D)
-            glEnable(GL_DEPTH_TEST)
-            GlStateManager.resetColor()
-            glPopMatrix()
-            return
-        }
-
-        var outline = false
-        var filled = false
-        var other = false
-        when (espMode.get()) {
-            "NormalBox" -> {
-                outline = true
-                filled = true
-            }
-            "FullBox" -> {
-                filled = true
-            }
-            "OtherOutlineBox" -> {
-                other = true
-                outline = true
-            }
-            "OtherFullBox" -> {
-                other = true
-                filled = true
-            }
-            else -> {
-                outline = true
-            }
-        }
-
-        // pre draw
-        glPushMatrix()
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        glEnable(GL_BLEND)
-        glDisable(GL_TEXTURE_2D)
-        glDisable(GL_DEPTH_TEST)
-
-        glDepthMask(false)
-
-        if (outline) {
-            glLineWidth(1f)
-            glEnable(GL_LINE_SMOOTH)
-        }
-        // drawing
-        val renderManager = mc.renderManager
-        for (entity in storageEntities) {
-            val x = entity.serverPosX.toDouble() / 32.0 - renderManager.renderPosX
-            val y = entity.serverPosY.toDouble() / 32.0 - renderManager.renderPosY
-            val z = entity.serverPosZ.toDouble() / 32.0 - renderManager.renderPosZ
-            if (other) {
-                if (outline) {
-                    RenderUtils.glColor(32, 200, 32, 255)
-                    RenderUtils.otherDrawOutlinedBoundingBox(entity.rotationYawHead, x, y, z, entity.width / 2.0 + 0.1, entity.height + 0.1)
+            } else if (packet is S32PacketConfirmTransaction || packet is S00PacketKeepAlive) {
+                if (!delayedPackets.isEmpty() && delayPing.get()) {
+                    event.cancelEvent()
+                    delayedPackets.add(DelayedPacket(packet))
                 }
-                if (filled) {
-                    RenderUtils.glColor(32, 255, 32, 35)
-                    RenderUtils.otherDrawBoundingBox(entity.rotationYawHead, x, y, z, entity.width / 2.0 + 0.1, entity.height + 0.1)
-                }
-            } else {
-                val bb = AxisAlignedBB(x - 0.4F, y, z - 0.4F, x + 0.4F, y + 1.9F, z + 0.4F)
-                if (outline) {
-                    RenderUtils.glColor(32, 200, 32, 255)
-                    RenderUtils.drawSelectionBoundingBox(bb)
-                }
-                if (filled) {
-                    RenderUtils.glColor(32, 255, 32, if (outline) 26 else 35)
-                    RenderUtils.drawFilledBox(bb)
-                }
-            }
-        }
-
-        // post draw
-        glColor4f(1.0f, 1.0f, 1.0f, 1.0f)
-        glDepthMask(true)
-        if (outline) {
-            glDisable(GL_LINE_SMOOTH)
-        }
-        glDisable(GL_BLEND)
-        glEnable(GL_TEXTURE_2D)
-        glEnable(GL_DEPTH_TEST)
-        glPopMatrix()
-    }
-
-    fun releasePackets() {
-        attacked = null
-        val netHandler: INetHandlerPlayClient = mc.netHandler
-        if (storagePackets.isEmpty()) return
-        while (storagePackets.isNotEmpty()) {
-            storagePackets.removeAt(0).let{
-                try {
-                    val packetEvent = PacketEvent(it)
-                    if (!packets.contains(it as Packet<INetHandlerPlayServer>)) MinusBounce.eventManager.callEvent(packetEvent)
-                    if (!packetEvent.isCancelled) it.processPacket(netHandler)
-                } catch (_: ThreadQuickExitException) { }
-            }
-        }
-        while (storageEntities.isNotEmpty()) {
-            storageEntities.removeAt(0).let { entity ->
-                if (!entity.isDead) {
-                    val x = entity.serverPosX.toDouble() / 32.0
-                    val y = entity.serverPosY.toDouble() / 32.0
-                    val z = entity.serverPosZ.toDouble() / 32.0
-                    entity.setPosition(x, y, z)
-                }
-            }
-        }
-        needFreeze = false
-    }
-
-    fun stopReverse() {
-        if (storageSendPackets.isEmpty()) return
-        while (storageSendPackets.isNotEmpty()) {
-            storageSendPackets.removeAt(0).let {
-                try {
-                    val packetEvent = PacketEvent(it)
-                    if (!packets.contains(it)) MinusBounce.eventManager.callEvent(packetEvent)
-                    if (!packetEvent.isCancelled) PacketUtils.sendPacketNoEvent(it)
-                } catch (e: Exception) {
-                    MinusBounce.hud.addNotification(
-                        Notification(
-                            "BackTrack: Something went wrong when sending packet reversing",
-                            Notification.Type.ERROR
+            } else if (packet is S12PacketEntityVelocity) {
+                if (packet.entityID == mc.thePlayer.entityId) {
+                    if (!delayedPackets.isEmpty() && delayPing.get() && delayVelocity.get()) {
+                        event.cancelEvent()
+                        lastVelocity = Vec3(
+                            packet.getMotionX() / 8000.0,
+                            packet.getMotionY() / 8000.0,
+                            packet.getMotionZ() / 8000.0
                         )
-                    )
+                    }
                 }
-                // why kotlin
-                return@let
             }
         }
-        if (storageSendPackets.isEmpty()) {
-            reversing = false
-            hasAttackInReversing = false
+
+        lastTarget = currentTarget
+    }
+
+    @EventTarget
+    fun onPostMotion(event: PostMotionEvent?) {
+        updatePackets()
+    }
+
+    val currentTarget: EntityLivingBase?
+        get(){
+            assert(mc.objectMouseOver != null)
+            return MinusBounce.moduleManager.getModule(KillAura::class.java)?.let {
+                if(it.state && it.target != null) it.target else null
+            } ?: when {
+                EntityUtils.isSelected(mc.objectMouseOver.entityHit, true) -> {
+                    lastCursorTarget = mc.objectMouseOver.entityHit as EntityLivingBase
+                    mc.objectMouseOver.entityHit as EntityLivingBase
+                }
+                lastCursorTarget != null -> {
+                    if (++cursorTargetTicks > 10) {
+                        lastCursorTarget = null
+                        null
+                    } else lastCursorTarget
+                }
+                else -> null
+            }
+        }
+
+    fun updatePackets() {
+        if (!delayedPackets.isEmpty()) {
+            for (p in delayedPackets) {
+                if (p.timer.hasTimePassed(delay.get())) {
+                    clearPackets()
+
+                    if (lastVelocity != null) {
+                        mc.thePlayer.motionX = lastVelocity!!.xCoord
+                        mc.thePlayer.motionY = lastVelocity!!.yCoord
+                        mc.thePlayer.motionZ = lastVelocity!!.zCoord
+                        lastVelocity = null
+                    }
+
+                    return
+                }
+            }
         }
     }
 
-    private val calculatedMaxHurtTime : Int
-        get() = maxHurtTime.get() + if (hurtTimeWithPing.get()) ceil(mc.thePlayer.getPing() / 50.0).toInt() else 0
+    fun clearPackets() {
+        if (lastVelocity != null) {
+            mc.thePlayer.motionX = lastVelocity!!.xCoord
+            mc.thePlayer.motionY = lastVelocity!!.yCoord
+            mc.thePlayer.motionZ = lastVelocity!!.zCoord
+            lastVelocity = null
+        }
+
+        if (delayedPackets.isNotEmpty()) {
+            delayedPackets.forEach { p ->
+                when (val packet = p.packet) {
+                    is S14PacketEntity -> handleEntityMovement(packet)
+                    is S18PacketEntityTeleport -> handleEntityTeleport(packet)
+                    is S32PacketConfirmTransaction -> handleConfirmTransaction(packet)
+                    is S00PacketKeepAlive -> mc.netHandler.handleKeepAlive(packet)
+                }
+            }
+            delayedPackets.clear()
+        }
+    }
+
+    private fun handleEntityMovement(packetIn: S14PacketEntity) {
+        packetIn.getEntity(mc.netHandler.clientWorldController)?.apply {
+            serverPosX += packetIn.posX
+            serverPosY += packetIn.posY
+            serverPosZ += packetIn.posZ
+            val d0 = serverPosX / 32.0
+            val d1 = serverPosY / 32.0
+            val d2 = serverPosZ / 32.0
+            val f = if (packetIn.func_149060_h()) (packetIn.yaw * 360) / 256.0f else rotationYaw
+            val f1 = if (packetIn.func_149060_h()) (packetIn.pitch * 360) / 256.0f else rotationPitch
+            setPositionAndRotation2(d0, d1, d2, f, f1, 3, false)
+            onGround = packetIn.onGround
+        }
+    }
+
+    fun handleEntityTeleport(packetIn: S18PacketEntityTeleport) {
+        mc.netHandler.clientWorldController.getEntityByID(packetIn.entityId)?.apply {
+            serverPosX = packetIn.x
+            serverPosY = packetIn.y
+            serverPosZ = packetIn.z
+            val d0 = serverPosX / 32.0
+            val d1 = serverPosY / 32.0
+            val d2 = serverPosZ / 32.0
+            val f = (packetIn.yaw * 360).toFloat() / 256.0f
+            val f1 = (packetIn.pitch * 360).toFloat() / 256.0f
+
+            val isCloseEnough = abs(posX - d0) < 0.03125 &&
+                    abs(posY - d1) < 0.015625 &&
+                    abs(posZ - d2) < 0.03125
+
+            setPositionAndRotation2(if (isCloseEnough) posX else d0, d1, d2, f, f1, 3, true)
+            onGround = packetIn.onGround
+        }
+    }
+
+    fun handleConfirmTransaction(packetIn: S32PacketConfirmTransaction) {
+        when (packetIn.windowId) {
+            0 -> mc.thePlayer.inventoryContainer
+            mc.thePlayer.openContainer.windowId -> mc.thePlayer.openContainer
+            else -> null
+        }?.takeIf { !packetIn.func_148888_e() }?.let {
+            mc.netHandler.addToSendQueue(C0FPacketConfirmTransaction(packetIn.windowId, packetIn.actionNumber, true))
+        }
+    }
+
+    fun getDistanceCustomPosition(x: Double, y: Double, z: Double, eyeHeight: Double): Double {
+        val playerVec = Vec3(mc.thePlayer.posX, mc.thePlayer.posY + mc.thePlayer.getEyeHeight(), mc.thePlayer.posZ)
+
+        val yDiff = mc.thePlayer.posY - y
+
+        val targetY =
+            if (yDiff > 0) y + eyeHeight else if (-yDiff < mc.thePlayer.getEyeHeight()) mc.thePlayer.posY + mc.thePlayer.getEyeHeight() else y
+
+        val targetVec = Vec3(x, targetY, z)
+
+        return playerVec.distanceTo(targetVec) - 0.3f
+    }
 }
+
+data class DelayedPacket(val packet: Packet<*>, val timer: MSTimer = MSTimer())

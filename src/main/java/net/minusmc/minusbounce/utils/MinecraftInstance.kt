@@ -6,6 +6,7 @@
 package net.minusmc.minusbounce.utils
 
 import net.minecraft.client.Minecraft
+import net.minecraft.util.Vec3
 import net.minusmc.minusbounce.injection.implementations.IEntityPlayerSP
 
 open class MinecraftInstance {
@@ -13,10 +14,13 @@ open class MinecraftInstance {
         @JvmField
         val mc: Minecraft = Minecraft.getMinecraft()
 
+        var runTimeTicks = 0
+        var offGroundTicks = 0
+        var AABBOffGroundticks = 0
         val serverRotation: Rotation
             get() = (mc.thePlayer as IEntityPlayerSP).serverRotation
 
-        val playerRotation: Rotation?
-            get() = (mc.thePlayer as IEntityPlayerSP).playerRotation
+        val eyesPos: Vec3
+            get() = mc.thePlayer.getPositionEyes(mc.timer.renderPartialTicks)
     }
 }

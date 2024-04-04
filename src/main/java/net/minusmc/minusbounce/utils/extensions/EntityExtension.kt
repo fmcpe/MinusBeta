@@ -8,6 +8,7 @@ import net.minecraft.entity.EntityLivingBase
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.util.MathHelper
 import net.minecraft.util.MovingObjectPosition
+import net.minusmc.minusbounce.utils.RotationUtils.getVectorForRotation
 import net.minecraft.util.ResourceLocation
 import net.minecraft.util.Vec3
 import net.minusmc.minusbounce.utils.Rotation
@@ -63,7 +64,7 @@ fun Entity.rayTraceWithCustomRotation(blockReachDistance: Double, rotation: Rota
 }
 
 fun Entity.rayTraceWithServerSideRotation(blockReachDistance: Double): MovingObjectPosition? {
-    return this.rayTraceWithCustomRotation(blockReachDistance, MinecraftInstance.serverRotation!!)
+    return this.rayTraceWithCustomRotation(blockReachDistance, MinecraftInstance.serverRotation)
 }
 
 fun Entity.getLookCustom(yaw: Float, pitch: Float): Vec3 {
@@ -71,6 +72,6 @@ fun Entity.getLookCustom(yaw: Float, pitch: Float): Vec3 {
 }
 fun Entity.getLookDistanceToEntityBox(entity: Entity=this, rotation: Rotation? = null, range: Double=10.0): Double {
     val eyes = this.getPositionEyes(1F)
-    val end = (rotation?: RotationUtils.targetRotation)!!.toDirection().multiply(range).add(eyes)
+    val end = getVectorForRotation((rotation?: RotationUtils.targetRotation)!!).multiply(range).add(eyes)
     return entity.entityBoundingBox.calculateIntercept(eyes, end)?.hitVec?.distanceTo(eyes) ?: Double.MAX_VALUE
 }

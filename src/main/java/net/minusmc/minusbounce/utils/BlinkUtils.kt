@@ -15,17 +15,15 @@ import java.util.*
 
 object BlinkUtils : MinecraftInstance() {
     private val playerBuffer = LinkedList<Packet<INetHandlerPlayServer>>()
-    const val Invalid_Type = -301
-    const val MisMatch_Type = -302
-    var movingPacketStat = false
-    var transactionStat = false
-    var keepAliveStat = false
-    var actionStat = false
-    var abilitiesStat = false
-    var invStat = false
-    var interactStat = false
-    var otherPacket = false
-
+    private const val MisMatchType = -302
+    private var movingPacketStat = false
+    private var transactionStat = false
+    private var keepAliveStat = false
+    private var actionStat = false
+    private var abilitiesStat = false
+    private var invStat = false
+    private var interactStat = false
+    private var otherPacket = false
     private var packetToggleStat = booleanArrayOf(false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false)
     init {
         setBlinkState(
@@ -179,7 +177,7 @@ object BlinkUtils : MinecraftInstance() {
                         packetCount++
                     }
                 }
-                if (flag) packetCount else MisMatch_Type
+                if (flag) packetCount else MisMatchType
             }
         }
     }

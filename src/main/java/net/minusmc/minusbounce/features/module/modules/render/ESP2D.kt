@@ -99,7 +99,7 @@ class ESP2D : Module() {
         black = Color.BLACK.rgb
     }
 
-    fun getColor(entity: Entity?): Color? {
+    fun getColor(entity: Entity?): Color {
         if (entity is EntityLivingBase) {
             if (colorTeam.get()) {
                 val chars = entity.displayName.formattedText.toCharArray()
@@ -147,7 +147,7 @@ class ESP2D : Module() {
         val collectedEntitiesSize = collectedEntities.size
         while (i < collectedEntitiesSize) {
             val entity = collectedEntities[i] as Entity
-            val color = getColor(entity)!!.rgb
+            val color = getColor(entity).rgb
             if (RenderUtils.isInViewFrustrum(entity)) {
                 val x = RenderUtils.interpolate(entity.posX, entity.lastTickPosX, partialTicks.toDouble())
                 val y = RenderUtils.interpolate(entity.posY, entity.lastTickPosY, partialTicks.toDouble())

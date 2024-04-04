@@ -38,7 +38,6 @@ public abstract class MixinRendererLivingEntity extends MixinRender {
 
         if (noRender.getState() && noRender.shouldStopRender(entity)) {
             callbackInfo.cancel();
-            return;
         }
     }
 

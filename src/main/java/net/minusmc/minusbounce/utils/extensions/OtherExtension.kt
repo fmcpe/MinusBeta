@@ -8,6 +8,7 @@ import net.minecraft.client.entity.EntityPlayerSP
 import net.minecraft.util.AxisAlignedBB
 import net.minecraft.util.BlockPos.MutableBlockPos
 import net.minecraft.util.MathHelper
+import net.minusmc.minusbounce.utils.RotationUtils.getVectorForRotation
 import net.minecraft.util.Vec3
 import java.util.*
 
@@ -17,7 +18,7 @@ fun Vec3.multiply(value: Double): Vec3 {
 
 fun AxisAlignedBB.getLookingTargetRange(thePlayer: EntityPlayerSP, rotation: Rotation? = null, range: Double=6.0): Double {
     val eyes = thePlayer.getPositionEyes(1F)
-    val movingObj = this.calculateIntercept(eyes, (rotation ?: RotationUtils.targetRotation)!!.toDirection().multiply(range).add(eyes)) ?: return Double.MAX_VALUE
+    val movingObj = this.calculateIntercept(eyes, getVectorForRotation((rotation ?: RotationUtils.targetRotation)!!).multiply(range).add(eyes)) ?: return Double.MAX_VALUE
     return movingObj.hitVec.distanceTo(eyes)
 }
 

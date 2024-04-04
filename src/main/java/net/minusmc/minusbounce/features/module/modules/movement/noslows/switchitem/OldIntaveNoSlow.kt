@@ -1,18 +1,48 @@
 package net.minusmc.minusbounce.features.module.modules.movement.noslows.other
 
-import net.minusmc.minusbounce.features.module.modules.movement.noslows.NoSlowMode
-import net.minusmc.minusbounce.event.PreMotionEvent
-import net.minusmc.minusbounce.event.EventState
-import net.minusmc.minusbounce.utils.PacketUtils
-import net.minecraft.network.play.client.C09PacketHeldItemChange
+import net.minecraft.item.ItemBow
+import net.minecraft.item.ItemFood
+import net.minecraft.item.ItemSword
+import net.minecraft.network.play.client.C07PacketPlayerDigging
 import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement
+import net.minecraft.util.BlockPos
+import net.minecraft.util.EnumFacing
+import net.minusmc.minusbounce.event.PreMotionEvent
+import net.minusmc.minusbounce.features.module.modules.movement.noslows.NoSlowMode
+import net.minusmc.minusbounce.utils.BlinkUtils
+import net.minusmc.minusbounce.utils.PacketUtils
 
-class OldIntaveNoSlow: NoSlowMode("OldIntave") {
+
+class Intave: NoSlowMode("Intave") {
+    private var usingItem: Boolean = false
+
     override fun onPreMotion(event: PreMotionEvent) {
+        val item = mc.thePlayer.currentEquippedItem.item
+
         if (mc.thePlayer.isUsingItem) {
-            PacketUtils.sendPacketNoEvent(C09PacketHeldItemChange(mc.thePlayer.inventory.currentItem % 8 + 1))
-            PacketUtils.sendPacketNoEvent(C09PacketHeldItemChange(mc.thePlayer.inventory.currentItem))
+            if (item is ItemSword) {
+                BlinkUtils.setBlinkState(all = true)
+
+                if (mc.thePlayer.ticksExisted % 5 == 0) {
+                    PacketUtils.sendPacketNoEvent(
+                        C07PacketPlayerDigging(
+                            C07PacketPlayerDigging.Action.RELEASE_USE_ITEM,
+                            BlockPos.ORIGIN,
+                            EnumFacing.DOWN
+                        )
+                    )
+                    BlinkUtils.setBlinkState(release = true)
+                    mc.netHandler.addToSendQueue(C08PacketPlayerBlockPlacement(mc.thePlayer.getCurrentEquippedItem()))
+                }
+            } else if (item is ItemFood || item is ItemBow) {
+                BlinkUtils.setBlinkState(all = true)
+            }
+
+            usingItem = true
+        } else if (usingItem) {
+            usingItem = false
+
+            BlinkUtils.setBlinkState(off = true)
         }
-        PacketUtils.sendPacketNoEvent(C08PacketPlayerBlockPlacement(mc.thePlayer.inventoryContainer.getSlot(mc.thePlayer.inventory.currentItem + 36).stack))
     }
 }

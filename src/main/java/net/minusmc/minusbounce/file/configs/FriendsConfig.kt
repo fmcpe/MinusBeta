@@ -26,7 +26,7 @@ class FriendsConfig
      * @throws IOException beo
      */
     @Throws(IOException::class)
-    public override fun loadConfig() {
+    override fun loadConfig() {
         clearFriends()
         try {
             val jsonElement = JsonParser().parse(BufferedReader(FileReader(file)))
@@ -83,7 +83,7 @@ class FriendsConfig
      * @throws IOException
      */
     @Throws(IOException::class)
-    public override fun saveConfig() {
+    override fun saveConfig() {
         val jsonArray = JsonArray()
         for (friend in getFriends()) {
             val friendObject = JsonObject()
@@ -169,7 +169,6 @@ class FriendsConfig
          * @param alias      of friend
          */
         init {
-            alias = alias
         }
     }
 }

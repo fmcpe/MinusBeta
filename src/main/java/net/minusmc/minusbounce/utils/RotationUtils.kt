@@ -5,12 +5,13 @@
  */
 package net.minusmc.minusbounce.utils
 
+import net.minecraft.client.Minecraft
 import net.minecraft.entity.Entity
-import net.minecraft.entity.EntityLivingBase
 import net.minecraft.util.*
 import net.minusmc.minusbounce.event.*
 import net.minusmc.minusbounce.utils.RaycastUtils.IEntityFilter
 import net.minusmc.minusbounce.utils.RaycastUtils.raycastEntity
+import net.minusmc.minusbounce.utils.extensions.*
 import net.minusmc.minusbounce.utils.movement.MovementFixType
 import java.util.*
 import kotlin.math.*
@@ -18,7 +19,7 @@ import kotlin.math.*
 
 object RotationUtils : MinecraftInstance(), Listenable {
     private val random = Random()
-    private var keepLength = 0
+    var keepLength = 0
 
     @JvmField
     var targetRotation: Rotation? = null
@@ -57,38 +58,30 @@ object RotationUtils : MinecraftInstance(), Listenable {
     fun onInput(event: MoveInputEvent){
         val forward = event.forward
         val strafe = event.strafe
-
         if(type == MovementFixType.FULL && active) {
-            val offset = (mc.thePlayer.rotationYaw - targetRotation!!.yaw) * 0.01745329251994329576f
+            val offset = (mc.thePlayer.rotationYaw - targetRotation!!.yaw) * Math.PI.toFloat() / 180f
 
-            event.forward = round(forward * cos(offset) + strafe * sin(offset))
-            event.strafe = round(strafe * cos(offset) - forward * sin(offset))
+            /* Handle NegativeZero */
+            event.forward = round(forward * cos(offset) + strafe * sin(offset)) + 0.0f
+            event.strafe = round(strafe * cos(offset) - forward * sin(offset)) + 0.0f
         }
     }
-
-    private fun correctDisabledRotations() {
-        val targetRotation = Rotation(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch)
-        targetRotation.fixedSensitivity(mc.gameSettings.mouseSensitivity, lastRotations)
-
-        mc.thePlayer.rotationYaw = targetRotation.yaw + MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw - targetRotation.yaw);
-        mc.thePlayer.rotationPitch = targetRotation.pitch
-    }
-
     @JvmStatic
     fun smooth() {
         if (!smoothed) {
-            targetRotation = limitAngleChange(lastRotations!!, rotations!!, rotationSpeed + Math.random().toFloat())
+            targetRotation = limitAngleChange(lastRotations ?: return, rotations ?: return , rotationSpeed - Math.random().toFloat())
         }
 
         smoothed = true
+        mc.entityRenderer.getMouseOver(1.0F)
     }
 
     @EventTarget(priority = -2)
     fun onUpdate(event: PreUpdateEvent) {
         if (targetRotation == null || lastRotations == null || rotations == null || !active) {
-            targetRotation = Rotation(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch)
-            lastRotations = targetRotation
-            rotations = targetRotation
+            targetRotation = mc.thePlayer.rotation
+            lastRotations = mc.thePlayer.rotation
+            rotations = mc.thePlayer.rotation
         }
 
         if (active) {
@@ -105,7 +98,7 @@ object RotationUtils : MinecraftInstance(), Listenable {
         if (active && targetRotation != null) {
             keepLength--
 
-            if(!this.silent){
+            if(this.silent){
                 event.yaw = targetRotation!!.yaw
                 event.pitch = targetRotation!!.pitch
             } else {
@@ -118,7 +111,15 @@ object RotationUtils : MinecraftInstance(), Listenable {
             if (abs((targetRotation!!.yaw - mc.thePlayer.rotationYaw) % 360) < 1 && abs((targetRotation!!.pitch - mc.thePlayer.rotationPitch)) < 1) {
                 active = false
 
-                correctDisabledRotations()
+                /* Reset Rotation */
+                if(silent){
+                    /* It will conflict with non-silent */
+                    val targetRotation = Rotation(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch)
+                    targetRotation.fixedSensitivity(rotation = lastRotations)
+
+                    mc.thePlayer.rotationYaw = targetRotation.yaw + MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw - targetRotation.yaw)
+                    mc.thePlayer.rotationPitch = targetRotation.pitch
+                }
             }
 
             lastRotations = targetRotation
@@ -128,7 +129,6 @@ object RotationUtils : MinecraftInstance(), Listenable {
 
         if(keepLength <= 0) {
             rotations = Rotation(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch)
-            keepLength = 0
         }
         smoothed = false
     }
@@ -150,15 +150,11 @@ object RotationUtils : MinecraftInstance(), Listenable {
     @JvmOverloads
     fun setRotations(
         rotation: Rotation,
-        keepLength: Int,
+        keepLength: Int = 0,
         speed: Float = 180f,
         fixType: MovementFixType = MovementFixType.NONE,
-        silent: Boolean = false
+        silent: Boolean = true
     ) {
-        if(rotation.isNan()){
-            return
-        }
-
         this.type = if(silent) fixType else MovementFixType.NONE
         this.rotationSpeed = speed
         this.rotations = rotation
@@ -175,69 +171,6 @@ object RotationUtils : MinecraftInstance(), Listenable {
     override fun handleEvents() = true
 
     /**
-     * @author aquavit
-     *
-     * epic skid moment
-     */
-    fun otherRotation(
-        bb: AxisAlignedBB,
-        vec: Vec3,
-        predict: Boolean,
-        throughWalls: Boolean,
-        distance: Float
-    ): Rotation {
-        val eyesPos = Vec3(
-            mc.thePlayer.posX, mc.thePlayer.entityBoundingBox.minY +
-                    mc.thePlayer.getEyeHeight(), mc.thePlayer.posZ
-        )
-        val eyes = mc.thePlayer.getPositionEyes(1f)
-        var vecRotation: VecRotation? = null
-        var xSearch = 0.15
-        while (xSearch < 0.85) {
-            var ySearch = 0.15
-            while (ySearch < 1.0) {
-                var zSearch = 0.15
-                while (zSearch < 0.85) {
-                    val vec3 = Vec3(
-                        bb.minX + (bb.maxX - bb.minX) * xSearch,
-                        bb.minY + (bb.maxY - bb.minY) * ySearch, bb.minZ + (bb.maxZ - bb.minZ) * zSearch
-                    )
-                    val rotation = toRotation(vec3, predict)
-                    val vecDist = eyes.distanceTo(vec3)
-                    if (vecDist > distance) {
-                        zSearch += 0.1
-                        continue
-                    }
-                    if (throughWalls || isVisible(vec3)) {
-                        val currentVec = VecRotation(vec3, rotation)
-                        if (vecRotation == null) vecRotation = currentVec
-                    }
-                    zSearch += 0.1
-                }
-                ySearch += 0.1
-            }
-            xSearch += 0.1
-        }
-        if (predict) eyesPos.addVector(mc.thePlayer.motionX, mc.thePlayer.motionY, mc.thePlayer.motionZ)
-        val diffX = vec.xCoord - eyesPos.xCoord
-        val diffY = vec.yCoord - eyesPos.yCoord
-        val diffZ = vec.zCoord - eyesPos.zCoord
-        return Rotation(
-            MathHelper.wrapAngleTo180_float(
-                Math.toDegrees(atan2(diffZ, diffX)).toFloat() - 90f
-            ),
-            MathHelper.wrapAngleTo180_float(
-                (-Math.toDegrees(
-                    atan2(
-                        diffY,
-                        sqrt(diffX * diffX + diffZ * diffZ)
-                    )
-                )).toFloat()
-            )
-        )
-    }
-
-    /**
      * Face block
      *
      * @param blockPos target block
@@ -245,18 +178,16 @@ object RotationUtils : MinecraftInstance(), Listenable {
     fun faceBlock(blockPos: BlockPos?): VecRotation? {
         if (blockPos == null) return null
         var vecRotation: VecRotation? = null
-        var xSearch = 0.1
-        while (xSearch < 0.9) {
-            var ySearch = 0.1
-            while (ySearch < 0.9) {
-                var zSearch = 0.1
-                while (zSearch < 0.9) {
+
+        for (x in 0.1..0.9){
+            for(y in 0.1..0.9){
+                for(z in 0.1..0.9){
                     val eyesPos = Vec3(
                         mc.thePlayer.posX,
                         mc.thePlayer.entityBoundingBox.minY + mc.thePlayer.getEyeHeight(),
                         mc.thePlayer.posZ
                     )
-                    val posVec = Vec3(blockPos).addVector(xSearch, ySearch, zSearch)
+                    val posVec = Vec3(blockPos).addVector(x, y, z)
                     val dist = eyesPos.distanceTo(posVec)
                     val diffX = posVec.xCoord - eyesPos.xCoord
                     val diffY = posVec.yCoord - eyesPos.yCoord
@@ -282,12 +213,10 @@ object RotationUtils : MinecraftInstance(), Listenable {
                             )
                         ) vecRotation = currentVec
                     }
-                    zSearch += 0.1
                 }
-                ySearch += 0.1
             }
-            xSearch += 0.1
         }
+
         return vecRotation
     }
 
@@ -301,39 +230,36 @@ object RotationUtils : MinecraftInstance(), Listenable {
      */
     fun faceBow(target: Entity, silent: Boolean, predict: Boolean, predictSize: Float) {
         val player = mc.thePlayer
-        val posX: Double = target.posX + (if (predict) (target.posX - target.prevPosX) * predictSize else 0.0) - (player.posX + (if (predict) player.posX - player.prevPosX else 0.0))
-        val posY: Double =
-            target.entityBoundingBox.minY + (if (predict) (target.entityBoundingBox.minY - target.prevPosY) * predictSize else 0.0) + target.eyeHeight - 0.15 - (player.entityBoundingBox.minY + if (predict) player.posY - player.prevPosY else 0.0) - player.getEyeHeight()
-        val posZ: Double =
+        val (posX, posY, posZ) = Vec3(
+            target.posX + (if (predict) (target.posX - target.prevPosX) * predictSize else 0.0) - (player.posX + (if (predict) player.posX - player.prevPosX else 0.0)),
+            target.entityBoundingBox.minY + (if (predict) (target.entityBoundingBox.minY - target.prevPosY) * predictSize else 0.0) + target.eyeHeight - 0.15 - (player.entityBoundingBox.minY + if (predict) player.posY - player.prevPosY else 0.0) - player.getEyeHeight(),
             target.posZ + (if (predict) (target.posZ - target.prevPosZ) * predictSize else 0.0) - (player.posZ + if (predict) player.posZ - player.prevPosZ else 0.0)
+        )
         val posSqrt = sqrt(posX * posX + posZ * posZ)
+
         var velocity = player.itemInUseDuration / 20f
         velocity = (velocity * velocity + velocity * 2) / 3
         if (velocity > 1) velocity = 1f
-        val rotation = Rotation(
-            (atan2(posZ, posX) * 180 / Math.PI).toFloat() - 90,
-            -Math.toDegrees(atan((velocity * velocity - sqrt(velocity * velocity * velocity * velocity - 0.006f * (0.006f * (posSqrt * posSqrt) + 2 * posY * (velocity * velocity)))) / (0.006f * posSqrt)))
-                .toFloat()
-        )
-        if (silent) setRotations(rotation) else limitAngleChange(
-            Rotation(player.rotationYaw, player.rotationPitch), rotation, (10 +
-                    Random().nextInt(6)).toFloat()
-        ).toPlayer(mc.thePlayer)
+
+        val rotation = Rotation((atan2(posZ, posX) * 180 / Math.PI).toFloat() - 90, -Math.toDegrees(atan((velocity * velocity - sqrt(velocity * velocity * velocity * velocity - 0.006f * (0.006f * (posSqrt * posSqrt) + 2 * posY * (velocity * velocity)))) / (0.006f * posSqrt))).toFloat())
+        setRotations(rotation, silent = silent)
     }
 
     /**
      * Translate vec to rotation
+     * Diff supported
      *
      * @param vec target vec
      * @param predict predict new location of your body
      * @return rotation
      */
-    fun toRotation(vec: Vec3, predict: Boolean): Rotation {
+    @JvmOverloads
+    fun toRotation(vec: Vec3, predict: Boolean = false, diff: Vec3? = null): Rotation {
         val eyesPos = Vec3(mc.thePlayer.posX, mc.thePlayer.entityBoundingBox.minY + mc.thePlayer.eyeHeight, mc.thePlayer.posZ)
         if (predict) eyesPos.addVector(mc.thePlayer.motionX, mc.thePlayer.motionY, mc.thePlayer.motionZ)
-        val diffX = vec.xCoord - eyesPos.xCoord
-        val diffY = vec.yCoord - eyesPos.yCoord
-        val diffZ = vec.zCoord - eyesPos.zCoord
+
+        val (diffX, diffY, diffZ) = diff ?: (vec - eyesPos)
+
         return Rotation(
             MathHelper.wrapAngleTo180_float(Math.toDegrees(atan2(diffZ, diffX)).toFloat() - 90f),
             MathHelper.wrapAngleTo180_float((-Math.toDegrees(atan2(diffY, sqrt(diffX * diffX + diffZ * diffZ)))).toFloat())
@@ -368,63 +294,46 @@ object RotationUtils : MinecraftInstance(), Listenable {
     @JvmOverloads
     fun searchCenter(
         bb: AxisAlignedBB,
-        outborder: Boolean,
         random: Boolean,
         predict: Boolean,
         throughWalls: Boolean,
         distance: Float,
         randomMultiply: Float = 0f,
-        newRandom: Boolean = false
     ): VecRotation? {
-        if (outborder) {
-            val vec3 = Vec3(
-                bb.minX + (bb.maxX - bb.minX) * (x * 0.3 + 1.0),
-                bb.minY + (bb.maxY - bb.minY) * (y * 0.3 + 1.0),
-                bb.minZ + (bb.maxZ - bb.minZ) * (z * 0.3 + 1.0)
-            )
-            return VecRotation(vec3, toRotation(vec3, predict))
-        }
         val randomVec = Vec3(
-            bb.minX + (bb.maxX - bb.minX) * x * randomMultiply * if (newRandom) Math.random() else 1.0,
-            bb.minY + (bb.maxY - bb.minY) * y * randomMultiply * if (newRandom) Math.random() else 1.0,
-            bb.minZ + (bb.maxZ - bb.minZ) * z * randomMultiply * if (newRandom) Math.random() else 1.0
+            bb.minX + (bb.maxX - bb.minX) * x * randomMultiply * Math.random(),
+            bb.minY + (bb.maxY - bb.minY) * y * randomMultiply * Math.random(),
+            bb.minZ + (bb.maxZ - bb.minZ) * z * randomMultiply * Math.random()
         )
+
         val randomRotation = toRotation(randomVec, predict)
         val eyes = mc.thePlayer.getPositionEyes(1f)
         var vecRotation: VecRotation? = null
-        var xSearch = 0.15
-        while (xSearch < 0.85) {
-            var ySearch = 0.15
-            while (ySearch < 1.0) {
-                var zSearch = 0.15
-                while (zSearch < 0.85) {
-                    val vec3 = Vec3(
-                        bb.minX + (bb.maxX - bb.minX) * xSearch,
-                        bb.minY + (bb.maxY - bb.minY) * ySearch, bb.minZ + (bb.maxZ - bb.minZ) * zSearch
-                    )
-                    val rotation = toRotation(vec3, predict)
-                    val vecDist = eyes.distanceTo(vec3)
-                    if (vecDist > distance) {
-                        zSearch += 0.1
+
+        for (x in 0.0..1.0){
+            for (y in 0.0..1.0){
+                for (z in 0.0..1.0){
+                    val vec3 = Vec3(bb.minX + (bb.maxX - bb.minX) * x, bb.minY + (bb.maxY - bb.minY) * y, bb.minZ + (bb.maxZ - bb.minZ) * z)
+                    val currentVec = VecRotation(vec3, toRotation(Vec3(0.0, 0.0, 0.0), predict, getVectorForRotation(targetRotation ?: serverRotation) - vec3))
+                    if (eyes.distanceTo(vec3) > distance) {
                         continue
                     }
                     if (throughWalls || isVisible(vec3)) {
-                        val currentVec = VecRotation(vec3, rotation)
-                        if (vecRotation == null || (if (random) getRotationDifference(
-                                currentVec.rotation,
-                                randomRotation
-                            ) < getRotationDifference(
-                                vecRotation.rotation,
-                                randomRotation
-                            ) else getRotationDifference(currentVec.rotation) < getRotationDifference(vecRotation.rotation))
-                        ) vecRotation = currentVec
+                        if (
+                            vecRotation == null ||
+                            if (random) {
+                                getRotationDifference(currentVec.rotation, randomRotation) < getRotationDifference(vecRotation.rotation, randomRotation)
+                            } else {
+                                getRotationDifference(currentVec.rotation) < getRotationDifference(vecRotation.rotation)
+                            }
+                        ) {
+                            vecRotation = currentVec
+                        }
                     }
-                    zSearch += 0.1
                 }
-                ySearch += 0.1
             }
-            xSearch += 0.1
         }
+
         return vecRotation
     }
 
@@ -467,13 +376,41 @@ object RotationUtils : MinecraftInstance(), Listenable {
      * @return limited rotation
      */
     fun limitAngleChange(currentRotation: Rotation, targetRotation: Rotation, turnSpeed: Float): Rotation {
-        val yawDifference = getAngleDifference(targetRotation.yaw, currentRotation.yaw)
-        val pitchDifference = getAngleDifference(targetRotation.pitch, currentRotation.pitch)
+        var (yaw, pitch) = targetRotation
+        val yDiff = getAngleDifference(targetRotation.yaw, currentRotation.yaw)
+        val pDiff = getAngleDifference(targetRotation.pitch, currentRotation.pitch)
 
-        return Rotation(
-            currentRotation.yaw + if (yawDifference > turnSpeed) turnSpeed else max(yawDifference, -turnSpeed),
-            currentRotation.pitch + if (pitchDifference > turnSpeed) turnSpeed else max(pitchDifference, -turnSpeed)
-        )
+        /* I love .let */
+        turnSpeed.let{
+            val distance = sqrt(yDiff * yDiff + pDiff * pDiff)
+            if(it < 0 || distance <= 0) return@let
+            val maxYaw = it * abs(yDiff / distance)
+            val maxPitch = it * abs(pDiff / distance)
+
+            val yAdd = max(min(yDiff, maxYaw), -maxYaw)
+            val pAdd = max(min(pDiff, maxPitch), -maxPitch)
+
+            yaw = currentRotation.yaw + yAdd
+            pitch = currentRotation.pitch + pAdd
+
+            /* Randomize */
+            for (i in 1.0..Minecraft.getDebugFPS() / 20.0 + Math.random() * 10.0 step 1.0) {
+                if (abs(yAdd) + abs(pAdd) > 1) {
+                    yaw += (Math.random().toFloat() - 0.5f) / 1000f
+                    pitch -= Math.random().toFloat() / 200f
+                }
+
+                /* Fixing GCD */
+                val rotation = Rotation(yaw, pitch)
+                rotation.fixedSensitivity()
+
+                /* Setting Rotation */
+                yaw = rotation.yaw
+                pitch = max(-90.0F, min(90.0F, rotation.pitch))
+            }
+        }
+
+        return Rotation(yaw, pitch)
     }
 
     /**
@@ -495,11 +432,10 @@ object RotationUtils : MinecraftInstance(), Listenable {
      */
     @JvmStatic
     fun getVectorForRotation(rotation: Rotation): Vec3 {
-        val yawCos = MathHelper.cos(-rotation.yaw * 0.017453292f - Math.PI.toFloat())
-        val yawSin = MathHelper.sin(-rotation.yaw * 0.017453292f - Math.PI.toFloat())
-        val pitchCos = -MathHelper.cos(-rotation.pitch * 0.017453292f)
-        val pitchSin = MathHelper.sin(-rotation.pitch * 0.017453292f)
-        return Vec3((yawSin * pitchCos).toDouble(), pitchSin.toDouble(), (yawCos * pitchCos).toDouble())
+        val rotX = rotation.yaw * Math.PI / 180f
+        val rotY = rotation.pitch * Math.PI / 180f
+
+        return Vec3(-cos(rotY) * sin(rotX), -sin(rotY), cos(rotY) * cos(rotX))
     }
 
     /**
@@ -529,77 +465,5 @@ object RotationUtils : MinecraftInstance(), Listenable {
             mc.thePlayer.posZ
         )
         return mc.theWorld.rayTraceBlocks(eyesPos, vec3) == null
-    }
-
-    /**
-     * Set your target rotation
-     *
-     * @param rotation your target rotation
-     */
-    fun setRotations(rotation: Rotation) {
-        setRotations(rotation, 0)
-    }
-
-
-    fun getRotationsEntity(entity: EntityLivingBase): Rotation {
-        return getRotations(entity.posX, entity.posY + entity.eyeHeight - 0.4, entity.posZ)
-    }
-
-    fun getRotations(ent: Entity): Rotation {
-        val x = ent.posX
-        val z = ent.posZ
-        val y = ent.posY + (ent.eyeHeight / 2.0f).toDouble()
-        return getRotationFromPosition(x, z, y)
-    }
-
-    fun getRotations(posX: Double, posY: Double, posZ: Double): Rotation {
-        val player = mc.thePlayer
-        val x = posX - player.posX
-        val y = posY - (player.posY + player.getEyeHeight().toDouble())
-        val z = posZ - player.posZ
-        val dist = MathHelper.sqrt_double(x * x + z * z).toDouble()
-        val yaw = (atan2(z, x) * 180.0 / 3.141592653589793).toFloat() - 90.0f
-        val pitch = (-(atan2(y, dist) * 180.0 / 3.141592653589793)).toFloat()
-        return Rotation(yaw, pitch)
-    }
-
-    fun getRotationFromPosition(x: Double, z: Double, y: Double): Rotation {
-        val xDiff = x - mc.thePlayer.posX
-        val zDiff = z - mc.thePlayer.posZ
-        val yDiff = y - mc.thePlayer.posY - 1.2
-        val dist = MathHelper.sqrt_double(xDiff * xDiff + zDiff * zDiff).toDouble()
-        val yaw = (atan2(zDiff, xDiff) * 180.0 / Math.PI).toFloat() - 90.0f
-        val pitch = (-atan2(yDiff, dist) * 180.0 / Math.PI).toFloat()
-        return Rotation(yaw, pitch)
-    }
-
-    fun calculate(from: Vec3?, to: Vec3): Rotation {
-        val diff = to.subtract(from)
-        val distance = hypot(diff.xCoord, diff.zCoord)
-        val yaw = (MathHelper.atan2(diff.zCoord, diff.xCoord) * (180f / Math.PI)).toFloat() - 90.0f
-        val pitch = (-(MathHelper.atan2(diff.yCoord, distance) * (180f / Math.PI))).toFloat()
-        return Rotation(yaw, pitch)
-    }
-
-    fun calculate(to: Vec3): Rotation {
-        return calculate(
-            mc.thePlayer.positionVector.add(Vec3(0.0, mc.thePlayer.getEyeHeight().toDouble(), 0.0)),
-            Vec3(to.xCoord, to.yCoord, to.zCoord)
-        )
-    }
-
-    fun getAngles(entity: Entity?): Rotation? {
-        if (entity == null) return null
-        val thePlayer = mc.thePlayer
-        val diffX = entity.posX - thePlayer.posX
-        val diffY = entity.posY + entity.eyeHeight * 0.9 - (thePlayer.posY + thePlayer.getEyeHeight())
-        val diffZ = entity.posZ - thePlayer.posZ
-        val dist = MathHelper.sqrt_double(diffX * diffX + diffZ * diffZ).toDouble() // @on
-        val yaw = (atan2(diffZ, diffX) * 180.0 / Math.PI).toFloat() - 90.0f
-        val pitch = -(atan2(diffY, dist) * 180.0 / Math.PI).toFloat()
-        return Rotation(
-            thePlayer.rotationYaw + MathHelper.wrapAngleTo180_float(yaw - thePlayer.rotationYaw),
-            thePlayer.rotationPitch + MathHelper.wrapAngleTo180_float(pitch - thePlayer.rotationPitch)
-        )
     }
 }

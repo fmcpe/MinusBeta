@@ -7,7 +7,6 @@ package net.minusmc.minusbounce.injection.forge.mixins.client;
 
 import net.minusmc.minusbounce.MinusBounce;
 import net.minusmc.minusbounce.event.*;
-import net.minusmc.minusbounce.utils.*;
 import net.minusmc.minusbounce.features.module.modules.combat.AutoClicker;
 import net.minusmc.minusbounce.features.module.modules.combat.TickBase;
 import net.minusmc.minusbounce.features.module.modules.exploit.MultiActions;
@@ -16,6 +15,7 @@ import net.minusmc.minusbounce.features.module.modules.world.FastPlace;
 import net.minusmc.minusbounce.injection.forge.mixins.accessors.MinecraftForgeClientAccessor;
 import net.minusmc.minusbounce.ui.client.GuiMainMenu;
 import net.minusmc.minusbounce.utils.CPSCounter;
+import net.minusmc.minusbounce.utils.MinecraftInstance;
 import net.minusmc.minusbounce.utils.render.IconUtils;
 import net.minusmc.minusbounce.utils.render.RenderUtils;
 import net.minecraft.block.material.Material;
@@ -329,6 +329,10 @@ public abstract class MixinMinecraft {
 
     private long lastFrame = getTime();
 
+    /**
+     * @author fmcpe
+     * @reason tickbase, misc
+     */
     @Overwrite
     private void runGameLoop() throws IOException {
         final long currentTime = getTime();
@@ -378,6 +382,7 @@ public abstract class MixinMinecraft {
                 if(j == 0) {
                     TickBase tickBase = MinusBounce.moduleManager.getModule(TickBase.class);
 
+                    assert tickBase != null;
                     if(tickBase.getState()) {
                         int extraTicks = tickBase.getExtraTicks();
 
@@ -475,8 +480,8 @@ public abstract class MixinMinecraft {
 
         while (Minecraft.getSystemTime() >= this.debugUpdateTime + 1000L)
         {
-            this.debugFPS = this.fpsCounter;
-            this.debug = String.format("%d fps (%d chunk update%s) T: %s%s%s%s%s", new Object[] {Integer.valueOf(debugFPS), Integer.valueOf(RenderChunk.renderChunksUpdated), RenderChunk.renderChunksUpdated != 1 ? "s" : "", (float)this.gameSettings.limitFramerate == GameSettings.Options.FRAMERATE_LIMIT.getValueMax() ? "inf" : Integer.valueOf(this.gameSettings.limitFramerate), this.gameSettings.enableVsync ? " vsync" : "", this.gameSettings.fancyGraphics ? "" : " fast", this.gameSettings.clouds == 0 ? "" : (this.gameSettings.clouds == 1 ? " fast-clouds" : " fancy-clouds"), OpenGlHelper.useVbo() ? " vbo" : ""});
+            debugFPS = this.fpsCounter;
+            this.debug = String.format("%d fps (%d chunk update%s) T: %s%s%s%s%s", Integer.valueOf(debugFPS), Integer.valueOf(RenderChunk.renderChunksUpdated), RenderChunk.renderChunksUpdated != 1 ? "s" : "", (float)this.gameSettings.limitFramerate == GameSettings.Options.FRAMERATE_LIMIT.getValueMax() ? "inf" : Integer.valueOf(this.gameSettings.limitFramerate), this.gameSettings.enableVsync ? " vsync" : "", this.gameSettings.fancyGraphics ? "" : " fast", this.gameSettings.clouds == 0 ? "" : (this.gameSettings.clouds == 1 ? " fast-clouds" : " fancy-clouds"), OpenGlHelper.useVbo() ? " vbo" : "");
             RenderChunk.renderChunksUpdated = 0;
             this.debugUpdateTime += 1000L;
             this.fpsCounter = 0;
@@ -505,6 +510,7 @@ public abstract class MixinMinecraft {
     @Overwrite
     public void runTick() throws IOException
     {
+        MinecraftInstance.Companion.setRunTimeTicks(MinecraftInstance.Companion.getRunTimeTicks() + 1);
         MinusBounce.eventManager.callEvent(new TickEvent());
 
         if (this.rightClickDelayTimer > 0)
@@ -727,27 +733,22 @@ public abstract class MixinMinecraft {
 
                         if (k == 17 && Keyboard.isKeyDown(61))
                         {
-                            ;
                         }
 
                         if (k == 18 && Keyboard.isKeyDown(61))
                         {
-                            ;
                         }
 
                         if (k == 47 && Keyboard.isKeyDown(61))
                         {
-                            ;
                         }
 
                         if (k == 38 && Keyboard.isKeyDown(61))
                         {
-                            ;
                         }
 
                         if (k == 22 && Keyboard.isKeyDown(61))
                         {
-                            ;
                         }
 
                         if (k == 20 && Keyboard.isKeyDown(61))
@@ -901,17 +902,14 @@ public abstract class MixinMinecraft {
 
                     while (this.gameSettings.keyBindAttack.isPressed())
                     {
-                        ;
                     }
 
                     while (this.gameSettings.keyBindUseItem.isPressed())
                     {
-                        ;
                     }
 
                     while (this.gameSettings.keyBindPickBlock.isPressed())
                     {
-                        ;
                     }
                 }
                 else
@@ -1083,7 +1081,7 @@ public abstract class MixinMinecraft {
     private void rightClickMouse(final CallbackInfo callbackInfo) {
         CPSCounter.INSTANCE.registerClick(CPSCounter.MouseButton.RIGHT);
 
-        final FastPlace fastPlace = (FastPlace) MinusBounce.moduleManager.getModule(FastPlace.class);
+        final FastPlace fastPlace = MinusBounce.moduleManager.getModule(FastPlace.class);
 
         if (fastPlace.getState())
             rightClickDelayTimer = fastPlace.getSpeedValue().get();

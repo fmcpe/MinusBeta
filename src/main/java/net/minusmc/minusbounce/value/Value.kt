@@ -2,6 +2,8 @@
  * MinusBounce Hacked Client
  * A free open source mixin-based injection hacked client for Minecraft using Minecraft Forge.
  * https://github.com/MinusMC/MinusBounce
+ * 
+ * This file is part of LiquidBounce (https://github.com/CCBlueX/LiquidBounce)
  */
 package net.minusmc.minusbounce.value
 
@@ -52,5 +54,5 @@ abstract class Value<T>(var name: String, protected var value: T, var canDisplay
 
     protected open fun onChange(oldValue: T, newValue: T) {}
     protected open fun onChanged(oldValue: T, newValue: T) {}
-
 }
+

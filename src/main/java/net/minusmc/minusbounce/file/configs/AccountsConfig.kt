@@ -25,8 +25,8 @@ class AccountsConfig(file: File): FileConfig(file) {
 
         if (jsonElement is JsonNull) return
 
-        for (accountElement in jsonElement.getAsJsonArray()) {
-            val accountObject = accountElement.getAsJsonObject()
+        for (accountElement in jsonElement.asJsonArray) {
+            val accountObject = accountElement.asJsonObject
 
             try{
                 accounts.add(AccountSerializer.fromJson(accountObject))

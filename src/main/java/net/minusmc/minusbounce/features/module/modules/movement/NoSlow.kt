@@ -7,9 +7,7 @@ package net.minusmc.minusbounce.features.module.modules.movement
 
 import net.minecraft.item.*
 import net.minecraft.network.play.client.C03PacketPlayer.C06PacketPlayerPosLook
-import net.minecraft.network.play.client.C09PacketHeldItemChange
 import net.minecraft.network.play.server.S08PacketPlayerPosLook
-import net.minecraft.network.play.server.S09PacketHeldItemChange
 import net.minusmc.minusbounce.MinusBounce
 import net.minusmc.minusbounce.event.*
 import net.minusmc.minusbounce.features.module.Module
@@ -17,13 +15,12 @@ import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
 import net.minusmc.minusbounce.features.module.modules.combat.KillAura
 import net.minusmc.minusbounce.features.module.modules.movement.noslows.NoSlowMode
+import net.minusmc.minusbounce.utils.BlinkUtils
 import net.minusmc.minusbounce.utils.ClassUtils
 import net.minusmc.minusbounce.utils.MovementUtils
-import net.minusmc.minusbounce.utils.PacketUtils
 import net.minusmc.minusbounce.value.BoolValue
 import net.minusmc.minusbounce.value.FloatValue
 import net.minusmc.minusbounce.value.ListValue
-import kotlin.math.sqrt
 
 @ModuleInfo(name = "NoSlow", spacedName = "No Slow", category = ModuleCategory.MOVEMENT, description = "Prevent you from getting slowed down by items (swords, foods, etc.) and liquids.")
 class NoSlow : Module() {
@@ -50,12 +47,9 @@ class NoSlow : Module() {
     val bowStrafeMultiplier = FloatValue("BowStrafeMultiplier", 1.0F, 0.2F, 1.0F, "x")
     val sneakMultiplier = FloatValue("SneakMultiplier", 1.0F, 0.3F, 1.0F, "x")
 
-    val noSprintValue = BoolValue("NoSprint", false)
     // Soulsand
     val soulsandValue = BoolValue("Soulsand", true)
     val liquidPushValue = BoolValue("LiquidPush", true)
-    private val antiSwitchItem = BoolValue("AntiSwitchItem", false)
-
     private val teleportValue = BoolValue("Teleport", false)
 
     private var pendingFlagApplyPacket = false
@@ -73,21 +67,17 @@ class NoSlow : Module() {
 
     override fun onDisable() {
         pendingFlagApplyPacket = false
+        BlinkUtils.setBlinkState(off = true)
         mode.onDisable()
     }
 
     @EventTarget
     fun onPacket(event: PacketEvent) {
         mc.thePlayer ?: return
-        val packet = event.packet
-        if (antiSwitchItem.get() && packet is S09PacketHeldItemChange && (mc.thePlayer.isUsingItem || mc.thePlayer.isBlocking)) {
-            event.cancelEvent()
-            mc.netHandler.addToSendQueue(C09PacketHeldItemChange(packet.heldItemHotbarIndex))
-            mc.netHandler.addToSendQueue(C09PacketHeldItemChange(mc.thePlayer.inventory.currentItem))
-        }
-
         mode.onPacket(event)
 
+        /* Teleport (Matrix bypass) */
+        val packet = event.packet
         if (teleportValue.get() && packet is S08PacketPlayerPosLook) {
             pendingFlagApplyPacket = true
             lastMotionX = mc.thePlayer.motionX
@@ -110,16 +100,24 @@ class NoSlow : Module() {
     fun onPreMotion(event: PreMotionEvent) {
         mc.thePlayer ?: return
         mc.theWorld ?: return
-        if (!MovementUtils.isMoving && !modeValue.get().equals("blink", true)) return
-        if (isBlocking || isEating || isBowing) mode.onPreMotion(event)
+
+        if (MovementUtils.isMoving){
+            if (isBlocking || isEating || isBowing) {
+                mode.onPreMotion(event)
+            }
+        }
     }
 
     @EventTarget
     fun onPostMotion(event: PostMotionEvent) {
         mc.thePlayer ?: return
         mc.theWorld ?: return
-        if (!MovementUtils.isMoving && !modeValue.get().equals("blink", true)) return
-        if (isBlocking || isEating || isBowing) mode.onPostMotion(event)
+
+        if (MovementUtils.isMoving){
+            if (isBlocking || isEating || isBowing) {
+                mode.onPostMotion(event)
+            }
+        }
     }
 
     @EventTarget

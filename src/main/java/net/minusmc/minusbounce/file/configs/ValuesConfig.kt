@@ -36,9 +36,9 @@ class ValuesConfig(file: File?) : FileConfig(file!!) {
             if (key.equals("CommandPrefix", ignoreCase = true)) {
                 MinusBounce.commandManager.prefix = value.asCharacter
             } else if (key.equals("macros", ignoreCase = true)) {
-                val jsonValue = value.getAsJsonArray()
+                val jsonValue = value.asJsonArray
                 for (macroElement in jsonValue) {
-                    val macroObject = macroElement.getAsJsonObject()
+                    val macroObject = macroElement.asJsonObject
                     val keyValue = macroObject["key"]
                     val commandValue = macroObject["command"]
                     addMacro(keyValue.asInt, commandValue.asString)

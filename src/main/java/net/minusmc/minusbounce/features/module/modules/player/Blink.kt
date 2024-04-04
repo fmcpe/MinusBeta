@@ -50,7 +50,7 @@ class Blink : Module() {
         if (mc.thePlayer == null) return
         if (!pulseValue.get()) {
             if (fake.get()) {
-                fakePlayer = EntityOtherPlayerMP(mc.theWorld, mc.thePlayer.getGameProfile())
+                fakePlayer = EntityOtherPlayerMP(mc.theWorld, mc.thePlayer.gameProfile)
                 fakePlayer!!.clonePlayer(mc.thePlayer, true)
                 fakePlayer!!.copyLocationAndAnglesFrom(mc.thePlayer)
                 fakePlayer!!.rotationYawHead = mc.thePlayer.rotationYawHead
@@ -58,8 +58,8 @@ class Blink : Module() {
             }
         }
         synchronized(positions) {
-            positions.add(doubleArrayOf(mc.thePlayer.posX, mc.thePlayer.getEntityBoundingBox().minY + mc.thePlayer.getEyeHeight() / 2, mc.thePlayer.posZ))
-            positions.add(doubleArrayOf(mc.thePlayer.posX, mc.thePlayer.getEntityBoundingBox().minY, mc.thePlayer.posZ))
+            positions.add(doubleArrayOf(mc.thePlayer.posX, mc.thePlayer.entityBoundingBox.minY + mc.thePlayer.getEyeHeight() / 2, mc.thePlayer.posZ))
+            positions.add(doubleArrayOf(mc.thePlayer.posX, mc.thePlayer.entityBoundingBox.minY, mc.thePlayer.posZ))
         }
         pulseTimer.reset()
     }
@@ -92,7 +92,7 @@ class Blink : Module() {
 
     @EventTarget
     fun onUpdate(event: UpdateEvent?) {
-        synchronized(positions) { positions.add(doubleArrayOf(mc.thePlayer.posX, mc.thePlayer.getEntityBoundingBox().minY, mc.thePlayer.posZ)) }
+        synchronized(positions) { positions.add(doubleArrayOf(mc.thePlayer.posX, mc.thePlayer.entityBoundingBox.minY, mc.thePlayer.posZ)) }
         if (pulseValue.get() && pulseTimer.hasTimePassed(pulseDelayValue.get().toLong())) {
             blink()
             pulseTimer.reset()
@@ -112,9 +112,9 @@ class Blink : Module() {
             GL11.glDisable(GL11.GL_DEPTH_TEST)
             mc.entityRenderer.disableLightmap()
             GL11.glBegin(GL11.GL_LINE_STRIP)
-            val renderPosX: Double = mc.getRenderManager().viewerPosX
-            val renderPosY: Double = mc.getRenderManager().viewerPosY
-            val renderPosZ: Double = mc.getRenderManager().viewerPosZ
+            val renderPosX: Double = mc.renderManager.viewerPosX
+            val renderPosY: Double = mc.renderManager.viewerPosY
+            val renderPosZ: Double = mc.renderManager.viewerPosZ
             for (pos in positions) GL11.glVertex3d(pos[0] - renderPosX, pos[1] - renderPosY, pos[2] - renderPosZ)
             GL11.glColor4d(1.0, 1.0, 1.0, 1.0)
             GL11.glEnd()
@@ -133,7 +133,7 @@ class Blink : Module() {
         try {
             disableLogger = true
             while (!packets.isEmpty()) {
-                mc.getNetHandler().getNetworkManager().sendPacket(packets.take())
+                mc.netHandler.networkManager.sendPacket(packets.take())
             }
             disableLogger = false
         } catch (e: Exception) {

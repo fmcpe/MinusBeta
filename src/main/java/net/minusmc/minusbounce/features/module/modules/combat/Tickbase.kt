@@ -5,24 +5,20 @@
  */
 package net.minusmc.minusbounce.features.module.modules.combat
 
-import net.minecraft.entity.EntityLivingBase
-import net.minecraft.network.play.client.C0BPacketEntityAction
 import net.minusmc.minusbounce.MinusBounce
-import net.minusmc.minusbounce.event.*
+import net.minusmc.minusbounce.event.EventTarget
+import net.minusmc.minusbounce.event.PostMotionEvent
+import net.minusmc.minusbounce.event.Render2DEvent
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
-import net.minusmc.minusbounce.utils.timer.MSTimer
-import net.minusmc.minusbounce.utils.extensions.*
-import net.minusmc.minusbounce.value.*
+import net.minusmc.minusbounce.utils.extensions.getDistanceToEntityBox
+import net.minusmc.minusbounce.value.IntegerValue
 
 @ModuleInfo(name = "TickBase", description = "Tick Base", category = ModuleCategory.COMBAT)
-class TickBase : Module() {
-    var counter = -1
+open class TickBase : Module() {
+    private var counter = -1
     var freezing = false
-
-    protected val killAura: KillAura
-        get() = MinusBounce.moduleManager[KillAura::class.java]!!
 
     private val ticks = IntegerValue("Ticks", 3, 1, 10)
 
@@ -32,20 +28,19 @@ class TickBase : Module() {
     }
 
     fun getExtraTicks(): Int {
-        if(counter-- > 0)
-            return -1
-        freezing = false
+        MinusBounce.moduleManager[KillAura::class.java]?.let{
+            if(counter-- > 0) return -1 else freezing = false
 
-        val isInRange = 
-            if(killAura.state) 
-                killAura.target == null || mc.thePlayer.getDistanceToEntityBox(killAura.target!!) > killAura.rangeValue.get() 
-            else false
+            /* You know what? #F NPE */
+            if(it.state && (it.target == null || mc.thePlayer.getDistanceToEntityBox(it.target ?: return@let) > it.rangeValue.get())) {
+                it.updateTarget()
 
-        if (isInRange && mc.thePlayer.hurtTime <= 2) {
-            counter = ticks.get()
-            return counter
+                if(it.target != null){
+                    counter = ticks.get()
+                    return counter
+                }
+            }
         }
-
         return 0
     }
 

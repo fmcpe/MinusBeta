@@ -6,7 +6,10 @@
 package net.minusmc.minusbounce.injection.forge.mixins.entity;
 
 import net.minecraft.block.Block;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.ai.attributes.IAttribute;
+import net.minecraft.entity.ai.attributes.IAttributeInstance;
 import net.minecraft.item.ItemStack;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
@@ -29,8 +32,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
 import java.util.Iterator;
+import java.util.Objects;
 
-import static net.minusmc.minusbounce.utils.RotationUtils.targetRotation;
 @Mixin(EntityLivingBase.class)
 public abstract class MixinEntityLivingBase extends MixinEntity {
 
@@ -39,16 +42,22 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
     protected abstract float getJumpUpwardsMotion();
 
     @Shadow
+    public abstract IAttributeInstance getEntityAttribute(IAttribute attribute);
+
+    @Shadow
     public abstract PotionEffect getActivePotionEffect(Potion potionIn);
 
     @Shadow
     public abstract boolean isPotionActive(Potion potionIn);
 
     @Shadow
-    private int jumpTicks;
+    public int jumpTicks;
 
     @Shadow
-    protected boolean isJumping;
+    public abstract boolean isOnLadder();
+
+    @Shadow
+    public abstract void setLastAttacker(Entity entityIn);
 
     @Shadow
     public void onLivingUpdate() {
@@ -67,18 +76,6 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
     @Shadow
     public abstract ItemStack getHeldItem();
 
-    @Shadow
-    protected abstract void updateAITick();
-
-    @Shadow
-    public int swingProgressInt;
-
-    @Shadow
-    public boolean isSwingInProgress;
-    
-    @Shadow
-    public float swingProgress;
-
     @Shadow public float moveStrafing;
 
     @Shadow public float moveForward;
@@ -92,6 +89,7 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
 
     /**
      * @author fmcpe
+     * @reason JumpEvent
      */
     @Overwrite
     protected void jump() {
@@ -105,13 +103,13 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
         this.motionY = event.getMotion();
 
         if (this.isPotionActive(Potion.jump)) {
-            this.motionY += (double) ((float) (this.getActivePotionEffect(Potion.jump).getAmplifier() + 1) * 0.1F);
+            this.motionY += (float) (this.getActivePotionEffect(Potion.jump).getAmplifier() + 1) * 0.1F;
         }
 
         if (this.isSprinting()) {
             final float f = event.getYaw() * 0.017453292F;
-            this.motionX -= (double) (MathHelper.sin(f) * 0.2F);
-            this.motionZ += (double) (MathHelper.cos(f) * 0.2F);
+            this.motionX -= MathHelper.sin(f) * 0.2F;
+            this.motionZ += MathHelper.cos(f) * 0.2F;
         }
 
         this.isAirBorne = true;
@@ -119,7 +117,7 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
 
     @Inject(method = "onLivingUpdate", at = @At("HEAD"))
     private void headLiving(CallbackInfo callbackInfo) {
-        if (MinusBounce.moduleManager.getModule(NoJumpDelay.class).getState())
+        if (Objects.requireNonNull(MinusBounce.moduleManager.getModule(NoJumpDelay.class)).getState())
             jumpTicks = 0;
     }
 
@@ -127,6 +125,7 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
      * interpolated look vector
      *
      * @author fmcpe
+     * @reason MouseObject
      */
     @Overwrite
     public Vec3 getLook(float partialTicks)
@@ -141,17 +140,20 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
     private void isPotionActive(Potion p_isPotionActive_1_, final CallbackInfoReturnable<Boolean> callbackInfoReturnable) {
         final AntiBlind antiBlind = MinusBounce.moduleManager.getModule(AntiBlind.class);
 
-        if ((p_isPotionActive_1_ == Potion.confusion || p_isPotionActive_1_ == Potion.blindness) && antiBlind.getState() && antiBlind.getConfusionEffect().get())
-            callbackInfoReturnable.setReturnValue(false);
+        if ((p_isPotionActive_1_ == Potion.confusion || p_isPotionActive_1_ == Potion.blindness)) {
+            assert antiBlind != null;
+            if (antiBlind.getState() && antiBlind.getConfusionEffect().get()) callbackInfoReturnable.setReturnValue(false);
+        }
     }
 
     /**
      * @reason visionfx sucks
+     * @author i don't know
      */
     @Overwrite
     private int getArmSwingAnimationEnd() {
-        int speed = MinusBounce.moduleManager.getModule(Animations.class).getState() ? 2 + (20 - Animations.INSTANCE.getSpeedSwing().get()) : 6;
-        return this.isPotionActive(Potion.digSpeed) ? speed - (1 + this.getActivePotionEffect(Potion.digSpeed).getAmplifier()) * 1 : (this.isPotionActive(Potion.digSlowdown) ? speed + (1 + this.getActivePotionEffect(Potion.digSlowdown).getAmplifier()) * 2 : speed);
+        int speed = Objects.requireNonNull(MinusBounce.moduleManager.getModule(Animations.class)).getState() ? 2 + (20 - Animations.INSTANCE.getSpeedSwing().get()) : 6;
+        return this.isPotionActive(Potion.digSpeed) ? speed - (1 + this.getActivePotionEffect(Potion.digSpeed).getAmplifier()) : (this.isPotionActive(Potion.digSlowdown) ? speed + (1 + this.getActivePotionEffect(Potion.digSlowdown).getAmplifier()) * 2 : speed);
     }
 
 }

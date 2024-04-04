@@ -24,7 +24,7 @@ object ClientUtils : MinecraftInstance() {
     init {
         try {
             fastRenderField = GameSettings::class.java.getDeclaredField("ofFastRender")
-            if (!fastRenderField!!.isAccessible()) fastRenderField!!.setAccessible(true)
+            if (!fastRenderField!!.isAccessible) fastRenderField!!.setAccessible(true)
         } catch (ignored: NoSuchFieldException) {
         }
     }

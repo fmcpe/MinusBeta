@@ -41,8 +41,8 @@ object ItemUtils {
                 if (item != null) break
             }
             if (item == null) return null
-            if (args!!.size >= 2 && args!![1].matches("\\d+".toRegex())) i = args[1].toInt()
-            if (args!!.size >= 3 && args[2].matches("\\d+".toRegex())) j = args[2].toInt()
+            if (args!!.size >= 2 && args[1].matches("\\d+".toRegex())) i = args[1].toInt()
+            if (args.size >= 3 && args[2].matches("\\d+".toRegex())) j = args[2].toInt()
             val itemstack = ItemStack(item, i, j)
             if (args.size >= 4) {
                 val NBT = StringBuilder()

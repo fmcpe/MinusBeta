@@ -27,17 +27,21 @@ import net.minecraft.util.*;
 import net.minusmc.minusbounce.MinusBounce;
 import net.minusmc.minusbounce.event.*;
 import net.minusmc.minusbounce.features.module.modules.combat.KillAura;
-import net.minusmc.minusbounce.features.module.modules.movement.*;
+import net.minusmc.minusbounce.features.module.modules.movement.Fly;
+import net.minusmc.minusbounce.features.module.modules.movement.InvMove;
+import net.minusmc.minusbounce.features.module.modules.movement.NoSlow;
+import net.minusmc.minusbounce.features.module.modules.movement.Sprint;
 import net.minusmc.minusbounce.features.module.modules.world.Scaffold;
 import net.minusmc.minusbounce.injection.implementations.IEntityPlayerSP;
 import net.minusmc.minusbounce.utils.Rotation;
-import org.spongepowered.asm.mixin.*;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import javax.annotation.Nullable;
 import java.util.List;
 
 @Mixin(EntityPlayerSP.class)
@@ -322,6 +326,9 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
 
         boolean flag3 = (float) this.getFoodStats().getFoodLevel() > 6.0F || this.capabilities.allowFlying;
 
+        assert noSlow != null;
+        assert sprint != null;
+        assert scaffold != null;
         if (this.onGround && !flag1 && !flag2 && this.movementInput.moveForward >= f && !this.isSprinting() && flag3 && !this.isUsingItem() && !this.isPotionActive(Potion.blindness)) {
             if (this.sprintToggleTimer <= 0 && (!this.mc.gameSettings.keyBindSprint.isKeyDown() || !sprint.getState())) {
                 this.sprintToggleTimer = 7;
@@ -330,19 +337,13 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
             }
         }
 
-        if (!this.isSprinting() && this.movementInput.moveForward >= f && flag3 && (noSlow.getState() || !this.isUsingItem()) && !this.isPotionActive(Potion.blindness) && (this.mc.gameSettings.keyBindSprint.isKeyDown() || sprint.getState())) {
-            this.setSprinting(true);
+        if (!this.isSprinting() && this.movementInput.moveForward >= f && flag3) {
+            if ((noSlow.getState() || !this.isUsingItem()) && !this.isPotionActive(Potion.blindness) && (this.mc.gameSettings.keyBindSprint.isKeyDown() || sprint.getState())) {
+                this.setSprinting(true);
+            }
         }
 
-        if (this.isSprinting() && (this.movementInput.moveForward < f || this.isCollidedHorizontally || !flag3)) {
-            this.setSprinting(false);
-        }
-        
-        if (this.isSprinting() && noSlow.getState() && noSlow.getNoSprintValue().get() && noSlow.isSlowing()) {
-            this.setSprinting(false);
-        }
-
-        if (this.isSprinting() && scaffold.getState() && !scaffold.getCanSprint()){
+        if (this.isSprinting() && (this.movementInput.moveForward < f || this.isCollidedHorizontally || !flag3) || (scaffold.getState() && !scaffold.getCanSprint())) {
             this.setSprinting(false);
         }
 
