@@ -343,7 +343,7 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
             }
         }
 
-        if (this.isSprinting() && (this.movementInput.moveForward < f || this.isCollidedHorizontally || !flag3) || (scaffold.getState() && !scaffold.getCanSprint())) {
+        if (this.isSprinting() && (this.movementInput.moveForward < f || this.isCollidedHorizontally || !flag3)) {
             this.setSprinting(false);
         }
 
