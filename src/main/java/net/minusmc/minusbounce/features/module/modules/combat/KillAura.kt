@@ -23,9 +23,12 @@ import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
 import net.minusmc.minusbounce.features.module.modules.combat.killaura.KillAuraBlocking
-import net.minusmc.minusbounce.utils.*
+import net.minusmc.minusbounce.utils.ClassUtils
 import net.minusmc.minusbounce.utils.EntityUtils.isSelected
+import net.minusmc.minusbounce.utils.RaycastUtils
 import net.minusmc.minusbounce.utils.RaycastUtils.runWithModifiedRaycastResult
+import net.minusmc.minusbounce.utils.Rotation
+import net.minusmc.minusbounce.utils.RotationUtils
 import net.minusmc.minusbounce.utils.extensions.getDistanceToEntityBox
 import net.minusmc.minusbounce.utils.extensions.getNearestPointBB
 import net.minusmc.minusbounce.utils.item.ItemUtils
@@ -69,12 +72,9 @@ class KillAura : Module() {
 
     //Target / Modes
     private val priorityValue = ListValue("Priority", arrayOf("Health", "Distance", "HurtResistance", "HurtTime", "Armor"), "Distance")
-    val targetModeValue = ListValue("TargetMode", arrayOf("Single", "Switch", "Multi"), "Switch")
+    val targetModeValue = ListValue("TargetMode", arrayOf("Single", "Switch"), "Switch")
     private val switchDelayValue = IntegerValue("SwitchDelay", 1000, 1, 2000, "ms") {
         targetModeValue.get().equals("switch", true)
-    }
-    private val limitedMultiTargetsValue = IntegerValue("LimitedMultiTargets", 1, 1, 50) {
-        targetModeValue.get().equals("multi", true)
     }
 
     // Bypass
@@ -92,7 +92,6 @@ class KillAura : Module() {
             if (state) onEnable()
         }
     }
-    private val interactValue = BoolValue("InteractAutoBlock", true)
     private val autoBlockRangeValue = FloatValue("AutoBlock-Range", 5f, 0f, 12f, "m") {
         !autoBlockModeValue.get().equals("None", true)
     }
@@ -161,13 +160,9 @@ class KillAura : Module() {
             return
         }
 
-        if(!BadPacketUtils.bad(false, true, true, true, true)){
-            /* We need to check... */
-
-            repeat (clicks) {
-                runAttack(it + 1 == clicks)
-                clicks--
-            }
+        repeat (clicks) {
+            runAttack(it + 1 == clicks)
+            clicks--
         }
     }
 
@@ -308,12 +303,7 @@ class KillAura : Module() {
 
         if(hitable){
             // Attack
-            if (!targetModeValue.get().equals("Multi", true)) {
-                attackEntity(target!!)
-            } else {
-                discoveredEntities.filter {mc.thePlayer.getDistanceToEntityBox(it) < rangeValue.get()}.take(limitedMultiTargetsValue.get()).forEach {attackEntity(it)}
-            }
-
+            attackEntity(target!!)
             prevTargetEntities.add(target!!.entityId)
         } else {
             runWithModifiedRaycastResult(RotationUtils.targetRotation ?: serverRotation, rangeValue.get().toDouble(), rangeValue.get().toDouble()) { obj ->
@@ -453,26 +443,18 @@ class KillAura : Module() {
                 mc.thePlayer.inventory.currentItem = if (it.component1() != mc.thePlayer.inventory.currentItem) it.component1() else return@let
             }
 
-        if(!BadPacketUtils.bad(false, false, false, false, true)) {
-            /* Swing*/
-            when (swingValue.get().lowercase()) {
-                "normal" -> mc.thePlayer.swingItem()
-                "packet" -> mc.netHandler.addToSendQueue(C0APacketAnimation())
-            }
-
-            /* We made it followed vanilla xD . If needed, use KeepSprint */
-            /* If you wonder why I don't call AttackEvent, see MixinPlayerControllerMP.java */
-            mc.playerController.attackEntity(mc.thePlayer, entity)
-
-            /* Interact & AutoBlock */
-            if (interactValue.get()){
-                mc.playerController.isPlayerRightClickingOnEntity(mc.thePlayer, mc.objectMouseOver.entityHit, mc.objectMouseOver)
-                mc.playerController.interactWithEntitySendPacket(mc.thePlayer, mc.objectMouseOver.entityHit)
-            }
-
-            /* AutoBlock */
-            blockingMode.onPostAttack()
+        /* Swing*/
+        when (swingValue.get().lowercase()) {
+            "normal" -> mc.thePlayer.swingItem()
+            "packet" -> mc.netHandler.addToSendQueue(C0APacketAnimation())
         }
+
+        /* We made it followed vanilla xD . If needed, use KeepSprint */
+        /* If you wonder why I don't call AttackEvent, see MixinPlayerControllerMP.java */
+        mc.playerController.attackEntity(mc.thePlayer, entity)
+
+        /* AutoBlock */
+        blockingMode.onPostAttack()
     }
 
     private fun getTargetRotation(entity: Entity): Rotation {

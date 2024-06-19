@@ -19,10 +19,16 @@ import kotlin.math.*
 
 object RotationUtils : MinecraftInstance(), Listenable {
     private val random = Random()
-    var keepLength = 0
+    private var keepLength = 0
 
     @JvmField
     var targetRotation: Rotation? = null
+
+    @JvmField
+    var offGroundTicks: Int = 0
+
+    @JvmField
+    var onGroundTicks: Int = 0
 
     private var active: Boolean = false
     private var smoothed: Boolean = false
@@ -36,36 +42,6 @@ object RotationUtils : MinecraftInstance(), Listenable {
     private var y = random.nextDouble()
     private var z = random.nextDouble()
 
-    @EventTarget(priority = -2)
-    fun onStrafe(event: StrafeEvent){
-        if(type == MovementFixType.NORMAL || type == MovementFixType.FULL) {
-            if(active){
-                event.yaw = targetRotation!!.yaw
-            }
-        }
-    }
-
-    @EventTarget(priority = -2)
-    fun onJump(event: JumpEvent){
-        if(type == MovementFixType.NORMAL || type == MovementFixType.FULL) {
-            if(active){
-                event.yaw = targetRotation!!.yaw
-            }
-        }
-    }
-
-    @EventTarget(priority = -2)
-    fun onInput(event: MoveInputEvent){
-        val forward = event.forward
-        val strafe = event.strafe
-        if(type == MovementFixType.FULL && active) {
-            val offset = (mc.thePlayer.rotationYaw - targetRotation!!.yaw) * Math.PI.toFloat() / 180f
-
-            /* Handle NegativeZero */
-            event.forward = round(forward * cos(offset) + strafe * sin(offset)) + 0.0f
-            event.strafe = round(strafe * cos(offset) - forward * sin(offset)) + 0.0f
-        }
-    }
     @JvmStatic
     fun smooth() {
         if (!smoothed) {
@@ -76,7 +52,7 @@ object RotationUtils : MinecraftInstance(), Listenable {
         mc.entityRenderer.getMouseOver(1.0F)
     }
 
-    @EventTarget(priority = -2)
+    @EventTarget(priority = -5)
     fun onUpdate(event: PreUpdateEvent) {
         if (targetRotation == null || lastRotations == null || rotations == null || !active) {
             targetRotation = mc.thePlayer.rotation
@@ -93,8 +69,17 @@ object RotationUtils : MinecraftInstance(), Listenable {
         if (random.nextGaussian() > 0.8) z = Math.random()
     }
 
-    @EventTarget(priority = -2)
+    @EventTarget(priority = -5)
     fun onMotion(event: PreMotionEvent) {
+        /* On / Off Ground Ticks*/
+        if(event.onGround){
+            offGroundTicks = 0
+            onGroundTicks++
+        } else {
+            onGroundTicks = 0
+            offGroundTicks++
+        }
+
         if (active && targetRotation != null) {
             keepLength--
 
@@ -105,13 +90,9 @@ object RotationUtils : MinecraftInstance(), Listenable {
                 targetRotation!!.toPlayer(mc.thePlayer)
             }
 
-            mc.thePlayer.renderYawOffset = targetRotation!!.yaw
-            mc.thePlayer.rotationYawHead = targetRotation!!.yaw
-
             if (abs((targetRotation!!.yaw - mc.thePlayer.rotationYaw) % 360) < 1 && abs((targetRotation!!.pitch - mc.thePlayer.rotationPitch)) < 1) {
                 active = false
 
-                /* Reset Rotation */
                 if(silent){
                     /* It will conflict with non-silent */
                     val targetRotation = Rotation(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch)
@@ -122,6 +103,8 @@ object RotationUtils : MinecraftInstance(), Listenable {
                 }
             }
 
+            mc.thePlayer.renderYawOffset = targetRotation!!.yaw
+            mc.thePlayer.rotationYawHead = targetRotation!!.yaw
             lastRotations = targetRotation
         } else {
             lastRotations = Rotation(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch)
@@ -130,14 +113,73 @@ object RotationUtils : MinecraftInstance(), Listenable {
         if(keepLength <= 0) {
             rotations = Rotation(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch)
         }
+
         smoothed = false
     }
 
-    @EventTarget(priority = -2)
+    @EventTarget(priority = -5)
+    fun onInput(e: MoveInputEvent){
+        if(e.forward == 0.0f && e.strafe == 0.0f) return
+
+        val possible = mutableListOf<Input>()
+        for (strafe in -1..1 step 1){
+            for (forward in -1..1 step 1){
+                if(strafe == 0 && forward == 0) continue
+
+                possible.add(Input(strafe.toFloat(), forward.toFloat()))
+            }
+        }
+
+        val predicted = mutableListOf<ListInput>()
+        possible.forEach {
+            predicted.add(ListInput(
+                MathHelper.wrapAngleTo180_float(
+                    MovementUtils.getRawDirection(
+                        targetRotation?.yaw ?: return,
+                        it.strafe,
+                        it.forward
+                    )
+                ), it)
+            )
+        }
+
+        val closest = predicted.minByOrNull {
+            abs(it.yaw - MathHelper.wrapAngleTo180_float(
+                MovementUtils.getRawDirection(
+                    mc.thePlayer.rotationYaw,
+                    e.strafe,
+                    e.forward)
+                )
+            )
+        } ?: return
+
+        if(type == MovementFixType.FULL && active) {
+            e.forward = closest.input.forward
+            e.strafe = closest.input.strafe
+        }
+    }
+    data class Input(val strafe: Float, val forward: Float)
+    data class ListInput(val yaw: Float, val input: Input)
+
+    @EventTarget(priority = -5)
+    fun onStrafe(event: StrafeEvent){
+        if(active && (type == MovementFixType.NORMAL || type == MovementFixType.FULL)) {
+            event.yaw = targetRotation?.yaw ?: return
+        }
+    }
+
+    @EventTarget(priority = -5)
+    fun onJump(event: JumpEvent){
+        if(active && (type == MovementFixType.NORMAL || type == MovementFixType.FULL)) {
+            event.yaw = targetRotation?.yaw ?: return
+        }
+    }
+    
+    @EventTarget(priority = -5)
     fun onLook(event: LookEvent){
-        targetRotation?.let{
-            event.yaw = it.yaw
-            event.pitch = it.pitch
+        if(active && targetRotation != null){
+            event.yaw = targetRotation!!.yaw
+            event.pitch = targetRotation!!.pitch
         }
     }
 
@@ -153,7 +195,7 @@ object RotationUtils : MinecraftInstance(), Listenable {
         keepLength: Int = 0,
         speed: Float = 180f,
         fixType: MovementFixType = MovementFixType.NONE,
-        silent: Boolean = true
+        silent: Boolean = true,
     ) {
         this.type = if(silent) fixType else MovementFixType.NONE
         this.rotationSpeed = speed

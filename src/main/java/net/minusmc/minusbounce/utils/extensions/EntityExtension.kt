@@ -1,6 +1,5 @@
 package net.minusmc.minusbounce.utils.extensions
 
-import net.minusmc.minusbounce.utils.MinecraftInstance
 import net.minecraft.client.Minecraft
 import net.minecraft.client.resources.DefaultPlayerSkin
 import net.minecraft.entity.Entity
@@ -8,11 +7,12 @@ import net.minecraft.entity.EntityLivingBase
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.util.MathHelper
 import net.minecraft.util.MovingObjectPosition
-import net.minusmc.minusbounce.utils.RotationUtils.getVectorForRotation
 import net.minecraft.util.ResourceLocation
 import net.minecraft.util.Vec3
+import net.minusmc.minusbounce.utils.MinecraftInstance
 import net.minusmc.minusbounce.utils.Rotation
 import net.minusmc.minusbounce.utils.RotationUtils
+import net.minusmc.minusbounce.utils.RotationUtils.getVectorForRotation
 
 fun EntityPlayer.getEyeVec3(): Vec3 {
     return Vec3(this.posX, this.entityBoundingBox.minY + this.getEyeHeight(), this.posZ)
@@ -43,7 +43,7 @@ fun Entity.getVectorForRotation(pitch: Float, yaw: Float): Vec3 {
 fun Entity.rayTraceCustom(blockReachDistance: Double, yaw: Float, pitch: Float): MovingObjectPosition? {
     val mc = Minecraft.getMinecraft()
     val vec3 = mc.thePlayer.getPositionEyes(1.0f)
-    val vec31 = mc.thePlayer.getVectorForRotation(yaw, pitch)
+    val vec31 = mc.thePlayer.getVectorForRotation(pitch, yaw)
     val vec32 = vec3.addVector(
         vec31.xCoord * blockReachDistance,
         vec31.yCoord * blockReachDistance,

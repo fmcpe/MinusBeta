@@ -43,6 +43,7 @@ configurations {
 }
 
 dependencies {
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4"
     include("org.spongepowered:mixin:0.7.11-SNAPSHOT") {
         transitive = false
         exclude module: "guava"
@@ -117,6 +118,7 @@ jar {
 
 mixin {
     disableRefMapWarning = true
+    disableOverwriteChecker = true
     defaultObfuscationEnv searge
     add sourceSets.main, "minusbounce.mixins.refmap.json"
 }

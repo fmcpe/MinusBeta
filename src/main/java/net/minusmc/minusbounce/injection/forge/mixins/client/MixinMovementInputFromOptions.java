@@ -5,19 +5,17 @@
  */
 package net.minusmc.minusbounce.injection.forge.mixins.client;
 
-import net.minusmc.minusbounce.MinusBounce;
 import net.minecraft.client.settings.GameSettings;
-import net.minusmc.minusbounce.event.*;
-import org.spongepowered.asm.mixin.*;
-import net.minusmc.minusbounce.injection.forge.mixins.client.MixinMovementInput;
-
-import net.minecraft.client.Minecraft;
-import net.minecraft.util.*;
-import static net.minusmc.minusbounce.utils.RotationUtils.targetRotation;
+import net.minecraft.util.MovementInputFromOptions;
+import net.minusmc.minusbounce.MinusBounce;
+import net.minusmc.minusbounce.event.MoveInputEvent;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
+import org.spongepowered.asm.mixin.Shadow;
 
 @Mixin(MovementInputFromOptions.class)
-public class MixinMovementInputFromOptions extends MixinMovementInput{
-    final Minecraft mc = Minecraft.getMinecraft();
+public class MixinMovementInputFromOptions extends MixinMovementInput {
 
     @Shadow
     @Final
@@ -25,6 +23,7 @@ public class MixinMovementInputFromOptions extends MixinMovementInput{
 
     /**
      * @author fmcpe
+     * @reason MoveInputEvent
      */
     @Overwrite
     public void updatePlayerMoveState() {

@@ -6,9 +6,10 @@
 package net.minusmc.minusbounce.utils
 
 import net.minecraft.potion.Potion
-import net.minecraft.block.BlockAir
-import net.minusmc.minusbounce.event.*
-import net.minusmc.minusbounce.utils.block.BlockUtils
+import net.minusmc.minusbounce.event.EventTarget
+import net.minusmc.minusbounce.event.Listenable
+import net.minusmc.minusbounce.event.MoveEvent
+import net.minusmc.minusbounce.event.PreUpdateEvent
 import kotlin.math.*
 
 object MovementUtils : MinecraftInstance(), Listenable {
@@ -17,12 +18,6 @@ object MovementUtils : MinecraftInstance(), Listenable {
 
     @EventTarget
     fun onUpdate(event: PreUpdateEvent) {
-        if(BlockUtils.blockRelativeToPlayer(0.0, 0.0, 0.0) is BlockAir){
-            offGroundTicks++
-        } else {
-            offGroundTicks = 0
-        }
-
         if(mc.theWorld.getCollidingBoundingBoxes(mc.thePlayer, mc.thePlayer.entityBoundingBox.offset(0.0, -1.0, 0.0)).isEmpty()){
             AABBOffGroundticks++
         } else {
@@ -83,22 +78,50 @@ object MovementUtils : MinecraftInstance(), Listenable {
     fun getDirection() = getRawDirection()
 
     fun getRawDirection(): Double {
-        return getDirectionRotation(mc.thePlayer.rotationYaw, mc.thePlayer.moveStrafing, mc.thePlayer.moveForward).toDouble()
+        return getDirectionRotation(mc.thePlayer.rotationYaw, mc.thePlayer.moveStrafing, mc.thePlayer.moveForward)
     }
 
     fun getRawDirection(yaw: Float, strafe: Float, forward: Float): Float {
         var rotationYaw = yaw
         if (forward < 0f) rotationYaw += 180f
-        var forward = 1f
-        if (forward < 0f) forward = -0.5f
-        else if (forward > 0f) forward = 0.5f
-        if (strafe > 0f) rotationYaw -= 90f * forward
-        if (strafe < 0f) rotationYaw += 90f * forward
+        var f = 1f
+        if (forward < 0f) f = -0.5f
+        else if (forward > 0f) f = 0.5f
+        if (strafe > 0f) rotationYaw -= 90f * f
+        if (strafe < 0f) rotationYaw += 90f * f
         return rotationYaw
     }
 
     fun getDirectionRotation(yaw: Float, strafe: Float, forward: Float): Double {
         return MathUtils.toRadians(getRawDirection(yaw, strafe, forward)).toDouble()
+    }
+
+    fun getPlayerDirection(): Float {
+        var direction = mc.thePlayer.rotationYaw
+
+        if (mc.thePlayer.moveForward > 0) {
+            if (mc.thePlayer.moveStrafing > 0) {
+                direction -= 45f
+            } else if (mc.thePlayer.moveStrafing < 0) {
+                direction += 45f
+            }
+        } else if (mc.thePlayer.moveForward < 0) {
+            if (mc.thePlayer.moveStrafing > 0) {
+                direction -= 135f
+            } else if (mc.thePlayer.moveStrafing < 0) {
+                direction += 135f
+            } else {
+                direction -= 180f
+            }
+        } else {
+            if (mc.thePlayer.moveStrafing > 0) {
+                direction -= 90f
+            } else if (mc.thePlayer.moveStrafing < 0) {
+                direction += 90f
+            }
+        }
+
+        return direction
     }
 
     fun getXZDist(speed: Float, cYaw: Float): DoubleArray {
@@ -213,10 +236,6 @@ object MovementUtils : MinecraftInstance(), Listenable {
         }
     }
 
-    fun setSpeed(event: MoveEvent, speed: Double) {
-        setSpeed(event, speed, mc.thePlayer.rotationYaw, mc.thePlayer.movementInput.moveStrafe.toDouble(), mc.thePlayer.movementInput.moveForward.toDouble())
-    }
-
     fun setSpeed(event: MoveEvent, speed: Double, yaw: Float, forward: Double, strafe: Double) {
         var forward = forward
         var strafe = strafe
@@ -250,36 +269,8 @@ object MovementUtils : MinecraftInstance(), Listenable {
         }
     }
 
-    fun incrementMoveDirection(forward: Float, strafe: Float): FloatArray {
-        if (forward != 0f || strafe != 0f) {
-            val value = if (forward != 0f) Math.abs(forward) else Math.abs(strafe)
-            if (forward > 0) {
-                if (strafe > 0) {
-                    return floatArrayOf(0f, 0f)
-                } else if (strafe == 0f) {
-                    return floatArrayOf(-value, 0f)
-                } else if (strafe < 0) {
-                    return floatArrayOf(0f, 0f)
-                }
-            } else if (forward == 0f) {
-                if (strafe > 0) {
-                    return floatArrayOf(value, 0f)
-                } else {
-                    return floatArrayOf(-value, 0f)
-                }
-            } else {
-                if (strafe < 0) {
-                    return floatArrayOf(0f, 0f)
-                } else if (strafe == 0f) {
-                    return floatArrayOf(0f, value)
-                } else if (strafe > 0) {
-                    return floatArrayOf(0f, 0f)
-                }
-            }
-        }
-        return floatArrayOf(forward, strafe)
-    }
-
+    val isGoingDiagonally: Boolean
+        get() = abs(mc.thePlayer.motionX) > 0.04 && abs(mc.thePlayer.motionZ) > 0.04
 
     fun resetMotion(y: Boolean = false) {
         if (y) mc.thePlayer.motionY = 0.0
@@ -289,11 +280,6 @@ object MovementUtils : MinecraftInstance(), Listenable {
 
     val movingYaw: Float
         get() = (getDirection() * 180f / Math.PI).toFloat()
-
-    fun setMotion2(multiplier: Double, forward: Float) {
-        mc.thePlayer.motionX = -sin(MathUtils.toRadians(forward)) * multiplier
-        mc.thePlayer.motionZ = cos(MathUtils.toRadians(forward)) * multiplier
-    }
 
     override fun handleEvents() = true
 }
