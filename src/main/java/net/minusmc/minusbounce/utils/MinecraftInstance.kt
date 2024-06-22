@@ -6,6 +6,7 @@
 package net.minusmc.minusbounce.utils
 
 import net.minecraft.client.Minecraft
+import net.minecraft.util.AxisAlignedBB
 import net.minecraft.util.Vec3
 import net.minusmc.minusbounce.injection.implementations.IEntityPlayerSP
 
@@ -18,6 +19,15 @@ open class MinecraftInstance {
         var AABBOffGroundticks = 0
         val serverRotation: Rotation
             get() = (mc.thePlayer as IEntityPlayerSP).serverRotation
+
+        val motionX: Double
+            get() = mc.thePlayer.motionX
+
+        val motionZ: Double
+            get() = mc.thePlayer.motionZ
+
+        val bb: AxisAlignedBB
+            get() = mc.thePlayer.entityBoundingBox
 
         val eyesPos: Vec3
             get() = mc.thePlayer.getPositionEyes(mc.timer.renderPartialTicks)
