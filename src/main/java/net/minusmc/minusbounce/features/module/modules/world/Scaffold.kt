@@ -13,10 +13,7 @@ import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
 import net.minusmc.minusbounce.injection.access.StaticStorage
 import net.minusmc.minusbounce.injection.implementations.IEntityPlayerSP
-import net.minusmc.minusbounce.utils.InventoryUtils
-import net.minusmc.minusbounce.utils.MovementUtils
-import net.minusmc.minusbounce.utils.Rotation
-import net.minusmc.minusbounce.utils.RotationUtils
+import net.minusmc.minusbounce.utils.*
 import net.minusmc.minusbounce.utils.block.BlockUtils
 import net.minusmc.minusbounce.utils.block.PlaceInfo
 import net.minusmc.minusbounce.utils.extensions.eyes
@@ -397,7 +394,7 @@ class Scaffold: Module(){
      *
      * 6/21/2024
      * Legit Mode
-     * 0.288 Exception + Out Of Edge Prediction
+     * 0.300 Exception + Out Of Edge Prediction
      */
     private fun getLegitPosibility(){
         val player = mc.thePlayer ?: return
@@ -421,17 +418,15 @@ class Scaffold: Module(){
 
         previousXPos = mc.thePlayer.posX
         previousZPos = mc.thePlayer.posZ
-        val maxX = (blockPlace?.x?.plus(0.288) ?: return)
-        val minX = (blockPlace?.x?.minus(1.288) ?: return)
-
-        val maxZ = (blockPlace?.z?.plus(0.288) ?: return)
-        val minZ = (blockPlace?.z?.minus(1.288) ?: return)
-
-        if (xPos > maxX || xPos < minX || zPos > maxZ || zPos < minZ) {
+        if (xPos > (blockPlace?.x?.plus(0.300) ?: return) ||
+            xPos < (blockPlace?.x?.minus(1.300) ?: return) ||
+            zPos > (blockPlace?.z?.plus(0.300) ?: return) ||
+            zPos < (blockPlace?.z?.minus(1.300) ?: return)
+        ) {
             if(
                 if (!player.onGround) player.motionY > 0 else
-                    calculateRealY(world, bb, motionX, motionZ, 0.91 * 0.6) <= -0.015625 ||
-                            calculateRealY(world, bb, motionX, motionZ, 1.0) <= -0.015625
+                    (calculateRealY(world, bb, motionX, motionZ, 0.91 * 0.6) <= -0.015625 ||
+                    calculateRealY(world, bb, motionX, motionZ, 1.0) <= -0.015625)
             ){
                 for (pitch in 90 downTo 30){
                     rayTrace(
@@ -441,7 +436,7 @@ class Scaffold: Module(){
                             ),
                             pitch.toFloat())
                     )?.let {
-                        if (it.blockPos == blockPlace && it.sideHit == placeInfo?.enumFacing) {
+                        if (it.blockPos == blockPlace && it.sideHit == placeInfo?.enumFacing){
                             hitVecList.add(it.hitVec)
                         }
                     }
@@ -451,15 +446,16 @@ class Scaffold: Module(){
                     val rotations = RotationUtils.toRotation(hitVec)
                     val yaw = targetYaw - rotations.yaw
                     val pitch = targetPitch - rotations.pitch
-                    val x = (hitVec.xCoord - blockPlace!!.x) - 0.3
-                    val y = (hitVec.yCoord - blockPlace!!.y) - 0.3
-                    val z = (hitVec.zCoord - blockPlace!!.z) - 0.3
+                    val x = hitVec.xCoord - blockPlace!!.x
+                    val y = hitVec.yCoord - blockPlace!!.y
+                    val z = hitVec.zCoord - blockPlace!!.z
                     sqrt(x * x + y * y + z * z + yaw * yaw + pitch * pitch)
                 } ?: return
 
                 RotationUtils.toRotation(hitVec ?: return).let {
                     targetYaw = it.yaw
                     targetPitch = it.pitch
+                    ClientUtils.displayChatMessage(Rotation(targetYaw, targetPitch).toString())
                 }
             }
         }
