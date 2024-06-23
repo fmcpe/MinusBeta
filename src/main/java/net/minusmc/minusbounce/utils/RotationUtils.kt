@@ -84,8 +84,10 @@ object RotationUtils : MinecraftInstance(), Listenable {
             keepLength--
 
             if(this.silent){
-                event.yaw = targetRotation!!.yaw
-                event.pitch = targetRotation!!.pitch
+                targetRotation?.let{
+                    event.yaw = it.yaw
+                    event.pitch = it.pitch
+                }
             } else {
                 targetRotation!!.toPlayer(mc.thePlayer)
             }
