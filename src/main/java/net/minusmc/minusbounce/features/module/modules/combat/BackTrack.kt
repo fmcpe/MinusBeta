@@ -131,6 +131,7 @@ class BackTrack : Module() {
         updatePackets()
     }
 
+
     val currentTarget: EntityLivingBase?
         get(){
             assert(mc.objectMouseOver != null)

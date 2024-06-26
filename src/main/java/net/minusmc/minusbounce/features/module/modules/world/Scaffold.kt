@@ -18,8 +18,8 @@ import net.minusmc.minusbounce.utils.MovementUtils
 import net.minusmc.minusbounce.utils.Rotation
 import net.minusmc.minusbounce.utils.RotationUtils
 import net.minusmc.minusbounce.utils.block.BlockUtils
+import net.minusmc.minusbounce.utils.block.BlockUtils.rayTrace
 import net.minusmc.minusbounce.utils.block.PlaceInfo
-import net.minusmc.minusbounce.utils.extensions.eyes
 import net.minusmc.minusbounce.utils.extensions.plus
 import net.minusmc.minusbounce.utils.extensions.times
 import net.minusmc.minusbounce.utils.misc.RandomUtils
@@ -61,7 +61,7 @@ class Scaffold: Module(){
     private var targetBlock: BlockPos? = null
     private var placeInfo: PlaceInfo? = null
     private var blockPlace: BlockPos? = null
-    private var hitVec: Vec3?= null
+    private var willBeFallInNextTick: Boolean = false
     private var xPos: Double = 0.0
     private var zPos: Double = 0.0
     private var targetYaw = 0f
@@ -208,7 +208,7 @@ class Scaffold: Module(){
         val c2 = a1 <= -0.015625
         val c3 = calculateRealY(mc.theWorld, bb, motionX, motionZ, 1.09, a1) <= -0.015625
 
-        val willBeFallInNextTick = if (!mc.thePlayer.onGround) mc.thePlayer.motionY > 0 else c1 && c2 && c3
+        willBeFallInNextTick = if (!mc.thePlayer.onGround) mc.thePlayer.motionY > 0 else c1 && c2 && c3
 
         val blockSlot = InventoryUtils.findAutoBlockBlock()
         if (blockSlot != -1) {
@@ -350,19 +350,12 @@ class Scaffold: Module(){
                     targetYaw = MovementUtils.getRawDirection().toFloat()
                 }
             }
-
             "legit" -> {
+                targetYaw = MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw - 180)
                 if (ticksOnAir > 0 && !isObjectMouseOverBlock(placeInfo!!.enumFacing, blockPlace!!)) {
-                    if (xPos > (blockPlace?.x?.plus(0.3) ?: return) ||
-                        xPos < (blockPlace?.x?.minus(1.3) ?: return) ||
-                        zPos > (blockPlace?.z?.plus(0.3) ?: return) ||
-                        zPos < (blockPlace?.z?.minus(1.3) ?: return)
-                    ) {
-                        getLegitPosibility()
-                    }
+                    getLegitPosibility()
                 }
             }
-
             "telly" -> if (RotationUtils.offGroundTicks >= 3) {
                 if (!isObjectMouseOverBlock(placeInfo!!.enumFacing, blockPlace!!)) getRotations()
             } else {
@@ -382,7 +375,7 @@ class Scaffold: Module(){
     }
 
     private fun getRotations(){
-        hitVec = Vec3(blockPlace) + 0.5 + Vec3(placeInfo?.enumFacing?.directionVec) * 0.5
+        val hitVec = Vec3(blockPlace) + 0.5 + Vec3(placeInfo?.enumFacing?.directionVec) * 0.5
         val playerYaw = mc.thePlayer.rotationYaw.roundToInt()
 
         for (yaw in (playerYaw - 180)..(playerYaw + 180) step 45){
@@ -390,19 +383,16 @@ class Scaffold: Module(){
                 val result = rayTrace(Rotation(yaw.toFloat(), pitch.toFloat())) ?: continue
 
                 if (result.blockPos == blockPlace && result.sideHit == placeInfo?.enumFacing) {
-                    hitVec = result.hitVec
-
-                    RotationUtils.toRotation(hitVec ?: return).let {
+                    RotationUtils.toRotation(result.hitVec).let {
                         targetYaw = it.yaw
                         targetPitch = it.pitch
                     }
-
                     return
                 }
             }
         }
 
-        RotationUtils.toRotation(hitVec ?: return).let {
+        RotationUtils.toRotation(hitVec).let {
             targetYaw = it.yaw
             targetPitch = it.pitch
         }
@@ -414,38 +404,33 @@ class Scaffold: Module(){
      *
      * 6/21/2024
      * Legit Mode
-     * 0.3 Exception + Out Of Edge Prediction
+     * HitBox Exception + Out Of Edge Prediction
+     *
      */
     private fun getLegitPosibility() {
-        val hitVecList = mutableListOf<Vec3>()
+        val list = mutableListOf<Rotation>()
         for (pitch in 90 downTo 30) {
             rayTrace(
-                Rotation(
-                    MathHelper.wrapAngleTo180_float(
-                        mc.thePlayer.rotationYaw - 180f,
-                    ),
-                    pitch.toFloat()
-                )
+                Rotation(targetYaw, pitch.toFloat())
             )?.let {
                 if (it.blockPos == blockPlace && it.sideHit == placeInfo?.enumFacing) {
-                    hitVecList.add(it.hitVec)
+                    list.add(Rotation(targetYaw, pitch.toFloat()))
                 }
             }
         }
 
-        hitVec = hitVecList.minByOrNull { hitVec ->
-            val rotations = RotationUtils.toRotation(hitVec)
-            val yaw = targetYaw - rotations.yaw
-            val pitch = targetPitch - rotations.pitch
-            val x = (hitVec.xCoord - blockPlace!!.x) - 0.5
-            val y = (hitVec.yCoord - blockPlace!!.y) + 0.5
-            val z = (hitVec.zCoord - blockPlace!!.z) - 0.5
-            sqrt(x * x + y * y + z * z + yaw * yaw + pitch * pitch)
-        } ?: return
-
-        RotationUtils.toRotation(hitVec ?: return).let {
-            targetYaw = it.yaw
-            targetPitch = it.pitch
+        if (mc.theWorld.getCollidingBoundingBoxes(
+                mc.thePlayer,
+                mc.thePlayer.entityBoundingBox.offset(
+                    mc.thePlayer.motionX,
+                    -1.0,
+                    mc.thePlayer.motionZ
+                )
+            ).isEmpty()
+        ) {
+             targetPitch = list.minByOrNull {
+                abs(it.pitch - targetPitch)
+            }?.pitch ?: return
         }
     }
 
@@ -469,18 +454,6 @@ class Scaffold: Module(){
         obj?.hitVec ?: return false
 
         return obj.blockPos == block && obj.sideHit == facing
-    }
-    private fun rayTrace(rotation: Rotation?): MovingObjectPosition? {
-        return mc.renderViewEntity.worldObj.rayTraceBlocks(
-            mc.renderViewEntity.eyes,
-            mc.renderViewEntity.eyes + (
-                RotationUtils.getVectorForRotation(
-                    rotation ?: return null
-                ) * if (mc.playerController.currentGameType.isCreative) 5.0 else 4.5),
-            false,
-            false,
-            true
-        )
     }
 
     private fun buildForward(realYaw: Float = MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw)): Boolean {

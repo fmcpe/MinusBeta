@@ -7,7 +7,6 @@ package net.minusmc.minusbounce.event
 
 import net.minecraft.block.Block
 import net.minecraft.client.gui.GuiScreen
-import net.minecraft.client.gui.ScaledResolution
 import net.minecraft.client.model.ModelPlayer
 import net.minecraft.client.multiplayer.WorldClient
 import net.minecraft.entity.Entity
@@ -25,6 +24,8 @@ import net.minecraft.util.EnumFacing
  * @param targetEntity Attacked entity
  */
 class AttackEvent(val targetEntity: Entity?) : CancellableEvent()
+
+class KnockBackEvent(var motion: Double, var full: Boolean, var power: Int, var postPower: Int, var strong: Boolean, var reduceY: Boolean) : CancellableEvent()
 
 /**
  * Called when minecraft get bounding box of block

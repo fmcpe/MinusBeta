@@ -6,6 +6,7 @@
 package net.minusmc.minusbounce.injection.forge.mixins.entity;
 
 import com.mojang.authlib.GameProfile;
+import net.minecraft.client.Minecraft;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.*;
 import net.minecraft.entity.boss.EntityDragonPart;
@@ -22,6 +23,7 @@ import net.minecraft.util.DamageSource;
 import net.minecraft.util.FoodStats;
 import net.minecraft.util.MathHelper;
 import net.minusmc.minusbounce.MinusBounce;
+import net.minusmc.minusbounce.event.KnockBackEvent;
 import net.minusmc.minusbounce.features.module.modules.movement.KeepSprint;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -142,13 +144,30 @@ public abstract class MixinEntityPlayer extends MixinEntityLivingBase {
 
                     if (flag2)
                     {
+                        KnockBackEvent event = new KnockBackEvent(0.6, false, 1, 0, false, false);
+                        MinusBounce.eventManager.callEvent(event);
                         if (i > 0)
                         {
-                            targetEntity.addVelocity(-MathHelper.sin(this.rotationYaw * (float)Math.PI / 180.0F) * (float)i * 0.5F, 0.1D, MathHelper.cos(this.rotationYaw * (float)Math.PI / 180.0F) * (float)i * 0.5F);
-                            if(!Objects.requireNonNull(MinusBounce.moduleManager.getModule(KeepSprint.class)).getState()){
-                                this.motionX *= 0.6D;
-                                this.motionZ *= 0.6D;
-                                this.setSprinting(false);
+                            if(!event.isCancelled()){
+                                for(int power = 0; power < event.getPower(); power++){
+                                    targetEntity.addVelocity(-MathHelper.sin(this.rotationYaw * (float)Math.PI / 180.0F) * (float)i * 0.5F, event.getReduceY() ? 0.0D : 0.1D, MathHelper.cos(this.rotationYaw * (float)Math.PI / 180.0F) * (float)i * 0.5F);
+                                }
+                                if(!Objects.requireNonNull(MinusBounce.moduleManager.getModule(KeepSprint.class)).getState()){
+                                    this.motionX *= event.getMotion();
+                                    this.motionZ *= event.getMotion();
+                                    this.setSprinting(false);
+                                }
+                            }
+                        } else if (event.getFull() && Minecraft.getMinecraft().thePlayer.hurtTime > 0) {
+                            for(int power = 0; power < event.getPower(); power++){
+                                targetEntity.addVelocity(-MathHelper.sin(this.rotationYaw * (float)Math.PI / 180.0F) * (float)i * 0.5F, event.getReduceY() ? 0.0D : 0.1D, MathHelper.cos(this.rotationYaw * (float)Math.PI / 180.0F) * (float)i * 0.5F);
+                            }
+                            if(!event.isCancelled()){
+                                if(!Objects.requireNonNull(MinusBounce.moduleManager.getModule(KeepSprint.class)).getState()){
+                                    this.motionX *= event.getMotion();
+                                    this.motionZ *= event.getMotion();
+                                    this.setSprinting(false);
+                                }
                             }
                         }
 

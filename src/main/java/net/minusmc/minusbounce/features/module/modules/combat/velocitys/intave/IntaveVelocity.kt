@@ -1,25 +1,56 @@
 package net.minusmc.minusbounce.features.module.modules.combat.velocitys.intave
 
-import net.minusmc.minusbounce.features.module.modules.combat.velocitys.VelocityMode
-import net.minusmc.minusbounce.event.PacketEvent
 import net.minecraft.network.play.server.S12PacketEntityVelocity
-import net.minusmc.minusbounce.utils.timer.MSTimer
+import net.minusmc.minusbounce.event.AttackEvent
+import net.minusmc.minusbounce.event.KnockBackEvent
+import net.minusmc.minusbounce.event.MoveInputEvent
+import net.minusmc.minusbounce.event.PacketEvent
+import net.minusmc.minusbounce.features.module.modules.combat.velocitys.VelocityMode
 
 class IntaveVelocity : VelocityMode("Intave") {
-    private var velocityInput = false
-    private val velocityTimer = MSTimer()
+    private var blockVelocity = false
+
+    override fun onDisable() {
+        mc.thePlayer.movementInput.jump = false
+    }
 
     override fun onUpdate() {
-        if (mc.thePlayer.hurtTime > 1 && velocityInput) {
-            mc.thePlayer.motionX *= 0.62
-            mc.thePlayer.motionZ *= 0.62
+        blockVelocity = true
+
+        mc.objectMouseOver ?: return
+        if(mc.objectMouseOver.entityHit != null && mc.thePlayer.hurtTime == 9 && !mc.thePlayer.isBurning){
+            mc.thePlayer.movementInput.jump = true
         }
-        if (velocityInput && (mc.thePlayer.hurtTime < 7 || mc.thePlayer.onGround) && velocityTimer.hasTimePassed(60)) 
-            velocityInput = false
     }
 
     override fun onPacket(event: PacketEvent) {
         val packet = event.packet
-        if (packet is S12PacketEntityVelocity) velocityInput = true
+
+        if(packet is S12PacketEntityVelocity && packet.entityID == mc.thePlayer.entityId){
+            if(mc.objectMouseOver.entityHit != null && mc.thePlayer.hurtTime == 9 && !mc.thePlayer.isBurning){
+                mc.thePlayer.movementInput.jump = true
+            }
+        }
+    }
+
+    override fun onAttack(event: AttackEvent) {
+        if(mc.thePlayer.hurtTime > 0 && blockVelocity){
+            mc.thePlayer.isSprinting = false
+            mc.thePlayer.motionX *= 0.6
+            mc.thePlayer.motionZ *= 0.6
+            blockVelocity = false
+        }
+    }
+
+    override fun onInput(event: MoveInputEvent) {
+        if(mc.thePlayer.hurtTime > 0 && mc.objectMouseOver.entityHit != null){
+            event.forward = 1.0F
+            event.strafe = 0.0F
+        }
+    }
+
+    override fun onKnockBack(event: KnockBackEvent) {
+        event.full = false
+        event.reduceY = true
     }
 }

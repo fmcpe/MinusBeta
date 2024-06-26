@@ -10,13 +10,15 @@ import net.minecraft.block.BlockAir
 import net.minecraft.block.material.Material
 import net.minecraft.block.state.IBlockState
 import net.minecraft.util.*
-import net.minusmc.minusbounce.injection.access.StaticStorage
 import net.minusmc.minusbounce.utils.MinecraftInstance
 import net.minusmc.minusbounce.utils.Rotation
 import net.minusmc.minusbounce.utils.RotationUtils
+import net.minusmc.minusbounce.utils.extensions.eyes
 import net.minusmc.minusbounce.utils.extensions.plus
 import net.minusmc.minusbounce.utils.extensions.times
-import kotlin.math.*
+import kotlin.math.cos
+import kotlin.math.floor
+import kotlin.math.sin
 
 
 object BlockUtils : MinecraftInstance() {
@@ -135,21 +137,17 @@ object BlockUtils : MinecraftInstance() {
 
     private val blockNames = mutableListOf<Pair<String, Int>>()
 
-    /**
-     * Checking if the rotation is correct from blockPos and facing.
-     * 
-     * @author fmcpe
-     */
-    @JvmOverloads
-    fun rayTrace(
-        pos: BlockPos?,
-        facing: EnumFacing,
-        obj: MovingObjectPosition? = mc.objectMouseOver
-    ): Boolean {
-        obj ?: return false
-        pos ?: return false
-
-        return obj.sideHit == facing && obj.blockPos == pos
+    fun rayTrace(rotation: Rotation?): MovingObjectPosition? {
+        return mc.renderViewEntity.worldObj.rayTraceBlocks(
+            mc.renderViewEntity.eyes,
+            mc.renderViewEntity.eyes + (
+                    RotationUtils.getVectorForRotation(
+                        rotation ?: return null
+                    ) * if (mc.playerController.currentGameType.isCreative) 5.0 else 4.5),
+            false,
+            false,
+            true
+        )
     }
 
     /**

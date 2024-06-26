@@ -5,17 +5,16 @@
  */
 package net.minusmc.minusbounce.features.module.modules.combat
 
+import net.minecraft.network.play.server.S27PacketExplosion
 import net.minusmc.minusbounce.event.*
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
+import net.minusmc.minusbounce.features.module.modules.combat.velocitys.VelocityMode
+import net.minusmc.minusbounce.utils.ClassUtils
+import net.minusmc.minusbounce.value.BoolValue
 import net.minusmc.minusbounce.value.FloatValue
 import net.minusmc.minusbounce.value.ListValue
-import net.minusmc.minusbounce.value.BoolValue
-import net.minusmc.minusbounce.utils.ClassUtils
-import net.minusmc.minusbounce.features.module.modules.combat.velocitys.VelocityMode
-import net.minecraft.network.play.server.S27PacketExplosion
-import net.minusmc.minusbounce.value.IntegerValue
 
 
 @ModuleInfo(name = "Velocity", description = "Allows you to modify the amount of knockback you take.", category = ModuleCategory.COMBAT)
@@ -98,6 +97,16 @@ class Velocity : Module() {
     @EventTarget
     fun onInput(event: MoveInputEvent) {
         mode.onInput(event)
+    }
+
+    @EventTarget
+    fun onAttack(event: AttackEvent) {
+        mode.onAttack(event)
+    }
+
+    @EventTarget
+    fun onKnockBack(event: KnockBackEvent) {
+        mode.onKnockBack(event)
     }
 
     override val tag: String
