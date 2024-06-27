@@ -1,21 +1,40 @@
-package net.minusmc.minusbounce.features.module.modules.movement.speeds.legit
+package net.minusmc.minusbounce.features.module.modules.movement.speeds.normal
 
-import net.minusmc.minusbounce.features.module.modules.movement.speeds.SpeedType
+import net.minusmc.minusbounce.event.StrafeEvent
 import net.minusmc.minusbounce.features.module.modules.movement.speeds.SpeedMode
+import net.minusmc.minusbounce.features.module.modules.movement.speeds.SpeedType
 import net.minusmc.minusbounce.utils.MovementUtils
+import net.minusmc.minusbounce.utils.Rotation
+import net.minusmc.minusbounce.utils.RotationUtils
+import net.minusmc.minusbounce.utils.movement.MovementFixType
 import net.minusmc.minusbounce.value.BoolValue
+import net.minusmc.minusbounce.value.ListValue
 
 class LegitSpeed: SpeedMode("Legit", SpeedType.NORMAL) {
 
-    private val cpuSPEED = BoolValue("CPU SpeedUp Exploit", true)
-    private val jumpSpeed = BoolValue("No Jump Delay", true)
+    private val exploit = ListValue("ExploitMode", arrayOf("Rotate", "Speed"), "Speed")
+    private val cpuSPEED = BoolValue("SpeedUpExploit", true)
+    private val jumpSpeed = BoolValue("NoJumpDelay", true)
 
-    override fun onUpdate() {
-        if (cpuSPEED.get()) mc.timer.timerSpeed = 1.004f
-        if (jumpSpeed.get()) mc.thePlayer.jumpTicks = 0
-        if (mc.thePlayer.isInWater) return
-        if (MovementUtils.isMoving) {
-            if (mc.thePlayer.onGround) mc.thePlayer.jump()
+    override fun onPreUpdate() {
+        when(exploit.get()){
+            "Rotate" -> if(!mc.thePlayer.onGround) {
+                RotationUtils.setRotations(Rotation(mc.thePlayer.rotationYaw + 45f, mc.thePlayer.rotationPitch), speed = 10f, fixType = MovementFixType.NORMAL)
+            }
+            "Speed" -> MovementUtils.useDiagonalSpeed()
+        }
+        if (jumpSpeed.get()) {
+            mc.thePlayer.jumpTicks = 0
+        }
+
+        if (cpuSPEED.get()) {
+            mc.timer.timerSpeed = 1.004f
+        }
+    }
+
+    override fun onStrafe(event: StrafeEvent) {
+        if (MovementUtils.isMoving && !mc.thePlayer.isInWater && mc.thePlayer.onGround) {
+            mc.thePlayer.jump()
         }
     }
 }

@@ -6,19 +6,6 @@
 package net.minusmc.minusbounce.injection.forge.mixins.network;
 
 import io.netty.buffer.Unpooled;
-import java.util.UUID;
-import java.util.List;
-import java.io.File;
-import java.net.URI;
-import java.net.URISyntaxException;
-import net.minusmc.minusbounce.MinusBounce;
-import net.minusmc.minusbounce.event.EntityDamageEvent;
-import net.minusmc.minusbounce.event.EntityMovementEvent;
-import net.minusmc.minusbounce.features.module.modules.misc.Patcher;
-import net.minusmc.minusbounce.features.special.AntiForge;
-import net.minusmc.minusbounce.ui.client.clickgui.dropdown.DropDownClickGui;
-import net.minusmc.minusbounce.ui.client.hud.designer.GuiHudDesigner;
-import net.minusmc.minusbounce.utils.ClientUtils;
 import net.minecraft.client.ClientBrandRetriever;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
@@ -32,39 +19,60 @@ import net.minecraft.client.network.NetworkPlayerInfo;
 import net.minecraft.entity.DataWatcher;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.inventory.Container;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.PacketBuffer;
 import net.minecraft.network.PacketThreadUtil;
+import net.minecraft.network.play.client.C03PacketPlayer;
 import net.minecraft.network.play.client.C17PacketCustomPayload;
 import net.minecraft.network.play.client.C19PacketResourcePackStatus;
 import net.minecraft.network.play.server.*;
 import net.minecraft.util.IChatComponent;
 import net.minecraft.world.WorldSettings;
+import net.minusmc.minusbounce.MinusBounce;
+import net.minusmc.minusbounce.event.EntityDamageEvent;
+import net.minusmc.minusbounce.event.EntityMovementEvent;
+import net.minusmc.minusbounce.features.module.modules.misc.NoRotateSet;
+import net.minusmc.minusbounce.features.module.modules.misc.Patcher;
+import net.minusmc.minusbounce.features.special.AntiForge;
+import net.minusmc.minusbounce.ui.client.clickgui.dropdown.DropDownClickGui;
+import net.minusmc.minusbounce.ui.client.hud.designer.GuiHudDesigner;
+import net.minusmc.minusbounce.utils.ClientUtils;
+import net.minusmc.minusbounce.utils.Rotation;
+import net.minusmc.minusbounce.utils.RotationUtils;
+import net.minusmc.minusbounce.utils.movement.MovementFixType;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.Slice;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
+
+import java.io.File;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.List;
+import java.util.UUID;
 
 @Mixin(NetHandlerPlayClient.class)
 public abstract class MixinNetHandlerPlayClient {
 
     @Shadow
     @Final
-    private NetworkManager netManager;
+    public NetworkManager netManager;
+
+    @Shadow
+    private boolean doneLoadingTerrain;
 
     @Shadow
     private Minecraft gameController;
 
     @Shadow
-    private WorldClient clientWorldController;
+    public WorldClient clientWorldController;
 
     @Shadow
     public int currentServerMaxPlayers;
@@ -111,6 +119,7 @@ public abstract class MixinNetHandlerPlayClient {
             callbackInfo.cancel();
         }
     }
+
 
     @Inject(method = "handleCloseWindow", at = @At("HEAD"), cancellable = true)
     private void handleCloseWindow(final S2EPacketCloseWindow packetIn, final CallbackInfo callbackInfo) {
@@ -184,6 +193,71 @@ public abstract class MixinNetHandlerPlayClient {
 
         if(entity != null)
             MinusBounce.eventManager.callEvent(new EntityMovementEvent(entity));
+    }
+
+    /**
+     * Handles changes in player positioning and rotation such as when travelling to a new dimension, (re)spawning,
+     * mounting horses etc. Seems to immediately reply to the server with the clients post-processing perspective on the
+     * player positioning
+     *
+     * @author fmcpe
+     * @reason misc
+     */
+    @Overwrite
+    public void handlePlayerPosLook(S08PacketPlayerPosLook packetIn) {
+        PacketThreadUtil.checkThreadAndEnqueue(packetIn, (NetHandlerPlayClient) (Object) this, this.gameController);
+        EntityPlayer entityplayer = this.gameController.thePlayer;
+        double d0 = packetIn.getX();
+        double d1 = packetIn.getY();
+        double d2 = packetIn.getZ();
+        float f = packetIn.getYaw();
+        float f1 = packetIn.getPitch();
+
+        if (packetIn.func_179834_f().contains(S08PacketPlayerPosLook.EnumFlags.X)) {
+            d0 += entityplayer.posX;
+        } else {
+            entityplayer.motionX = 0.0D;
+        }
+
+        if (packetIn.func_179834_f().contains(S08PacketPlayerPosLook.EnumFlags.Y)) {
+            d1 += entityplayer.posY;
+        } else {
+            entityplayer.motionY = 0.0D;
+        }
+
+        if (packetIn.func_179834_f().contains(S08PacketPlayerPosLook.EnumFlags.Z)) {
+            d2 += entityplayer.posZ;
+        } else {
+            entityplayer.motionZ = 0.0D;
+        }
+
+        if (packetIn.func_179834_f().contains(S08PacketPlayerPosLook.EnumFlags.X_ROT)) {
+            f1 += entityplayer.rotationPitch;
+        }
+
+        if (packetIn.func_179834_f().contains(S08PacketPlayerPosLook.EnumFlags.Y_ROT)) {
+            f += entityplayer.rotationYaw;
+        }
+
+        final float prevYaw = entityplayer.rotationYaw;
+        final float prevPitch = entityplayer.rotationPitch;
+
+        entityplayer.setPositionAndRotation(d0, d1, d2, f, f1);
+        this.netManager.sendPacket(new C03PacketPlayer.C06PacketPlayerPosLook(entityplayer.posX, entityplayer.getEntityBoundingBox().minY, entityplayer.posZ, entityplayer.rotationYaw, entityplayer.rotationPitch, false));
+
+        if (!this.doneLoadingTerrain) {
+            this.gameController.thePlayer.prevPosX = this.gameController.thePlayer.posX;
+            this.gameController.thePlayer.prevPosY = this.gameController.thePlayer.posY;
+            this.gameController.thePlayer.prevPosZ = this.gameController.thePlayer.posZ;
+            this.doneLoadingTerrain = true;
+            this.gameController.displayGuiScreen(null);
+        } else {
+            NoRotateSet noRotateSetModule = MinusBounce.moduleManager.getModule(NoRotateSet.class);
+            if (noRotateSetModule != null && noRotateSetModule.getState()) {
+                entityplayer.setPositionAndRotation(d0, d1, d2, prevYaw, prevPitch);
+                RotationUtils.INSTANCE.setRotations(new Rotation(f, f1), 2, 360f, MovementFixType.FULL);
+            }
+        }
     }
 
     @Inject(method = "handleEntityStatus", at = @At("HEAD"))

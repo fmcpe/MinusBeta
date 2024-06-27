@@ -60,6 +60,38 @@ object MovementUtils : MinecraftInstance(), Listenable {
         mc.thePlayer.motionZ = cos(yaw) * speed
     }
 
+    fun useDiagonalSpeed() {
+        var down = 0
+        val groundIncrease = (0.1299999676734952 - 0.12739998266255503) + 1E-7 - 1E-8
+        val airIncrease = (0.025999999334873708 - 0.025479999685988748) - 1E-8
+        val increase = if (mc.thePlayer.onGround) groundIncrease else airIncrease
+        var yaw = if(mc.thePlayer.moveForward < 0) mc.thePlayer.rotationYaw + 180.0 else mc.thePlayer.rotationYaw + 0.0
+        val forward = when {
+            mc.thePlayer.moveForward < 0 -> -0.5
+            mc.thePlayer.moveForward > 0 -> 0.5
+            else -> 1.0
+        }
+        when{
+            mc.thePlayer.moveStrafing > 0 -> yaw -= 70.0 * forward
+            mc.thePlayer.moveStrafing < 0 -> yaw += 70.0 * forward
+        }
+        arrayOf(
+            mc.gameSettings.keyBindForward,
+            mc.gameSettings.keyBindRight,
+            mc.gameSettings.keyBindBack,
+            mc.gameSettings.keyBindLeft
+        ).forEach { keyBinding ->
+            if (keyBinding.isKeyDown) {
+                down++
+            }
+        }
+        if (mc.thePlayer.moveForward != 0f && mc.thePlayer.moveStrafing != 0f && down == 1) {
+            val r = Math.toRadians(yaw)
+            mc.thePlayer.motionX = -sin(r) * increase
+            mc.thePlayer.motionZ = cos(r) * increase
+        }
+    }
+
     fun strafe(speed: Float, yaw: Float, forward: Float, strafe: Float) {
         if (!isMoving) return
         val yaw = getDirectionRotation(yaw, strafe, forward)

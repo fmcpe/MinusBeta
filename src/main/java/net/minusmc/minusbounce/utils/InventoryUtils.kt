@@ -11,17 +11,16 @@ import net.minecraft.item.Item
 import net.minecraft.item.ItemBlock
 import net.minecraft.item.ItemPotion
 import net.minecraft.item.ItemStack
-import net.minecraft.potion.Potion
 import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement
 import net.minecraft.network.play.client.C0DPacketCloseWindow
 import net.minecraft.network.play.client.C0EPacketClickWindow
 import net.minecraft.network.play.client.C16PacketClientStatus
+import net.minecraft.potion.Potion
 import net.minusmc.minusbounce.event.ClickWindowEvent
 import net.minusmc.minusbounce.event.EventTarget
 import net.minusmc.minusbounce.event.Listenable
 import net.minusmc.minusbounce.event.PacketEvent
 import net.minusmc.minusbounce.utils.timer.MSTimer
-import java.util.*
 
 object InventoryUtils : MinecraftInstance(), Listenable {
     val CLICK_TIMER = MSTimer()
@@ -85,8 +84,7 @@ object InventoryUtils : MinecraftInstance(), Listenable {
     @EventTarget
     fun onPacket(event: PacketEvent) {
         val packet = event.packet
-        if (packet is C08PacketPlayerBlockPlacement)
-            CLICK_TIMER.reset()
+        if (packet is C08PacketPlayerBlockPlacement || packet is C0EPacketClickWindow) CLICK_TIMER.reset()
     }
 
     override fun handleEvents() = true

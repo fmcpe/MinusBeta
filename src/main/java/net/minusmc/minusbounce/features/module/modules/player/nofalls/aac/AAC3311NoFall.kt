@@ -1,10 +1,10 @@
 package net.minusmc.minusbounce.features.module.modules.player.nofalls.aac
 
-import net.minusmc.minusbounce.features.module.modules.player.nofalls.NoFallMode
 import net.minecraft.network.play.client.C03PacketPlayer
 import net.minecraft.network.play.client.C03PacketPlayer.C04PacketPlayerPosition
+import net.minusmc.minusbounce.features.module.modules.player.nofalls.NoFallMode
 
-class AAC3311NoFall: NoFallMode("AAC 3.3.11") {
+class AAC3311NoFall: NoFallMode("AAC3.3.11") {
 	override fun onUpdate() {
 		if (mc.thePlayer.fallDistance > 2F) {
             mc.thePlayer.motionX = 0.0

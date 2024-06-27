@@ -1,13 +1,12 @@
 package net.minusmc.minusbounce.features.module.modules.player.nofalls.aac
 
-import net.minusmc.minusbounce.features.module.modules.player.nofalls.NoFallMode
-import net.minusmc.minusbounce.event.EventState
-import net.minusmc.minusbounce.event.PacketEvent
-import net.minusmc.minusbounce.event.PreMotionEvent
 import net.minecraft.network.play.client.C03PacketPlayer
 import net.minecraft.util.AxisAlignedBB
+import net.minusmc.minusbounce.event.PacketEvent
+import net.minusmc.minusbounce.event.PreMotionEvent
+import net.minusmc.minusbounce.features.module.modules.player.nofalls.NoFallMode
 
-class AAC4xNoFall: NoFallMode("AAC 4.x") {
+class AAC4xNoFall: NoFallMode("AAC4.x") {
     private var aac4Fakelag = false
     private var aac4FlagCount = 0
     private var packetModify = false

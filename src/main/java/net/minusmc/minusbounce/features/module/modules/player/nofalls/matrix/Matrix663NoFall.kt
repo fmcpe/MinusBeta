@@ -1,12 +1,12 @@
 package net.minusmc.minusbounce.features.module.modules.player.nofalls.matrix
 
-import net.minusmc.minusbounce.features.module.modules.player.nofalls.NoFallMode
 import net.minecraft.network.play.client.C03PacketPlayer
 import net.minecraft.network.play.client.C03PacketPlayer.C04PacketPlayerPosition
 import net.minusmc.minusbounce.event.PacketEvent
+import net.minusmc.minusbounce.features.module.modules.player.nofalls.NoFallMode
 import net.minusmc.minusbounce.utils.PacketUtils
 
-class Matrix663NoFall: NoFallMode("Matrix 6.6.3") {
+class Matrix663NoFall: NoFallMode("Matrix6.6.3") {
 	private var matrixSend = false
 	private var modifiedTimer = false
 

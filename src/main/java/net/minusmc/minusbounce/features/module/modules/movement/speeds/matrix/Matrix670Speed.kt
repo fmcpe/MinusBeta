@@ -1,15 +1,15 @@
 package net.minusmc.minusbounce.features.module.modules.movement.speeds.matrix
 
-import net.minusmc.minusbounce.features.module.modules.movement.speeds.SpeedType
-import net.minusmc.minusbounce.features.module.modules.movement.speeds.SpeedMode
-import net.minusmc.minusbounce.utils.MovementUtils
-import net.minusmc.minusbounce.event.PacketEvent
 import net.minecraft.client.settings.GameSettings
 import net.minecraft.network.play.server.S12PacketEntityVelocity
+import net.minusmc.minusbounce.event.PacketEvent
+import net.minusmc.minusbounce.features.module.modules.movement.speeds.SpeedMode
+import net.minusmc.minusbounce.features.module.modules.movement.speeds.SpeedType
+import net.minusmc.minusbounce.utils.MovementUtils
 import kotlin.math.abs
 
 
-class Matrix670Speed: SpeedMode("Matrix 6.7.0", SpeedType.MATRIX) {
+class Matrix670Speed: SpeedMode("Matrix6.7.0", SpeedType.MATRIX) {
 	private var noVelocityY = 0
 
     override fun onUpdate() {

@@ -1,13 +1,13 @@
 package net.minusmc.minusbounce.features.module.modules.movement.speeds.matrix
 
-import net.minusmc.minusbounce.features.module.modules.movement.speeds.SpeedType
-import net.minusmc.minusbounce.features.module.modules.movement.speeds.SpeedMode
-import net.minusmc.minusbounce.utils.MovementUtils
 import net.minusmc.minusbounce.event.PostMotionEvent
 import net.minusmc.minusbounce.event.PreMotionEvent
+import net.minusmc.minusbounce.features.module.modules.movement.speeds.SpeedMode
+import net.minusmc.minusbounce.features.module.modules.movement.speeds.SpeedType
+import net.minusmc.minusbounce.utils.MovementUtils
 
 
-class Matrix661Speed: SpeedMode("Matrix 6.6.1", SpeedType.MATRIX) {
+class Matrix661Speed: SpeedMode("Matrix6.6.1", SpeedType.MATRIX) {
 	override fun onEnable() {
 		mc.thePlayer.jumpMovementFactor = 0.02f
 		mc.timer.timerSpeed = 1f

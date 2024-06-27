@@ -18,7 +18,7 @@ class CombatManager: MinecraftInstance(), Listenable {
 	private val attackTimer = MSTimer()
 
 	@EventTarget
-	fun onUpdate(event: UpdateEvent) {
+	fun onUpdate(event: PreUpdateEvent) {
 		mc.thePlayer ?: return
 		attackedEntityList.map {it}.forEach {
 			if (it.isDead) {

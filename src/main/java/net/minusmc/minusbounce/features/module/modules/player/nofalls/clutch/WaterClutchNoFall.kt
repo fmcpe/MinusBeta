@@ -8,9 +8,7 @@ import net.minecraft.network.play.client.C09PacketHeldItemChange
 import net.minecraft.util.BlockPos
 import net.minecraft.util.EnumFacing
 import net.minecraft.util.Vec3
-import net.minusmc.minusbounce.event.EventState
 import net.minusmc.minusbounce.event.PreMotionEvent
-import net.minusmc.minusbounce.event.PostMotionEvent
 import net.minusmc.minusbounce.features.module.modules.player.nofalls.NoFallMode
 import net.minusmc.minusbounce.utils.RotationUtils
 import net.minusmc.minusbounce.utils.VecRotation
@@ -73,7 +71,7 @@ class WaterClutchNoFall: NoFallMode("WaterClutch") {
         }
 	}
 
-    override fun onPostMotion(event: PostMotionEvent) {
+    override fun onUpdate() {
         if (currentMlgRotation != null) {
             val stack = mc.thePlayer.inventory.mainInventory[currentMlgItemIndex]
 

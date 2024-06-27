@@ -1,13 +1,13 @@
 package net.minusmc.minusbounce.features.module.modules.movement.speeds.matrix
 
-import net.minusmc.minusbounce.features.module.modules.movement.speeds.SpeedType
-import net.minusmc.minusbounce.features.module.modules.movement.speeds.SpeedMode
-import net.minusmc.minusbounce.utils.MovementUtils
+import net.minecraft.client.settings.GameSettings
 import net.minusmc.minusbounce.event.PostMotionEvent
 import net.minusmc.minusbounce.event.PreMotionEvent
-import net.minecraft.client.settings.GameSettings
+import net.minusmc.minusbounce.features.module.modules.movement.speeds.SpeedMode
+import net.minusmc.minusbounce.features.module.modules.movement.speeds.SpeedType
+import net.minusmc.minusbounce.utils.MovementUtils
 
-class Matrix692Speed: SpeedMode("Matrix 6.9.2", SpeedType.MATRIX) {
+class Matrix692Speed: SpeedMode("Matrix6.9.2", SpeedType.MATRIX) {
 	private var wasTimer = false
 
 	override fun onDisable() {

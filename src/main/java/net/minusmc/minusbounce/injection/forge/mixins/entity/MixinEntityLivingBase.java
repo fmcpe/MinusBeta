@@ -22,6 +22,7 @@ import net.minusmc.minusbounce.event.LookEvent;
 import net.minusmc.minusbounce.features.module.modules.client.Animations;
 import net.minusmc.minusbounce.features.module.modules.movement.NoJumpDelay;
 import net.minusmc.minusbounce.features.module.modules.render.AntiBlind;
+import net.minusmc.minusbounce.features.module.modules.world.Scaffold;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
@@ -117,8 +118,13 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
 
     @Inject(method = "onLivingUpdate", at = @At("HEAD"))
     private void headLiving(CallbackInfo callbackInfo) {
-        if (Objects.requireNonNull(MinusBounce.moduleManager.getModule(NoJumpDelay.class)).getState())
-            jumpTicks = 0;
+        if (
+            Objects.requireNonNull(MinusBounce.moduleManager.getModule(NoJumpDelay.class)).getState() &&
+            Objects.requireNonNull(
+                    Objects.requireNonNull(
+                            MinusBounce.moduleManager.getModule(Scaffold.class)
+                    ).getValue("Tower")).get() == "Off"
+        ) jumpTicks = 0;
     }
 
     /**

@@ -1,13 +1,13 @@
 package net.minusmc.minusbounce.features.module.modules.player.nofalls.aac
 
-import net.minusmc.minusbounce.features.module.modules.player.nofalls.NoFallMode
 import net.minecraft.network.play.client.C03PacketPlayer
 import net.minecraft.network.play.client.C03PacketPlayer.C04PacketPlayerPosition
 import net.minecraft.network.play.server.S08PacketPlayerPosLook
-import net.minusmc.minusbounce.utils.timer.MSTimer
 import net.minusmc.minusbounce.event.PacketEvent
+import net.minusmc.minusbounce.features.module.modules.player.nofalls.NoFallMode
+import net.minusmc.minusbounce.utils.timer.MSTimer
 
-class AAC442LoyisaNoFall: NoFallMode("AAC 4.4.2 Loyisa") {
+class AAC442LoyisaNoFall: NoFallMode("AAC4.4.2Loyisa") {
     private var isDmgFalling = false
     private var modifiedTimer = false
     private var matrixFlagWait = 0

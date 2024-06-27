@@ -189,5 +189,27 @@ object BlockUtils : MinecraftInstance() {
     }
 
     fun blockRelativeToPlayer(offsetX: Int, offsetY: Int, offsetZ: Int) = blockRelativeToPlayer(offsetX.toDouble(), offsetY.toDouble(), offsetZ.toDouble())
+
+    /**
+     * Search blocks around the player in a specific [radius]
+     */
+    @JvmStatic
+    fun searchBlocks(radius: Int): Map<BlockPos, Block> {
+        val blocks = mutableMapOf<BlockPos, Block>()
+
+        for (x in radius downTo -radius + 1) {
+            for (y in radius downTo -radius + 1) {
+                for (z in radius downTo -radius + 1) {
+                    val blockPos = BlockPos(mc.thePlayer.posX.toInt() + x, mc.thePlayer.posY.toInt() + y,
+                        mc.thePlayer.posZ.toInt() + z)
+                    val block = getBlock(blockPos) ?: continue
+
+                    blocks[blockPos] = block
+                }
+            }
+        }
+
+        return blocks
+    }
 }
 

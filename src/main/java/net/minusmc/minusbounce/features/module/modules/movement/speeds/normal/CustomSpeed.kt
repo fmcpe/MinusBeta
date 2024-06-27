@@ -3,20 +3,18 @@
  * A free open source mixin-based injection hacked client for Minecraft using Minecraft Forge.
  * https://github.com/WYSI-Foundation/LiquidBouncePlus/
  */
-package net.minusmc.minusbounce.features.module.modules.movement.speeds.custom
+package net.minusmc.minusbounce.features.module.modules.movement.speeds.normal
 
 import net.minusmc.minusbounce.MinusBounce
-import net.minusmc.minusbounce.event.EventState
-import net.minusmc.minusbounce.event.PostMotionEvent
-import net.minusmc.minusbounce.event.MoveEvent
+import net.minusmc.minusbounce.event.StrafeEvent
 import net.minusmc.minusbounce.features.module.modules.movement.Speed
 import net.minusmc.minusbounce.features.module.modules.movement.speeds.SpeedMode
 import net.minusmc.minusbounce.features.module.modules.movement.speeds.SpeedType
-import net.minusmc.minusbounce.value.FloatValue
-import net.minusmc.minusbounce.value.ListValue
-import net.minusmc.minusbounce.value.IntegerValue
-import net.minusmc.minusbounce.value.BoolValue
 import net.minusmc.minusbounce.utils.MovementUtils
+import net.minusmc.minusbounce.value.BoolValue
+import net.minusmc.minusbounce.value.FloatValue
+import net.minusmc.minusbounce.value.IntegerValue
+import net.minusmc.minusbounce.value.ListValue
 import java.util.*
 
 class CustomSpeed: SpeedMode("Custom", SpeedType.NORMAL) {
@@ -35,7 +33,7 @@ class CustomSpeed: SpeedMode("Custom", SpeedType.NORMAL) {
 
     private var groundTick = 0
 
-    override fun onPostMotion(event: PostMotionEvent) {
+    override fun onStrafe(event: StrafeEvent) {
         val speed = MinusBounce.moduleManager[Speed::class.java]!!
         if (MovementUtils.isMoving) {
             mc.timer.timerSpeed = if (mc.thePlayer.motionY > 0) upTimerValue.get() else downTimerValue.get()

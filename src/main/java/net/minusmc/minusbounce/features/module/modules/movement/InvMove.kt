@@ -5,28 +5,22 @@
  */
 package net.minusmc.minusbounce.features.module.modules.movement
 
+import net.minecraft.client.gui.GuiChat
+import net.minecraft.client.gui.GuiIngameMenu
+import net.minecraft.client.gui.inventory.GuiContainer
+import net.minecraft.client.settings.GameSettings
+import net.minecraft.network.play.client.C03PacketPlayer
+import net.minecraft.network.play.client.C16PacketClientStatus
 import net.minusmc.minusbounce.MinusBounce
-import net.minusmc.minusbounce.features.module.modules.movement.Speed
-import net.minusmc.minusbounce.event.ClickWindowEvent
-import net.minusmc.minusbounce.event.EventState
-import net.minusmc.minusbounce.event.EventTarget
-import net.minusmc.minusbounce.event.PreMotionEvent
-import net.minusmc.minusbounce.event.PacketEvent
-import net.minusmc.minusbounce.event.UpdateEvent
+import net.minusmc.minusbounce.event.*
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
 import net.minusmc.minusbounce.utils.MovementUtils
 import net.minusmc.minusbounce.value.BoolValue
 import net.minusmc.minusbounce.value.ListValue
-import net.minecraft.client.gui.GuiChat
-import net.minecraft.client.gui.GuiIngameMenu
-import net.minecraft.client.gui.inventory.GuiContainer
-import net.minecraft.network.play.client.C03PacketPlayer
-import net.minecraft.network.play.client.C16PacketClientStatus
-import net.minecraft.client.settings.GameSettings
 
-@ModuleInfo(name = "InvMove", spacedName = "Inv Move", description = "Allows you to walk while an inventory is opened.", category = ModuleCategory.MOVEMENT)
+@ModuleInfo(name = "InvMove", spacedName = "Inv Move", category = ModuleCategory.MOVEMENT)
 class InvMove : Module() {
 
     val modeValue = ListValue("Mode", arrayOf("Vanilla", "Silent", "Blink"), "Vanilla")
@@ -37,8 +31,9 @@ class InvMove : Module() {
     private val playerPackets = mutableListOf<C03PacketPlayer>()
 
     @EventTarget
-    fun onUpdate(event: UpdateEvent) {
+    fun onUpdate(event: PreUpdateEvent) {
         val speedModule = MinusBounce.moduleManager.getModule(Speed::class.java) as Speed
+        val sprintModule = MinusBounce.moduleManager.getModule(Sprint::class.java) as Sprint
         if (mc.currentScreen !is GuiChat && mc.currentScreen !is GuiIngameMenu && (!noDetectableValue.get() || mc.currentScreen !is GuiContainer)) {
             mc.gameSettings.keyBindForward.pressed = GameSettings.isKeyDown(mc.gameSettings.keyBindForward)
             mc.gameSettings.keyBindBack.pressed = GameSettings.isKeyDown(mc.gameSettings.keyBindBack)
@@ -46,7 +41,8 @@ class InvMove : Module() {
             mc.gameSettings.keyBindLeft.pressed = GameSettings.isKeyDown(mc.gameSettings.keyBindLeft)
             if (!speedModule.state || !speedModule.mode.modeName.equals("Legit", true)) 
                 mc.gameSettings.keyBindJump.pressed = GameSettings.isKeyDown(mc.gameSettings.keyBindJump)
-            mc.gameSettings.keyBindSprint.pressed = GameSettings.isKeyDown(mc.gameSettings.keyBindSprint)
+
+            if (!sprintModule.state) mc.gameSettings.keyBindSprint.pressed = GameSettings.isKeyDown(mc.gameSettings.keyBindSprint)
 
             if (sprintModeValue.get().equals("stop", true))
                 mc.thePlayer.isSprinting = false

@@ -194,9 +194,9 @@ object RotationUtils : MinecraftInstance(), Listenable {
     @JvmOverloads
     fun setRotations(
         rotation: Rotation,
-        keepLength: Int = 0,
+        keepLength: Int = 2,
         speed: Float = 180f,
-        fixType: MovementFixType = MovementFixType.NONE,
+        fixType: MovementFixType = MovementFixType.FULL,
         silent: Boolean = true,
     ) {
         this.type = if(silent) fixType else MovementFixType.NONE
