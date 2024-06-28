@@ -6,6 +6,7 @@
 package net.minusmc.minusbounce.utils
 
 import net.minecraft.potion.Potion
+import net.minecraft.util.MathHelper
 import net.minusmc.minusbounce.event.EventTarget
 import net.minusmc.minusbounce.event.Listenable
 import net.minusmc.minusbounce.event.MoveEvent
@@ -28,7 +29,7 @@ object MovementUtils : MinecraftInstance(), Listenable {
         get() = getSpeed(mc.thePlayer.motionX, mc.thePlayer.motionZ).toFloat()
 
     val isMoving: Boolean
-        get() = mc.thePlayer != null && (mc.thePlayer.movementInput.moveForward != 0f || mc.thePlayer.movementInput.moveStrafe != 0f)
+        get() = mc.thePlayer != null && (mc.thePlayer.moveForward != 0f || mc.thePlayer.moveStrafing != 0f)
 
     fun getSpeed(motionX: Double, motionZ: Double): Double {
         return sqrt(motionX * motionX + motionZ * motionZ)
@@ -61,35 +62,64 @@ object MovementUtils : MinecraftInstance(), Listenable {
     }
 
     fun useDiagonalSpeed() {
-        var down = 0
-        val groundIncrease = (0.1299999676734952 - 0.12739998266255503) + 1E-7 - 1E-8
-        val airIncrease = (0.025999999334873708 - 0.025479999685988748) - 1E-8
-        val increase = if (mc.thePlayer.onGround) groundIncrease else airIncrease
-        var yaw = if(mc.thePlayer.moveForward < 0) mc.thePlayer.rotationYaw + 180.0 else mc.thePlayer.rotationYaw + 0.0
-        val forward = when {
-            mc.thePlayer.moveForward < 0 -> -0.5
-            mc.thePlayer.moveForward > 0 -> 0.5
-            else -> 1.0
-        }
-        when{
-            mc.thePlayer.moveStrafing > 0 -> yaw -= 70.0 * forward
-            mc.thePlayer.moveStrafing < 0 -> yaw += 70.0 * forward
-        }
-        arrayOf(
+        val gameSettings = arrayOf(
             mc.gameSettings.keyBindForward,
             mc.gameSettings.keyBindRight,
             mc.gameSettings.keyBindBack,
             mc.gameSettings.keyBindLeft
-        ).forEach { keyBinding ->
-            if (keyBinding.isKeyDown) {
-                down++
-            }
+        )
+
+        var down = 0
+
+        gameSettings.forEach { keyBinding ->
+            down += if (keyBinding.isKeyDown) 1 else 0
         }
-        if (mc.thePlayer.moveForward != 0f && mc.thePlayer.moveStrafing != 0f && down == 1) {
-            val r = Math.toRadians(yaw)
-            mc.thePlayer.motionX = -sin(r) * increase
-            mc.thePlayer.motionZ = cos(r) * increase
+
+        val active = down == 1
+
+        if (!active) return
+
+        val groundIncrease = (0.1299999676734952 - 0.12739998266255503) + 1E-7 - 1E-8
+        val airIncrease = (0.025999999334873708 - 0.025479999685988748) - 1E-8
+        val increase = if (mc.thePlayer.onGround) groundIncrease else airIncrease
+
+        moveFlying(increase)
+    }
+
+    fun moveFlying(increase: Double) {
+        if (!isMoving) return
+        val yaw = direction()
+        mc.thePlayer.motionX += -MathHelper.sin(yaw.toFloat()) * increase
+        mc.thePlayer.motionZ += MathHelper.cos(yaw.toFloat()) * increase
+    }
+
+    /**
+     * Gets the players' movement yaw
+     */
+    fun direction(): Double {
+        var rotationYaw: Float = RotationUtils.targetRotation?.yaw ?: mc.thePlayer.rotationYaw
+
+        if (mc.thePlayer.moveForward < 0) {
+            rotationYaw += 180f
         }
+
+        var forward = 1f
+
+        if (mc.thePlayer.moveForward < 0) {
+            forward = -0.5f
+        } else if (mc.thePlayer.moveForward > 0) {
+            forward = 0.5f
+        }
+
+        if (mc.thePlayer.moveStrafing > 0) {
+            rotationYaw -= 70 * forward
+        }
+
+        if (mc.thePlayer.moveStrafing < 0) {
+            rotationYaw += 70 * forward
+        }
+
+        return Math.toRadians(rotationYaw.toDouble())
     }
 
     fun strafe(speed: Float, yaw: Float, forward: Float, strafe: Float) {

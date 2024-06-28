@@ -23,8 +23,8 @@ import kotlin.math.abs
 
 @ModuleInfo("BackTrack", "Back Track", "Let you attack in their previous position", ModuleCategory.COMBAT)
 class BackTrack : Module() {
-    private val delay = IntegerValue("Delay", 500, 100, 2000)
-    private val minRange = FloatValue("Range", 2.8f, 1f, 6f)
+    private val delay = IntegerValue("Delay", 500, 100, 5000)
+    private val minRange = FloatValue("MinRange", 2.8f, 1f, 6f)
 
     private val delayPing = BoolValue("Ping", true)
     private val delayVelocity = BoolValue("Velocity", true) { delayPing.get() }

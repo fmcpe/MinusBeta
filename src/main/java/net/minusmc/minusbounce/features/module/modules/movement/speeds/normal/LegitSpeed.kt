@@ -19,7 +19,15 @@ class LegitSpeed: SpeedMode("Legit", SpeedType.NORMAL) {
     override fun onPreUpdate() {
         when(exploit.get()){
             "Rotate" -> if(!mc.thePlayer.onGround) {
-                RotationUtils.setRotations(Rotation(mc.thePlayer.rotationYaw + 45f, mc.thePlayer.rotationPitch), speed = 10f, fixType = MovementFixType.NORMAL)
+                RotationUtils.setRotations(
+                    Rotation(
+                        mc.thePlayer.rotationYaw + 45f,
+                        mc.thePlayer.rotationPitch
+                    ),
+                    speed = 10f,
+                    fixType = MovementFixType.NORMAL,
+                    keepLength = 0
+                )
             }
             "Speed" -> MovementUtils.useDiagonalSpeed()
         }
@@ -33,7 +41,7 @@ class LegitSpeed: SpeedMode("Legit", SpeedType.NORMAL) {
     }
 
     override fun onStrafe(event: StrafeEvent) {
-        if (MovementUtils.isMoving && !mc.thePlayer.isInWater && mc.thePlayer.onGround) {
+        if (mc.thePlayer.onGround) {
             mc.thePlayer.jump()
         }
     }
