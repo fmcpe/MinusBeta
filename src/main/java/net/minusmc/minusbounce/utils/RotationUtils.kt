@@ -265,6 +265,30 @@ object RotationUtils : MinecraftInstance(), Listenable {
     }
 
     /**
+     * Creates a raytrace even when the target [blockPos] is not visible
+     */
+    fun performRaytrace(
+        blockPos: BlockPos,
+        rotation: Rotation,
+        reach: Float = mc.playerController.blockReachDistance,
+    ): MovingObjectPosition? {
+        val world = mc.theWorld ?: return null
+        val player = mc.thePlayer ?: return null
+
+        val eyes = player.eyes
+
+        return blockPos.getBlock()?.collisionRayTrace(
+            world,
+            blockPos,
+            eyes,
+            eyes + (getVectorForRotation(rotation) * reach.toDouble())
+        )
+    }
+
+    fun performRayTrace(blockPos: BlockPos, vec: Vec3, eyes: Vec3 = mc.thePlayer.eyes) =
+        mc.theWorld?.let { blockPos.getBlock()?.collisionRayTrace(it, blockPos, eyes, vec) }
+
+    /**
      * Face target with bow
      *
      * @param target your enemy

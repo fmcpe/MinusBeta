@@ -5,6 +5,11 @@
  */
 package net.minusmc.minusbounce.features.module.modules.combat
 
+import net.minecraft.client.gui.inventory.GuiInventory
+import net.minecraft.init.Items
+import net.minecraft.network.play.client.*
+import net.minecraft.util.BlockPos
+import net.minecraft.util.EnumFacing
 import net.minusmc.minusbounce.event.EventTarget
 import net.minusmc.minusbounce.event.UpdateEvent
 import net.minusmc.minusbounce.features.module.Module
@@ -16,11 +21,6 @@ import net.minusmc.minusbounce.value.BoolValue
 import net.minusmc.minusbounce.value.FloatValue
 import net.minusmc.minusbounce.value.IntegerValue
 import net.minusmc.minusbounce.value.ListValue
-import net.minecraft.client.gui.inventory.GuiInventory
-import net.minecraft.init.Items
-import net.minecraft.network.play.client.*
-import net.minecraft.util.BlockPos
-import net.minecraft.util.EnumFacing
 
 @ModuleInfo(name = "AutoSoup", spacedName = "Auto Soup", description = "Makes you automatically eat soup whenever your health is low.", category = ModuleCategory.COMBAT)
 class AutoSoup : Module() {
@@ -41,7 +41,7 @@ class AutoSoup : Module() {
         if (!timer.hasTimePassed(delayValue.get().toLong()))
             return
 
-        val soupInHotbar = InventoryUtils.findItem(36, 45, Items.mushroom_stew)
+        val soupInHotbar = InventoryUtils.findItem(36, 45, Items.mushroom_stew) ?: return
         if (mc.thePlayer.health <= healthValue.get() && soupInHotbar != -1) {
             mc.netHandler.addToSendQueue(C09PacketHeldItemChange(soupInHotbar - 36))
             mc.netHandler.addToSendQueue(C08PacketPlayerBlockPlacement(mc.thePlayer.inventoryContainer
@@ -54,7 +54,7 @@ class AutoSoup : Module() {
             return
         }
 
-        val bowlInHotbar = InventoryUtils.findItem(36, 45, Items.bowl)
+        val bowlInHotbar = InventoryUtils.findItem(36, 45, Items.bowl) ?: return
         if (bowlValue.get().equals("Move", true) && bowlInHotbar != -1) {
             if (openInventoryValue.get() && mc.currentScreen !is GuiInventory)
                 return
@@ -82,7 +82,7 @@ class AutoSoup : Module() {
             }
         }
 
-        val soupInInventory = InventoryUtils.findItem(9, 36, Items.mushroom_stew)
+        val soupInInventory = InventoryUtils.findItem(9, 36, Items.mushroom_stew) ?: return
         if (soupInInventory != -1 && InventoryUtils.hasSpaceHotbar()) {
             if (openInventoryValue.get() && mc.currentScreen !is GuiInventory)
                 return

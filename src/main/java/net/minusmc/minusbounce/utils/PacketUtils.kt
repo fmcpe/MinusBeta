@@ -44,7 +44,7 @@ object PacketUtils : MinecraftInstance(), Listenable {
     }
 
     @JvmStatic
-    fun sendPacket(packet: Packet<*>, triggerEvent: Boolean) {
+    fun sendPacket(packet: Packet<*>, triggerEvent: Boolean = true) {
         if (triggerEvent) {
             mc.netHandler?.addToSendQueue(packet)
             return

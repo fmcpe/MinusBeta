@@ -1,18 +1,24 @@
 package net.minusmc.minusbounce.utils.extensions
 
 import net.minecraft.client.Minecraft
+import net.minecraft.client.entity.EntityPlayerSP
 import net.minecraft.client.resources.DefaultPlayerSkin
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityLivingBase
 import net.minecraft.entity.player.EntityPlayer
-import net.minecraft.util.MathHelper
-import net.minecraft.util.MovingObjectPosition
-import net.minecraft.util.ResourceLocation
-import net.minecraft.util.Vec3
+import net.minecraft.item.ItemBlock
+import net.minecraft.item.ItemStack
+import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement
+import net.minecraft.util.*
+import net.minecraftforge.event.ForgeEventFactory
+import net.minusmc.minusbounce.utils.InventoryUtils.serverSlot
 import net.minusmc.minusbounce.utils.MinecraftInstance
+import net.minusmc.minusbounce.utils.MinecraftInstance.Companion.mc
+import net.minusmc.minusbounce.utils.PacketUtils.sendPacket
 import net.minusmc.minusbounce.utils.Rotation
 import net.minusmc.minusbounce.utils.RotationUtils
 import net.minusmc.minusbounce.utils.RotationUtils.getVectorForRotation
+import net.minusmc.minusbounce.utils.block.BlockUtils.getState
 
 fun EntityPlayer.getEyeVec3(): Vec3 {
     return Vec3(this.posX, this.entityBoundingBox.minY + this.getEyeHeight(), this.posZ)
@@ -74,4 +80,86 @@ fun Entity.getLookDistanceToEntityBox(entity: Entity=this, rotation: Rotation? =
     val eyes = this.getPositionEyes(1F)
     val end = getVectorForRotation((rotation?: RotationUtils.targetRotation)!!).multiply(range).add(eyes)
     return entity.entityBoundingBox.calculateIntercept(eyes, end)?.hitVec?.distanceTo(eyes) ?: Double.MAX_VALUE
+}
+
+// Modified mc.playerController.onPlayerRightClick() that sends correct stack in its C08
+fun EntityPlayerSP.onPlayerRightClick(
+    clickPos: BlockPos, side: EnumFacing, clickVec: Vec3,
+    stack: ItemStack? = inventory.mainInventory[serverSlot],
+): Boolean {
+    if (clickPos !in worldObj.worldBorder)
+        return false
+
+    val (facingX, facingY, facingZ) = (clickVec - clickPos.toVec()).toFloatTriple()
+
+    val sendClick = {
+        sendPacket(C08PacketPlayerBlockPlacement(clickPos, side.index, stack, facingX, facingY, facingZ))
+        true
+    }
+
+    // If player is a spectator, send click and return true
+    if (mc.playerController.isSpectator)
+        return sendClick()
+
+    val item = stack?.item
+
+    if (item?.onItemUseFirst(stack, this, worldObj, clickPos, side, facingX, facingY, facingZ) == true)
+        return true
+
+    val blockState = getState(clickPos)
+
+    // If click had activated a block, send click and return true
+    if ((!isSneaking || item == null || item.doesSneakBypassUse(worldObj, clickPos, this))
+        && blockState?.block?.onBlockActivated(worldObj,
+            clickPos,
+            blockState,
+            this,
+            side,
+            facingX,
+            facingY,
+            facingZ
+        ) == true)
+        return sendClick()
+
+    if (item is ItemBlock && !item.canPlaceBlockOnSide(worldObj, clickPos, side, this, stack))
+        return false
+
+    sendClick()
+
+    if (stack == null)
+        return false
+
+    val prevMetadata = stack.metadata
+    val prevSize = stack.stackSize
+
+    return stack.onItemUse(this, worldObj, clickPos, side, facingX, facingY, facingZ).also {
+        if (mc.playerController.isInCreativeMode) {
+            stack.itemDamage = prevMetadata
+            stack.stackSize = prevSize
+        } else if (stack.stackSize <= 0) {
+            ForgeEventFactory.onPlayerDestroyItem(this, stack)
+        }
+    }
+}
+
+// Modified mc.playerController.sendUseItem() that sends correct stack in its C08
+fun EntityPlayerSP.sendUseItem(stack: ItemStack): Boolean {
+    if (mc.playerController.isSpectator)
+        return false
+
+    sendPacket(C08PacketPlayerBlockPlacement(stack))
+
+    val prevSize = stack.stackSize
+
+    val newStack = stack.useItemRightClick(worldObj, this)
+
+    return if (newStack != stack || newStack.stackSize != prevSize) {
+        if (newStack.stackSize <= 0) {
+            mc.thePlayer.inventory.mainInventory[serverSlot] = null
+            ForgeEventFactory.onPlayerDestroyItem(mc.thePlayer, newStack)
+        } else
+            mc.thePlayer.inventory.mainInventory[serverSlot] = newStack
+
+        true
+    } else false
 }

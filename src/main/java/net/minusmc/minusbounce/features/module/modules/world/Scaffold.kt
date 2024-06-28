@@ -19,11 +19,13 @@ import net.minusmc.minusbounce.injection.access.StaticStorage
 import net.minusmc.minusbounce.injection.implementations.IEntityPlayerSP
 import net.minusmc.minusbounce.ui.font.Fonts
 import net.minusmc.minusbounce.utils.*
+import net.minusmc.minusbounce.utils.InventoryUtils.BLOCK_BLACKLIST
 import net.minusmc.minusbounce.utils.block.BlockUtils
 import net.minusmc.minusbounce.utils.block.BlockUtils.rayTrace
 import net.minusmc.minusbounce.utils.block.PlaceInfo
 import net.minusmc.minusbounce.utils.extensions.plus
 import net.minusmc.minusbounce.utils.extensions.times
+import net.minusmc.minusbounce.utils.extensions.tryJump
 import net.minusmc.minusbounce.utils.misc.RandomUtils
 import net.minusmc.minusbounce.utils.movement.MovementFixType
 import net.minusmc.minusbounce.utils.render.RenderUtils
@@ -37,7 +39,7 @@ import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 
-@ModuleInfo("Scaffold", "Scaffold", ModuleCategory.WORLD)
+@ModuleInfo("Scaffold", "Scaffold", "Use huge balls to rolling on mid-air", ModuleCategory.WORLD)
 class Scaffold: Module(){
 
     private val modes = ListValue("Mode", arrayOf("Normal", "Snap", "Telly", "Legit"), "Normal")
@@ -171,6 +173,79 @@ class Scaffold: Module(){
                 mc.thePlayer.isSprinting = false
             }
         }
+
+        when(towerModeValue.get().lowercase()){
+            "air" -> {
+                if (mc.gameSettings.keyBindJump.isKeyDown && mc.thePlayer.ticksExisted % 2 == 0 && blockNear(2)) {
+                    mc.thePlayer.motionY = 0.42
+                    mc.thePlayer.onGround = true
+                }
+            }
+
+            "legit" ->{
+                if (mc.thePlayer.onGround && mc.gameSettings.keyBindJump.isKeyDown) {
+                    mc.thePlayer.jump()
+                }
+            }
+
+            "matrix" -> {
+                if (mc.gameSettings.keyBindJump.isKeyDown && isBlockUnder(2.0, false) && mc.thePlayer.motionY < 0.2) {
+                    mc.thePlayer.motionY = 0.42
+                    mc.thePlayer.onGround = true
+                }
+            }
+
+            "ncp" -> {
+                if (mc.gameSettings.keyBindJump.isKeyDown && blockNear(2)) {
+                    PacketUtils.sendPacketNoEvent(C08PacketPlayerBlockPlacement(null));
+
+                    if (mc.thePlayer.posY % 1 <= 0.00153598) {
+                        mc.thePlayer.setPosition(mc.thePlayer.posX, floor(mc.thePlayer.posY), mc.thePlayer.posZ)
+                        mc.thePlayer.motionY = 0.42
+                    } else if (mc.thePlayer.posY % 1 < 0.1 && RotationUtils.offGroundTicks != 0) {
+                        mc.thePlayer.motionY = 0.0
+                        mc.thePlayer.setPosition(mc.thePlayer.posX, floor(mc.thePlayer.posY), mc.thePlayer.posZ)
+                    }
+                }
+            }
+
+            "normal" -> {
+                if (mc.gameSettings.keyBindJump.isKeyDown) {
+                    if (mc.thePlayer.onGround) {
+                        mc.thePlayer.motionY = 0.42
+                    }
+                }
+            }
+
+            "vanilla" -> {
+                if (mc.gameSettings.keyBindJump.isKeyDown && blockNear(2)) {
+                    mc.thePlayer.motionY = 0.42
+                }
+            }
+
+            "vulcan" -> {
+                if (mc.gameSettings.keyBindJump.isKeyDown && blockNear(2) && RotationUtils.offGroundTicks > 3) {
+                    val itemStack = mc.thePlayer.inventory.mainInventory[mc.thePlayer.inventory.currentItem]
+
+                    if (itemStack == null || (itemStack.stackSize > 2)) {
+                        PacketUtils.sendPacketNoEvent(C08PacketPlayerBlockPlacement(null))
+                    }
+                    mc.thePlayer.motionY = 0.42
+                }
+            }
+
+            "watchdog" -> {
+                if (!mc.gameSettings.keyBindJump.isKeyDown || !MovementUtils.isMoving) {
+                    return;
+                }
+
+                if (mc.thePlayer.onGround) {
+                    mc.thePlayer.motionY = MovementUtils.getJumpBoostModifier(0.42F);
+                    mc.thePlayer.motionX *= .65;
+                    mc.thePlayer.motionZ *= .65;
+                }
+            }
+        }
     }
 
     @EventTarget
@@ -218,7 +293,7 @@ class Scaffold: Module(){
                 val itemStack = mc.thePlayer.inventory.getStackInSlot(slot)
                 val item = packet.func_149174_e().item
 
-                if ((itemStack == null && packet.func_149174_e().stackSize <= 6 && item is ItemBlock && !InventoryUtils.isBlockListBlock(item.block)) ||
+                if ((itemStack == null && packet.func_149174_e().stackSize <= 6 && item is ItemBlock && item.block !in BLOCK_BLACKLIST) ||
                     (itemStack != null && abs(itemStack.stackSize - packet.func_149174_e().stackSize) <= 6) ||
                     (packet.func_149174_e() == null)
                 ) {
@@ -250,7 +325,7 @@ class Scaffold: Module(){
 
         willBeFallInNextTick = if (!mc.thePlayer.onGround) mc.thePlayer.motionY > 0 else c1 && c2 && c3
 
-        val blockSlot = InventoryUtils.findAutoBlockBlock()
+        val blockSlot = InventoryUtils.findBlockInHotbar() ?: return
         if (blockSlot != -1) {
             mc.thePlayer.inventory.currentItem = blockSlot - 36
             itemStack = mc.thePlayer.inventoryContainer.getSlot(blockSlot).stack
@@ -423,86 +498,13 @@ class Scaffold: Module(){
 
     @EventTarget
     fun onStrafe(event: StrafeEvent) {
-        when(towerModeValue.get().lowercase()){
-            "air" -> {
-                if (mc.gameSettings.keyBindJump.isKeyDown && mc.thePlayer.ticksExisted % 2 == 0 && blockNear(2)) {
-                    mc.thePlayer.motionY = 0.42
-                    mc.thePlayer.onGround = true
-                }
-            }
-
-            "legit" ->{
-                if (mc.thePlayer.onGround && mc.gameSettings.keyBindJump.isKeyDown) {
-                    mc.thePlayer.jump()
-                }
-            }
-
-            "matrix" -> {
-                if (mc.gameSettings.keyBindJump.isKeyDown && isBlockUnder(2.0, false) && mc.thePlayer.motionY < 0.2) {
-                    mc.thePlayer.motionY = 0.42
-                    mc.thePlayer.onGround = true
-                }
-            }
-
-            "ncp" -> {
-                if (mc.gameSettings.keyBindJump.isKeyDown && blockNear(2)) {
-                    PacketUtils.sendPacketNoEvent(C08PacketPlayerBlockPlacement(null));
-
-                    if (mc.thePlayer.posY % 1 <= 0.00153598) {
-                        mc.thePlayer.setPosition(mc.thePlayer.posX, floor(mc.thePlayer.posY), mc.thePlayer.posZ)
-                        mc.thePlayer.motionY = 0.42
-                    } else if (mc.thePlayer.posY % 1 < 0.1 && RotationUtils.offGroundTicks != 0) {
-                        mc.thePlayer.motionY = 0.0
-                        mc.thePlayer.setPosition(mc.thePlayer.posX, floor(mc.thePlayer.posY), mc.thePlayer.posZ)
-                    }
-                }
-            }
-
-            "normal" -> {
-                if (mc.gameSettings.keyBindJump.isKeyDown) {
-                    if (mc.thePlayer.onGround) {
-                        mc.thePlayer.motionY = 0.42
-                    }
-                }
-            }
-
-            "vanilla" -> {
-                if (mc.gameSettings.keyBindJump.isKeyDown && blockNear(2)) {
-                    mc.thePlayer.motionY = 0.42
-                }
-            }
-
-            "vulcan" -> {
-                if (mc.gameSettings.keyBindJump.isKeyDown && blockNear(2) && RotationUtils.offGroundTicks > 3) {
-                    val itemStack = mc.thePlayer.inventory.mainInventory[mc.thePlayer.inventory.currentItem]
-
-                    if (itemStack == null || (itemStack.stackSize > 2)) {
-                        PacketUtils.sendPacketNoEvent(C08PacketPlayerBlockPlacement(null))
-                    }
-                    mc.thePlayer.motionY = 0.42
-                }
-            }
-
-            "watchdog" -> {
-                if (!mc.gameSettings.keyBindJump.isKeyDown || !MovementUtils.isMoving) {
-                    return;
-                }
-
-                if (mc.thePlayer.onGround) {
-                    mc.thePlayer.motionY = MovementUtils.getJumpBoostModifier(0.42F);
-                    mc.thePlayer.motionX *= .65;
-                    mc.thePlayer.motionZ *= .65;
-                }
-            }
-        }
-
         if (
             modes.get().equals("telly", true) &&
             mc.thePlayer.onGround &&
             MovementUtils.isMoving &&
             !mc.gameSettings.keyBindJump.isKeyDown
         ) {
-            mc.thePlayer.jump()
+            mc.thePlayer.tryJump()
         }
 
         if(!movementCorrection.get()){
@@ -679,7 +681,7 @@ class Scaffold: Module(){
                 val itemStack = mc.thePlayer.inventoryContainer.getSlot(i).stack
                 if (itemStack != null && itemStack.item is ItemBlock) {
                     val block = (itemStack.item as ItemBlock).getBlock()
-                    if (!InventoryUtils.BLOCK_BLACKLIST.contains(block) && block.isFullCube) amount += itemStack.stackSize
+                    if (!BLOCK_BLACKLIST.contains(block) && block.isFullCube) amount += itemStack.stackSize
                 }
             }
             return amount

@@ -5,27 +5,61 @@
  */
 package net.minusmc.minusbounce.utils
 
-import net.minecraft.block.Block
+import net.minecraft.block.BlockBush
 import net.minecraft.init.Blocks
 import net.minecraft.item.Item
 import net.minecraft.item.ItemBlock
-import net.minecraft.item.ItemPotion
-import net.minecraft.item.ItemStack
-import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement
-import net.minecraft.network.play.client.C0DPacketCloseWindow
-import net.minecraft.network.play.client.C0EPacketClickWindow
-import net.minecraft.network.play.client.C16PacketClientStatus
-import net.minecraft.potion.Potion
-import net.minusmc.minusbounce.event.ClickWindowEvent
-import net.minusmc.minusbounce.event.EventTarget
-import net.minusmc.minusbounce.event.Listenable
-import net.minusmc.minusbounce.event.PacketEvent
+import net.minecraft.network.play.client.*
+import net.minecraft.network.play.client.C16PacketClientStatus.EnumState.OPEN_INVENTORY_ACHIEVEMENT
+import net.minecraft.network.play.server.S09PacketHeldItemChange
+import net.minecraft.network.play.server.S2DPacketOpenWindow
+import net.minecraft.network.play.server.S2EPacketCloseWindow
+import net.minusmc.minusbounce.MinusBounce
+import net.minusmc.minusbounce.event.*
+import net.minusmc.minusbounce.features.module.modules.world.ChestAura
+import net.minusmc.minusbounce.utils.PacketUtils.sendPacket
 import net.minusmc.minusbounce.utils.timer.MSTimer
 
 object InventoryUtils : MinecraftInstance(), Listenable {
+
+    // What slot is selected on server-side?
+    // TODO: Is this equal to mc.playerController.currentPlayerItem?
+    var serverSlot
+        get() = _serverSlot
+        set(value) {
+            if (value != _serverSlot) {
+                sendPacket(C09PacketHeldItemChange(value))
+
+                _serverSlot = value
+            }
+        }
+
+    // Is inventory open on server-side?
+    var serverOpenInventory
+        get() = _serverOpenInventory
+        set(value) {
+            if (value != _serverOpenInventory) {
+                sendPacket(
+                    if (value) C16PacketClientStatus(OPEN_INVENTORY_ACHIEVEMENT)
+                    else C0DPacketCloseWindow(mc.thePlayer?.openContainer?.windowId ?: 0)
+                )
+
+                _serverOpenInventory = value
+            }
+        }
+
+    var serverOpenContainer = false
+        private set
+
+    // Backing fields
+    private var _serverSlot = 0
+    private var _serverOpenInventory = false
+
+    var isFirstInventoryClick = true
+
     val CLICK_TIMER = MSTimer()
+
     val BLOCK_BLACKLIST = listOf(
-        Blocks.enchanting_table,
         Blocks.chest,
         Blocks.ender_chest,
         Blocks.trapped_chest,
@@ -45,56 +79,46 @@ object InventoryUtils : MinecraftInstance(), Listenable {
         Blocks.standing_banner,
         Blocks.wall_banner,
         Blocks.redstone_torch,
-        Blocks.gravel,
-        Blocks.cactus,
-        Blocks.bed,
-        Blocks.lever,
-        Blocks.standing_sign,
-        Blocks.wall_sign,
-        Blocks.jukebox,
-        Blocks.oak_fence,
-        Blocks.spruce_fence,
-        Blocks.birch_fence,
-        Blocks.jungle_fence,
-        Blocks.dark_oak_fence,
-        Blocks.oak_fence_gate,
-        Blocks.spruce_fence_gate,
-        Blocks.birch_fence_gate,
-        Blocks.jungle_fence_gate,
-        Blocks.dark_oak_fence_gate,
-        Blocks.nether_brick_fence,
-        Blocks.trapdoor,
-        Blocks.melon_block,
-        Blocks.brewing_stand,
-        Blocks.cauldron,
-        Blocks.skull,
-        Blocks.hopper,
-        Blocks.carpet,
-        Blocks.redstone_wire,
-        Blocks.light_weighted_pressure_plate,
-        Blocks.heavy_weighted_pressure_plate,
-        Blocks.daylight_detector
+        Blocks.ladder
     )
 
-    @EventTarget
-    fun onClick(event: ClickWindowEvent) {
-        CLICK_TIMER.reset()
+    fun findItem(startInclusive: Int, endInclusive: Int, item: Item): Int? {
+        for (i in startInclusive..endInclusive)
+            if (mc.thePlayer.openContainer.getSlot(i).stack?.item == item)
+                return i
+
+        return null
     }
 
-    @EventTarget
-    fun onPacket(event: PacketEvent) {
-        val packet = event.packet
-        if (packet is C08PacketPlayerBlockPlacement || packet is C0EPacketClickWindow) CLICK_TIMER.reset()
+    fun hasSpaceInHotbar(): Boolean {
+        for (i in 36..44)
+            mc.thePlayer.openContainer.getSlot(i).stack ?: return true
+
+        return false
     }
 
-    override fun handleEvents() = true
+    fun findBlockInHotbar(): Int? {
+        val player = mc.thePlayer ?: return null
+        val inventory = player.openContainer
 
-    fun findItem(startSlot: Int, endSlot: Int, item: Item): Int {
-        for (i in startSlot until endSlot) {
-            val stack = mc.thePlayer.inventoryContainer.getSlot(i).stack
-            if (stack != null && stack.item === item) return i
-        }
-        return -1
+        return (36..44).filter {
+            val stack = inventory.getSlot(it).stack ?: return@filter false
+            val block = if (stack.item is ItemBlock) (stack.item as ItemBlock).block else return@filter false
+
+            stack.item is ItemBlock && stack.stackSize > 0 && block !in BLOCK_BLACKLIST && block !is BlockBush
+        }.minByOrNull { (inventory.getSlot(it).stack.item as ItemBlock).block.isFullCube }
+    }
+
+    fun findLargestBlockStackInHotbar(): Int? {
+        val player = mc.thePlayer ?: return null
+        val inventory = player.openContainer
+
+        return (36..44).filter {
+            val stack = inventory.getSlot(it).stack ?: return@filter false
+            val block = if (stack.item is ItemBlock) (stack.item as ItemBlock).block else return@filter false
+
+            stack.item is ItemBlock && stack.stackSize > 0 && block.isFullCube && block !in BLOCK_BLACKLIST && block !is BlockBush
+        }.maxByOrNull { inventory.getSlot(it).stack.stackSize }
     }
 
     fun hasSpaceHotbar(): Boolean {
@@ -104,46 +128,72 @@ object InventoryUtils : MinecraftInstance(), Listenable {
         return false
     }
 
-    // TODO: Better check
-    fun isBlockListBlock(itemBlock: ItemBlock): Boolean {
-        return isBlockListBlock(itemBlock.block)
+    // Converts container slot to hotbar slot id, else returns null
+    fun Int.toHotbarIndex(stacksSize: Int): Int? {
+        val parsed = this - stacksSize + 9
+
+        return if (parsed in 0..8) parsed else null
     }
 
-    fun isBlockListBlock(block: Block): Boolean {
-        return block.isFullCube && !BLOCK_BLACKLIST.contains(block)
-    }
+    @EventTarget
+    fun onPacket(event: PacketEvent) {
 
-    fun findAutoBlockBlock(): Int {
-        for (i in 36..44) {
-            val itemStack = mc.thePlayer.inventoryContainer.getSlot(i).stack ?: continue
-            if (itemStack.item is ItemBlock && itemStack.stackSize > 0) {
-                val item = itemStack.item as ItemBlock
-                if (isBlockListBlock(item)) return i
+        if (event.isCancelled) return
+
+        when (val packet = event.packet) {
+            is C08PacketPlayerBlockPlacement, is C0EPacketClickWindow -> {
+                CLICK_TIMER.reset()
+
+                if (packet is C0EPacketClickWindow)
+                    isFirstInventoryClick = false
+            }
+
+            is C16PacketClientStatus ->
+                if (packet.status == OPEN_INVENTORY_ACHIEVEMENT) {
+                    if (_serverOpenInventory) event.cancelEvent()
+                    else {
+                        isFirstInventoryClick = true
+                        _serverOpenInventory = true
+                    }
+                }
+
+            is C0DPacketCloseWindow, is S2EPacketCloseWindow, is S2DPacketOpenWindow -> {
+                isFirstInventoryClick = false
+                _serverOpenInventory = false
+                serverOpenContainer = false
+
+                if (packet is S2DPacketOpenWindow) {
+                    if (packet.guiId == "minecraft:chest" || packet.guiId == "minecraft:container")
+                        serverOpenContainer = true
+                } else
+                    MinusBounce.moduleManager.getModule(ChestAura::class.java)?.tileTarget = null
+            }
+
+            is C09PacketHeldItemChange -> {
+                // Support for Singleplayer
+                // (client packets get sent and received, duplicates would get cancelled, making slot changing impossible)
+                if (event.eventType == EventState.RECEIVE) return
+
+                if (packet.slotId == _serverSlot) event.cancelEvent()
+                else _serverSlot = packet.slotId
+            }
+
+            is S09PacketHeldItemChange -> {
+                if (_serverSlot == packet.heldItemHotbarIndex)
+                    return
+
+                _serverSlot = packet.heldItemHotbarIndex
             }
         }
-        return -1
     }
 
-    fun openPacket() {
-        mc.netHandler.addToSendQueue(C16PacketClientStatus(C16PacketClientStatus.EnumState.OPEN_INVENTORY_ACHIEVEMENT))
+    @EventTarget
+    fun onWorld(event: WorldEvent) {
+        // Prevents desync
+        _serverOpenInventory = false
+        _serverSlot = 0
+        serverOpenContainer = false
     }
 
-    fun closePacket() {
-        mc.netHandler.addToSendQueue(C0DPacketCloseWindow())
-    }
-
-    fun isPositivePotionEffect(id: Int): Boolean = id == Potion.regeneration.id ||
-            id == Potion.moveSpeed.id || id == Potion.heal.id || id == Potion.nightVision.id ||
-            id == Potion.jump.id || id == Potion.invisibility.id || id == Potion.resistance.id ||
-            id == Potion.waterBreathing.id || id == Potion.absorption.id || id == Potion.digSpeed.id ||
-            id == Potion.damageBoost.id || id == Potion.healthBoost.id || id == Potion.fireResistance.id
-
-    fun isPositivePotion(item: ItemPotion, stack: ItemStack): Boolean {
-        item.getEffects(stack).forEach {
-            if (isPositivePotionEffect(it.potionID))
-                return true
-        }
-
-        return false
-    }
+    override fun handleEvents() = true
 }

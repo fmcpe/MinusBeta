@@ -20,7 +20,7 @@ import net.minusmc.minusbounce.utils.MovementUtils
 import net.minusmc.minusbounce.value.BoolValue
 import net.minusmc.minusbounce.value.ListValue
 
-@ModuleInfo(name = "InvMove", spacedName = "Inv Move", category = ModuleCategory.MOVEMENT)
+@ModuleInfo(name = "InvMove", spacedName = "Inv Move", description = "Moving while on inv", category = ModuleCategory.MOVEMENT)
 class InvMove : Module() {
 
     val modeValue = ListValue("Mode", arrayOf("Vanilla", "Silent", "Blink"), "Vanilla")

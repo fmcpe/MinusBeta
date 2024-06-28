@@ -8,8 +8,8 @@ import net.minusmc.minusbounce.features.module.modules.movement.speeds.SpeedMode
 import net.minusmc.minusbounce.features.module.modules.movement.speeds.SpeedType
 import net.minusmc.minusbounce.utils.ClassUtils
 import net.minusmc.minusbounce.utils.LateinitValue
-import net.minusmc.minusbounce.utils.MovementUtils
-import net.minusmc.minusbounce.value.*
+import net.minusmc.minusbounce.value.BoolValue
+import net.minusmc.minusbounce.value.ListValue
 
 @ModuleInfo(name = "Speed", description = "Run faster.", category = ModuleCategory.MOVEMENT)
 class Speed: Module() {
@@ -42,7 +42,6 @@ class Speed: Module() {
 	}
 
 	private val noWater = BoolValue("NoWater", false)
-	private val alwaysSprint = BoolValue("AlwaysSprint", true)
 
 	override fun onInitialize() {
 		modes.map {mode -> mode.values.forEach {
@@ -61,39 +60,58 @@ class Speed: Module() {
 
 	@EventTarget
 	fun onUpdate(event: UpdateEvent) {
-        if (mc.thePlayer.isSneaking || (noWater.get() && mc.thePlayer.isInWater)) return
-		if (MovementUtils.isMoving && alwaysSprint.get()) mc.thePlayer.isSprinting = true
-		mode.onUpdate()
+		if (!mc.thePlayer.isSneaking && (!noWater.get() || mc.thePlayer.isInWater)) {
+			mode.onUpdate()
+		}
 	}
 
 	@EventTarget
 	fun onPacket(event: PacketEvent) {
-		mode.onPacket(event)
+		if (!mc.thePlayer.isSneaking && (!noWater.get() || mc.thePlayer.isInWater)) {
+			mode.onPacket(event)
+		}
 	}
 
 	@EventTarget
 	fun onPreMotion(event: PreMotionEvent) {
-        if (mc.thePlayer.isSneaking) return
-		if (MovementUtils.isMoving && alwaysSprint.get()) mc.thePlayer.isSprinting = true
-		mode.onPreMotion(event)
+		if (!mc.thePlayer.isSneaking && (!noWater.get() || mc.thePlayer.isInWater)) {
+			mode.onPreMotion(event)
+		}
 	}
 
 	@EventTarget
 	fun onPostMotion(event: PostMotionEvent) {
-        if (mc.thePlayer.isSneaking) return
-		if (MovementUtils.isMoving && alwaysSprint.get()) mc.thePlayer.isSprinting = true
-		mode.onPostMotion(event)
+		if (!mc.thePlayer.isSneaking && (!noWater.get() || mc.thePlayer.isInWater)) {
+			mode.onPostMotion(event)
+		}
 	}
 
 	@EventTarget
 	fun onMove(event: MoveEvent) {
-		if (mc.thePlayer.isSneaking) return
-		mode.onMove(event)
+		if (!mc.thePlayer.isSneaking && (!noWater.get() || mc.thePlayer.isInWater)) {
+			mode.onMove(event)
+		}
 	}
 
 	@EventTarget
 	fun onJump(event: JumpEvent) {
-		mode.onJump(event)
+		if (!mc.thePlayer.isSneaking && (!noWater.get() || mc.thePlayer.isInWater)) {
+			mode.onJump(event)
+		}
+	}
+
+	@EventTarget
+	fun onStrafe(event: StrafeEvent){
+		if (!mc.thePlayer.isSneaking && (!noWater.get() || mc.thePlayer.isInWater)) {
+			mode.onStrafe(event)
+		}
+	}
+
+	@EventTarget
+	fun onPreUpdate(event: PreUpdateEvent){
+		if (!mc.thePlayer.isSneaking && (!noWater.get() || mc.thePlayer.isInWater)) {
+			mode.onPreUpdate()
+		}
 	}
 
     override val tag: String

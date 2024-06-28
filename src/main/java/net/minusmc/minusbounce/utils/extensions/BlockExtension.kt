@@ -5,10 +5,9 @@
  */
 package net.minusmc.minusbounce.utils.extensions
 
+import net.minecraft.util.BlockPos
+import net.minecraft.util.Vec3
 import net.minusmc.minusbounce.utils.block.BlockUtils
-import net.minusmc.minusbounce.injection.access.StaticStorage
-import net.minecraft.block.BlockAir
-import net.minecraft.util.*
 
 /**m
  * Get block by position
@@ -19,3 +18,5 @@ fun BlockPos.getBlock() = BlockUtils.getBlock(this)
  * Get vector of block position
  */
 fun BlockPos.getVec() = Vec3(x + 0.5, y + 0.5, z + 0.5)
+
+fun BlockPos.toVec() = Vec3(this)

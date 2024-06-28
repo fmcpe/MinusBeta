@@ -9,6 +9,7 @@ import io.netty.channel.ChannelHandlerContext;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.Packet;
 import net.minusmc.minusbounce.MinusBounce;
+import net.minusmc.minusbounce.event.EventState;
 import net.minusmc.minusbounce.event.PacketEvent;
 import net.minusmc.minusbounce.features.module.modules.client.HUD;
 import net.minusmc.minusbounce.features.module.modules.combat.BackTrack;
@@ -23,7 +24,7 @@ public class MixinNetworkManager {
 
     @Inject(method = "channelRead0", at = @At("HEAD"), cancellable = true)
     private void read(ChannelHandlerContext context, Packet<?> packet, CallbackInfo callback) {
-        final PacketEvent event = new PacketEvent(packet);
+        final PacketEvent event = new PacketEvent(packet, EventState.RECEIVE);
         final BackTrack backTrack = MinusBounce.moduleManager.getModule(BackTrack.class);
         /* I hate NPE */
         if(backTrack != null){
@@ -48,7 +49,7 @@ public class MixinNetworkManager {
 
     @Inject(method = "sendPacket(Lnet/minecraft/network/Packet;)V", at = @At("HEAD"), cancellable = true)
     private void send(Packet<?> packet, CallbackInfo callback) {
-        final PacketEvent event = new PacketEvent(packet);
+        final PacketEvent event = new PacketEvent(packet, EventState.SEND);
         MinusBounce.eventManager.callEvent(event);
 
         if(event.isCancelled())
