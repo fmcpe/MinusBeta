@@ -152,9 +152,9 @@ public abstract class MixinEntityPlayer extends MixinEntityLivingBase {
                                 for(int power = 0; power < event.getPower(); power++){
                                     targetEntity.addVelocity(-MathHelper.sin(this.rotationYaw * (float)Math.PI / 180.0F) * (float)i * 0.5F, event.getReduceY() ? 0.0D : 0.1D, MathHelper.cos(this.rotationYaw * (float)Math.PI / 180.0F) * (float)i * 0.5F);
                                 }
+                                this.motionX *= event.getMotion();
+                                this.motionZ *= event.getMotion();
                                 if(!Objects.requireNonNull(MinusBounce.moduleManager.getModule(KeepSprint.class)).getState()){
-                                    this.motionX *= event.getMotion();
-                                    this.motionZ *= event.getMotion();
                                     this.setSprinting(false);
                                 }
                             }
@@ -163,9 +163,9 @@ public abstract class MixinEntityPlayer extends MixinEntityLivingBase {
                                 targetEntity.addVelocity(-MathHelper.sin(this.rotationYaw * (float)Math.PI / 180.0F) * (float)i * 0.5F, event.getReduceY() ? 0.0D : 0.1D, MathHelper.cos(this.rotationYaw * (float)Math.PI / 180.0F) * (float)i * 0.5F);
                             }
                             if(!event.isCancelled()){
+                                this.motionX *= event.getMotion();
+                                this.motionZ *= event.getMotion();
                                 if(!Objects.requireNonNull(MinusBounce.moduleManager.getModule(KeepSprint.class)).getState()){
-                                    this.motionX *= event.getMotion();
-                                    this.motionZ *= event.getMotion();
                                     this.setSprinting(false);
                                 }
                             }

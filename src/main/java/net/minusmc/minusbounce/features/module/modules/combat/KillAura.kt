@@ -5,18 +5,17 @@
  */
 package net.minusmc.minusbounce.features.module.modules.combat
 
+import net.minecraft.block.material.Material
 import net.minecraft.enchantment.Enchantment
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityLivingBase
 import net.minecraft.entity.item.EntityArmorStand
 import net.minecraft.item.ItemSword
 import net.minecraft.item.ItemTool
-import net.minecraft.network.play.client.C07PacketPlayerDigging
 import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement
 import net.minecraft.network.play.client.C0APacketAnimation
-import net.minecraft.util.BlockPos
-import net.minecraft.util.EnumFacing
 import net.minecraft.util.MovingObjectPosition
+import net.minecraft.util.MovingObjectPosition.MovingObjectType
 import net.minecraft.util.Vec3
 import net.minusmc.minusbounce.event.*
 import net.minusmc.minusbounce.features.module.Module
@@ -26,7 +25,6 @@ import net.minusmc.minusbounce.features.module.modules.combat.killaura.KillAuraB
 import net.minusmc.minusbounce.utils.ClassUtils
 import net.minusmc.minusbounce.utils.EntityUtils.isSelected
 import net.minusmc.minusbounce.utils.RaycastUtils
-import net.minusmc.minusbounce.utils.RaycastUtils.runWithModifiedRaycastResult
 import net.minusmc.minusbounce.utils.Rotation
 import net.minusmc.minusbounce.utils.RotationUtils
 import net.minusmc.minusbounce.utils.extensions.getDistanceToEntityBox
@@ -80,7 +78,7 @@ class KillAura : Module() {
     // Bypass
     private val swingValue = ListValue("Swing", arrayOf("Normal", "Packet", "None"), "Normal")
     private val intaveRandomAmount = FloatValue("Random", 4f, 0.25f, 10f) { rotations.get().equals("Intave", true) }
-    private val Hitable = BoolValue("HitableCheck", false) { !rotations.get().equals("none", true) && !throughWallsValue.get()}
+    private val Hitable = BoolValue("Hitable", false) { !rotations.get().equals("none", true) && !throughWallsValue.get()}
 
     // AutoBlock & Interact
     val autoBlockModeValue: ListValue = object : ListValue("AutoBlock", blockingModes.map { it.modeName }.toTypedArray(), "None") {
@@ -154,6 +152,16 @@ class KillAura : Module() {
         blockingMode.onPreUpdate()
 
         updateTarget()
+
+        /* AutoWeapon? */
+        /* Find the best weapon in HotBar */
+        (0..8)
+            .map { Pair(it, mc.thePlayer.inventory.getStackInSlot(it)) }
+            .filter { it.second != null && (it.second.item is ItemSword || it.second.item is ItemTool) }
+            .maxByOrNull { (it.second.attributeModifiers["generic.attackDamage"].first()?.amount ?: 0.0) + 1.25 * ItemUtils.getEnchantment(it.second, Enchantment.sharpness) }
+            ?.let{
+                mc.thePlayer.inventory.currentItem = if (it.component1() != mc.thePlayer.inventory.currentItem) it.component1() else return@let
+            }
 
         if(target == null){
             stopBlocking()
@@ -306,13 +314,11 @@ class KillAura : Module() {
             attackEntity(target!!)
             prevTargetEntities.add(target!!.entityId)
         } else {
-            runWithModifiedRaycastResult(RotationUtils.targetRotation ?: serverRotation, rangeValue.get().toDouble(), rangeValue.get().toDouble()) { obj ->
-                if (obj.typeOfHit != MovingObjectPosition.MovingObjectType.MISS) {
-                    return@runWithModifiedRaycastResult
-                }
+            mc.objectMouseOver?.let{ obj ->
+                if (obj.typeOfHit != MovingObjectType.MISS) return@let
 
                 if (!shouldDelayClick(obj.typeOfHit)) {
-                    if (obj.typeOfHit == MovingObjectPosition.MovingObjectType.ENTITY) {
+                    if (obj.typeOfHit == MovingObjectType.ENTITY) {
                         val entity = obj.entityHit
 
                         // Use own function instead of clickMouse() to maintain keep sprint, auto block, etc
@@ -349,7 +355,7 @@ class KillAura : Module() {
      * The game requires at least 1 tick of cooldown on raycast object type change (miss, block, entity)
      * We are doing the same thing here but allow more cool down.
      */
-    private fun shouldDelayClick(type: MovingObjectPosition.MovingObjectType): Boolean {
+    private fun shouldDelayClick(type: MovingObjectType): Boolean {
         val lastAttack = attackTickTimes.lastOrNull()
 
         return lastAttack != null && lastAttack.first.typeOfHit != type
@@ -386,14 +392,14 @@ class KillAura : Module() {
                 /* Do RayCast */
                 val (yaw, pitch) = getTargetRotation(it)
 
-                val trace = RaycastUtils.raycastEntity(reach, yaw, pitch, object: RaycastUtils.IEntityFilter {
+                val rayTrace = RaycastUtils.raycastEntity(reach, yaw, pitch, object: RaycastUtils.IEntityFilter {
                     override fun canRaycast(entity: Entity?): Boolean {
                         return entity is EntityLivingBase && entity !is EntityArmorStand && isSelected(entity, true)
                     }
                 })
 
                 /* Update Target */
-                target = if (raycastValue.get() && turnSpeed.getMaxValue() > 0.0F && (trace ?: it) == it) (trace ?: it) as EntityLivingBase else it
+                target = if (raycastValue.get() && turnSpeed.getMaxValue() > 0.0F && (rayTrace ?: it) == it) (rayTrace ?: it) as EntityLivingBase else it
 
                 RotationUtils.setRotations(
                     /* Why the f I have done this :( */
@@ -411,14 +417,14 @@ class KillAura : Module() {
 
             /* Update Hitable && Reach bypass */
             if (!rotations.get().equals("none", true) && turnSpeed.getMaxValue() > 0.0F && Hitable.get() && mc.objectMouseOver != null) {
-                hitable = (mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.ENTITY && RotationUtils.isFaced(target!!, reach)) || throughWallsValue.get()
+                hitable = (mc.objectMouseOver.typeOfHit == MovingObjectType.ENTITY && RotationUtils.isFaced(target!!, reach)) || throughWallsValue.get()
             }
 
             /* Return */
             return
         }
 
-        /* If we couldn't find it, null here */
+        /* If we couldn't find it */
         target = null
 
         if (prevTargetEntities.isNotEmpty()) {
@@ -431,27 +437,35 @@ class KillAura : Module() {
         /* Unblock & Attack */
         blockingMode.onPreAttack()
 
-        /* AutoWeapon? */
-        /* Find the best weapon in hotbar */
-        (0..8).map { Pair(it, mc.thePlayer.inventory.getStackInSlot(it)) }
-            .filter { it.second != null && (it.second.item is ItemSword || it.second.item is ItemTool) }
-            .maxByOrNull {
-                (it.second.attributeModifiers["generic.attackDamage"].first()?.amount
-                    ?: 0.0) + 1.25 * ItemUtils.getEnchantment(it.second, Enchantment.sharpness)
-            }?.let{
-                /* If we are not holding it. */
-                mc.thePlayer.inventory.currentItem = if (it.component1() != mc.thePlayer.inventory.currentItem) it.component1() else return@let
-            }
-
         /* Swing*/
         when (swingValue.get().lowercase()) {
             "normal" -> mc.thePlayer.swingItem()
             "packet" -> mc.netHandler.addToSendQueue(C0APacketAnimation())
         }
 
-        /* We made it followed vanilla xD . If needed, use KeepSprint */
-        /* If you wonder why I don't call AttackEvent, see MixinPlayerControllerMP.java */
-        mc.playerController.attackEntity(mc.thePlayer, entity)
+        when (mc.objectMouseOver.typeOfHit) {
+            MovingObjectType.ENTITY -> mc.playerController.attackEntity(
+                mc.thePlayer,
+                mc.objectMouseOver.entityHit
+            )
+
+            MovingObjectType.BLOCK -> {
+                if (mc.theWorld.getBlockState(mc.objectMouseOver.blockPos).block.material !== Material.air) {
+                    mc.playerController.clickBlock(mc.objectMouseOver.blockPos, mc.objectMouseOver.sideHit)
+                }
+                if (mc.playerController.isNotCreative) {
+                    mc.leftClickCounter = 10
+                }
+            }
+
+            MovingObjectType.MISS -> if (mc.playerController.isNotCreative) {
+                mc.leftClickCounter = 10
+            }
+
+            else -> if (mc.playerController.isNotCreative) {
+                mc.leftClickCounter = 10
+            }
+        }
 
         /* AutoBlock */
         blockingMode.onPostAttack()
@@ -468,50 +482,48 @@ class KillAura : Module() {
             )
         }
 
+        val rotation = RotationUtils.toRotation(
+            Vec3(0.0, 0.0, 0.0),
+            diff = Vec3(
+                entity.posX - mc.thePlayer.posX,
+                entity.posY + entity.eyeHeight * 0.9 - (mc.thePlayer.posY + mc.thePlayer.getEyeHeight()),
+                entity.posZ - mc.thePlayer.posZ
+            )
+        )
+
+        val (_, vanilla) = RotationUtils.searchCenter(
+            boundingBox,
+            false,
+            predictValue.get(),
+            throughWallsValue.get(),
+            rangeValue.get()
+        ) ?: return rotation
+
         return when (rotations.get().lowercase()) {
             /* Old BackTrack Rotation Function is getting vecRotation and DO NOTHING with it. then calculate from vec (input) */
             "backtrack" -> RotationUtils.toRotation(RotationUtils.getCenter(entity.entityBoundingBox))
             "grim" -> RotationUtils.toRotation(getNearestPointBB(mc.thePlayer.getPositionEyes(1F), boundingBox))
             "intave" -> {
                 /* We don't override. So Vec3(0.0, 0.0, 0.0) is a good solution */
-                val rotation = RotationUtils.toRotation(
-                    Vec3(0.0, 0.0, 0.0),
-                    diff = Vec3(
-                        entity.posX - mc.thePlayer.posX,
-                        entity.posY + entity.eyeHeight * 0.9 - (mc.thePlayer.posY + mc.thePlayer.getEyeHeight()),
-                        entity.posZ - mc.thePlayer.posZ
-                    )
-                )
                 Rotation(
                     rotation.yaw + Math.random().toFloat() * intaveRandomAmount.get() - intaveRandomAmount.get() / 2,
                     rotation.pitch + Math.random().toFloat() * intaveRandomAmount.get() - intaveRandomAmount.get() / 2
                 )
             }
-
-            else -> {
-                val (_, rotation) = RotationUtils.searchCenter(
-                    boundingBox,
-                    false,
-                    predictValue.get(),
-                    throughWallsValue.get(),
-                    rangeValue.get()
-                ) ?: return serverRotation
-
-                rotation
-            }
+            else -> vanilla
         }
     }
 
     fun startBlocking() {
         if (canBlock && mc.thePlayer.getDistanceToEntityBox(target ?: return) <= autoBlockRangeValue.get()) {
-            mc.netHandler.addToSendQueue(C08PacketPlayerBlockPlacement(mc.thePlayer.inventory.getCurrentItem()))
+            mc.netHandler.addToSendQueue(C08PacketPlayerBlockPlacement(mc.thePlayer.inventory.getCurrentItem() ?: return))
             blockingStatus = true
         }
     }
 
     fun stopBlocking() {
         if (blockingStatus) {
-            mc.netHandler.addToSendQueue(C07PacketPlayerDigging(C07PacketPlayerDigging.Action.RELEASE_USE_ITEM, BlockPos.ORIGIN, EnumFacing.DOWN))
+            mc.playerController.onStoppedUsingItem(mc.thePlayer)
             blockingStatus = false
         }
     }

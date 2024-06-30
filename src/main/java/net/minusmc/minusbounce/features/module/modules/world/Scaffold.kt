@@ -347,9 +347,6 @@ class Scaffold: Module(){
             mc.gameSettings.keyBindJump.pressed = mc.thePlayer.onGround && MovementUtils.isMoving || mc.gameSettings.keyBindJump.isPressed
         }
 
-        // Same Y
-        val sameY = !sameYValue.get().equals("Off", true) && !mc.gameSettings.keyBindJump.isKeyDown && MovementUtils.isMoving
-
         if (startY - 1 != floor(targetBlock?.y?.toDouble() ?: return) && sameY) {
             return
         }
