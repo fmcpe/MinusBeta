@@ -71,10 +71,10 @@ class Scaffold: Module(){
     private var willBeFallInNextTick: Boolean = false
     private var xPos: Double = 0.0
     private var zPos: Double = 0.0
+    private var startY = 0.0
     private var targetYaw = 0f
     private var targetPitch = 0f
     private var ticksOnAir = 0
-    private var startY = 0.0
 
     // Render thingy
     private var progress = 0f
@@ -197,7 +197,7 @@ class Scaffold: Module(){
 
             "ncp" -> {
                 if (mc.gameSettings.keyBindJump.isKeyDown && blockNear(2)) {
-                    PacketUtils.sendPacketNoEvent(C08PacketPlayerBlockPlacement(null));
+                    PacketUtils.sendPacketNoEvent(C08PacketPlayerBlockPlacement(null))
 
                     if (mc.thePlayer.posY % 1 <= 0.00153598) {
                         mc.thePlayer.setPosition(mc.thePlayer.posX, floor(mc.thePlayer.posY), mc.thePlayer.posZ)
@@ -236,13 +236,13 @@ class Scaffold: Module(){
 
             "watchdog" -> {
                 if (!mc.gameSettings.keyBindJump.isKeyDown || !MovementUtils.isMoving) {
-                    return;
+                    return
                 }
 
                 if (mc.thePlayer.onGround) {
-                    mc.thePlayer.motionY = MovementUtils.getJumpBoostModifier(0.42F);
-                    mc.thePlayer.motionX *= .65;
-                    mc.thePlayer.motionZ *= .65;
+                    mc.thePlayer.motionY = MovementUtils.getJumpBoostModifier(0.42F)
+                    mc.thePlayer.motionX *= .65
+                    mc.thePlayer.motionZ *= .65
                 }
             }
         }
@@ -355,10 +355,18 @@ class Scaffold: Module(){
         }
 
         if (ticksOnAir > RandomUtils.nextInt(delayValue.getMinValue(), delayValue.getMaxValue()) && isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)) {
-            if(willBeFallInNextTick || modes.get() != "Legit"){
-                mc.rightClickDelayTimer = 0
-                mc.rightClickMouse()
+            if(willBeFallInNextTick && modes.get() == "Legit") {
+                if(mc.thePlayer.posY < mc.objectMouseOver.blockPos.y + 1.5){
+                    if(mc.objectMouseOver.sideHit != EnumFacing.UP && mc.objectMouseOver.sideHit != EnumFacing.DOWN){
+                        rightClickMouse()
+                    }
+                } else if(mc.objectMouseOver.sideHit != EnumFacing.DOWN && mc.gameSettings.keyBindJump.isKeyDown){
+                    rightClickMouse()
+                }
+                ticksOnAir = 0
+                return
             }
+            rightClickMouse()
             ticksOnAir = 0
         }
 
@@ -369,8 +377,54 @@ class Scaffold: Module(){
             startY = floor(mc.thePlayer.posY)
         }
 
-        if (mc.thePlayer.posY < startY) {
+        if(mc.thePlayer.posY < startY){
             startY = mc.thePlayer.posY
+        }
+    }
+
+    /***
+     * @author Mojang
+     *
+     * From MCP
+     */
+    private fun rightClickMouse(){
+        val itemStack = mc.thePlayer.inventory.getCurrentItem()
+        var flag = true
+        if (!mc.theWorld.isAirBlock(mc.objectMouseOver.blockPos)) {
+            val i = itemStack?.stackSize ?: 0
+            if (mc.playerController.onPlayerRightClick(
+                    mc.thePlayer,
+                    mc.theWorld, itemStack,
+                    mc.objectMouseOver.blockPos,
+                    mc.objectMouseOver.sideHit,
+                    mc.objectMouseOver.hitVec
+                )
+            ) {
+                mc.thePlayer.swingItem()
+                flag = false
+            }
+
+            if (itemStack == null) {
+                return
+            }
+
+            if (itemStack.stackSize == 0) {
+                mc.thePlayer.inventory.mainInventory[mc.thePlayer.inventory.currentItem] = null
+            } else if (itemStack.stackSize != i || mc.playerController.isInCreativeMode) {
+                mc.entityRenderer.itemRenderer.resetEquippedProgress()
+            }
+
+            mc.sendClickBlockToController(mc.currentScreen == null && mc.gameSettings.keyBindAttack.isKeyDown && mc.inGameHasFocus)
+        }
+        if (flag) {
+            if (mc.playerController.sendUseItem(
+                    mc.thePlayer,
+                    mc.theWorld,
+                    mc.thePlayer.inventory.getCurrentItem() ?: return
+                )
+            ) {
+                mc.entityRenderer.itemRenderer.resetEquippedProgress2()
+            }
         }
     }
 
@@ -516,28 +570,35 @@ class Scaffold: Module(){
      *  @return block relative to the player
      */
     private fun calculateRotations() {
+        val playerYaw = mc.thePlayer.rotationYaw.roundToInt()
         when (modes.get().lowercase()) {
             "normal" -> if (ticksOnAir > 0 && !isObjectMouseOverBlock(placeInfo!!.enumFacing, blockPlace!!)) {
-                getRotations()
+                getRotations(playerYaw - 180, playerYaw + 180)
             }
             "snap" -> {
-                getRotations()
+                getRotations(playerYaw - 180, playerYaw + 180)
 
                 if (ticksOnAir <= 0 || isObjectMouseOverBlock(placeInfo!!.enumFacing, blockPlace!!)) {
                     targetYaw = MovementUtils.getRawDirection().toFloat()
                 }
             }
-            "legit" -> {
-                targetYaw = MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw - 180)
-                if (ticksOnAir > 0 && !isObjectMouseOverBlock(placeInfo!!.enumFacing, blockPlace!!)) {
-                    getLegitPosibility()
+            "legit" -> if (ticksOnAir > 0 && !isObjectMouseOverBlock(placeInfo!!.enumFacing, blockPlace!!)) {
+                if (
+                    xPos > (blockPlace?.x?.plus(0.288) ?: return) ||
+                    xPos < (blockPlace?.x?.minus(1.288) ?: return) ||
+                    zPos > (blockPlace?.z?.plus(0.288) ?: return) ||
+                    zPos < (blockPlace?.z?.minus(1.288) ?: return)
+                ){
+                    getRotations(playerYaw + 180, playerYaw + 180)
                 }
             }
             "telly" -> if (RotationUtils.offGroundTicks >= 3) {
-                if (!isObjectMouseOverBlock(placeInfo!!.enumFacing, blockPlace!!)) getRotations()
+                if (!isObjectMouseOverBlock(placeInfo!!.enumFacing, blockPlace!!)) {
+                    getRotations(playerYaw + 180, playerYaw + 180)
+                }
             } else {
-                getRotations()
                 targetYaw = mc.thePlayer.rotationYaw
+                targetPitch = 0.0F
             }
         }
 
@@ -551,20 +612,24 @@ class Scaffold: Module(){
         )
     }
 
-    private fun getRotations(){
+    private fun getRotations(min: Int, max: Int){
         val hitVec = Vec3(blockPlace) + 0.5 + Vec3(placeInfo?.enumFacing?.directionVec) * 0.5
-        val playerYaw = mc.thePlayer.rotationYaw.roundToInt()
-
-        for (yaw in (playerYaw - 180)..(playerYaw + 180) step 45){
+        for (yaw in min..max step 45){
             for (pitch in 90 downTo 30){
                 val result = rayTrace(Rotation(yaw.toFloat(), pitch.toFloat())) ?: continue
 
                 if (result.blockPos == blockPlace && result.sideHit == placeInfo?.enumFacing) {
-                    RotationUtils.toRotation(result.hitVec).let {
-                        targetYaw = it.yaw
-                        targetPitch = it.pitch
+                    if(result.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK &&
+                        result.sideHit != EnumFacing.DOWN &&
+                        result.blockPos.y < (blockPlace?.y ?: return) &&
+                        (result.sideHit != EnumFacing.UP || (!sameY && mc.gameSettings.keyBindJump.isKeyDown))
+                    ){
+                        RotationUtils.toRotation(result.hitVec).let {
+                            targetYaw = it.yaw
+                            targetPitch = it.pitch
+                            return
+                        }
                     }
-                    return
                 }
             }
         }
@@ -572,42 +637,6 @@ class Scaffold: Module(){
         RotationUtils.toRotation(hitVec).let {
             targetYaw = it.yaw
             targetPitch = it.pitch
-        }
-    }
-
-    /**
-     * @author fmcpe
-     * Legit Mode / Rotation
-     *
-     * 6/21/2024
-     * Legit Mode
-     * HitBox Exception + Out Of Edge Prediction
-     *
-     */
-    private fun getLegitPosibility() {
-        val list = mutableListOf<Rotation>()
-        for (pitch in 90 downTo 30) {
-            rayTrace(
-                Rotation(targetYaw, pitch.toFloat())
-            )?.let {
-                if (it.blockPos == blockPlace && it.sideHit == placeInfo?.enumFacing) {
-                    list.add(Rotation(targetYaw, pitch.toFloat()))
-                }
-            }
-        }
-
-        if (mc.theWorld.getCollidingBoundingBoxes(
-                mc.thePlayer,
-                mc.thePlayer.entityBoundingBox.offset(
-                    mc.thePlayer.motionX,
-                    -1.0,
-                    mc.thePlayer.motionZ
-                )
-            ).isEmpty()
-        ) {
-             targetPitch = list.minByOrNull {
-                abs(it.pitch - targetPitch)
-            }?.pitch ?: return
         }
     }
 
@@ -686,4 +715,11 @@ class Scaffold: Module(){
             }
             return amount
         }
+
+    /**
+     * @return sameY
+     */
+    private val sameY: Boolean
+        get() = !sameYValue.get().equals("Off", true) && !mc.gameSettings.keyBindJump.isKeyDown && MovementUtils.isMoving
+
 }
