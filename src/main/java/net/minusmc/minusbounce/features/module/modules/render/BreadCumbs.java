@@ -35,7 +35,6 @@ public class BreadCumbs extends Module {
     public final IntegerValue colorBlueValue = new IntegerValue("B", 72, 0, 255, () -> colorModeValue.get().contains("Custom") || colorModeValue.get().contains("Fade"));
     private final FloatValue saturationValue = new FloatValue("Saturation", 1F, 0F, 1F, () -> !(colorModeValue.get().contains("Custom") || colorModeValue.get().contains("Fade")));
     private final FloatValue brightnessValue = new FloatValue("Brightness", 1F, 0F, 1F, () -> !(colorModeValue.get().contains("Custom") || colorModeValue.get().contains("Fade")));
-    private final IntegerValue mixerSecondsValue = new IntegerValue("Seconds", 2, 1, 10, () -> !(colorModeValue.get().contains("Custom") || colorModeValue.get().contains("Fade")));
     public final IntegerValue fadeSpeedValue = new IntegerValue("Fade-Speed", 25, 0, 255);
     public final BoolValue colorRainbow = new BoolValue("Rainbow", false);
     private final LinkedList<Dot> positions = new LinkedList<>();

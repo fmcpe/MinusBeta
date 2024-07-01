@@ -4,6 +4,10 @@ import net.minecraft.util.MovingObjectPosition
 import net.minusmc.minusbounce.features.module.modules.combat.killaura.KillAuraBlocking
 
 class InteractBlocking: KillAuraBlocking("Interact") {
+    override fun onPreAttack() {
+        killAura.stopBlocking()
+    }
+
     override fun onPostAttack() {
         var flag = true
         if (mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.ENTITY) {

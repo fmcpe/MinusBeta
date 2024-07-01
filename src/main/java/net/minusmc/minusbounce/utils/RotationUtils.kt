@@ -30,7 +30,7 @@ object RotationUtils : MinecraftInstance(), Listenable {
     @JvmField
     var onGroundTicks: Int = 0
 
-    private var active: Boolean = false
+    var active: Boolean = false
     private var smoothed: Boolean = false
     private var silent: Boolean = false
     private var lastRotations: Rotation? = null
