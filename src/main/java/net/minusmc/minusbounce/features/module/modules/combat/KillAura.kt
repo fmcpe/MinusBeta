@@ -163,6 +163,7 @@ class KillAura : Module() {
 
         if(target == null){
             stopBlocking()
+            blockingStatus = false
             return
         }
 

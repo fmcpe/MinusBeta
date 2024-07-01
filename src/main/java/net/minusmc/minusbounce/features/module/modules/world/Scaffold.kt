@@ -570,10 +570,10 @@ class Scaffold: Module(){
         val playerYaw = mc.thePlayer.rotationYaw.roundToInt()
         when (modes.get().lowercase()) {
             "normal" -> if (ticksOnAir > 0 && !isObjectMouseOverBlock(placeInfo!!.enumFacing, blockPlace!!)) {
-                getRotations(playerYaw - 180, playerYaw + 180)
+                getRotations()
             }
             "snap" -> {
-                getRotations(playerYaw - 180, playerYaw + 180)
+                getRotations()
 
                 if (ticksOnAir <= 0 || isObjectMouseOverBlock(placeInfo!!.enumFacing, blockPlace!!)) {
                     targetYaw = MovementUtils.getRawDirection().toFloat()
@@ -586,46 +586,49 @@ class Scaffold: Module(){
                     zPos > (blockPlace?.z?.plus(0.288) ?: return) ||
                     zPos < (blockPlace?.z?.minus(1.288) ?: return)
                 ){
-                    getRotations(playerYaw + 180, playerYaw + 180)
+                    getRotations()
                 }
             }
-            "telly" -> if (RotationUtils.offGroundTicks >= 3) {
+            "telly" -> if (RotationUtils.offGroundTicks > 5) {
                 if (!isObjectMouseOverBlock(placeInfo!!.enumFacing, blockPlace!!)) {
-                    getRotations(playerYaw + 180, playerYaw + 180)
+                    getRotations()
                 }
             } else {
-                targetYaw = mc.thePlayer.rotationYaw
-                targetPitch = 0.0F
+                getRotations()
+                targetYaw = MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw)
             }
         }
 
         /* Setting rotations */
         RotationUtils.setRotations(
             Rotation(targetYaw, targetPitch),
-            0,
+            2,
             RandomUtils.nextFloat(speed.getMinValue(), speed.getMaxValue()),
             if (movementCorrection.get()) MovementFixType.FULL
             else MovementFixType.NONE
         )
     }
 
-    private fun getRotations(min: Int, max: Int){
+    private fun getRotations(){
         val hitVec = Vec3(blockPlace) + 0.5 + Vec3(placeInfo?.enumFacing?.directionVec) * 0.5
-        for (yaw in min..max step 45){
-            for (pitch in 90 downTo 30){
-                val result = rayTrace(Rotation(yaw.toFloat(), pitch.toFloat())) ?: continue
+        for (pitch in 90 downTo 30){
+            val result = rayTrace(
+                Rotation(
+                    MathHelper.wrapAngleTo180_float(
+                        mc.thePlayer.rotationYaw - 180
+                    ), pitch.toFloat())
+            ) ?: continue
 
-                if (result.blockPos == blockPlace && result.sideHit == placeInfo?.enumFacing) {
-                    if(result.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK &&
-                        result.sideHit != EnumFacing.DOWN &&
-                        result.blockPos.y < (blockPlace?.y ?: return) &&
-                        (result.sideHit != EnumFacing.UP || (!sameY && mc.gameSettings.keyBindJump.isKeyDown))
-                    ){
-                        RotationUtils.toRotation(result.hitVec).let {
-                            targetYaw = it.yaw
-                            targetPitch = it.pitch
-                            return
-                        }
+            if (result.blockPos == blockPlace && result.sideHit == placeInfo?.enumFacing) {
+                if(result.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK &&
+                    result.sideHit != EnumFacing.DOWN &&
+                    result.blockPos.y < (blockPlace?.y ?: return) &&
+                    (result.sideHit != EnumFacing.UP || (!sameY && mc.gameSettings.keyBindJump.isKeyDown))
+                ){
+                    RotationUtils.toRotation(result.hitVec).let {
+                        targetYaw = it.yaw
+                        targetPitch = it.pitch
+                        return
                     }
                 }
             }
