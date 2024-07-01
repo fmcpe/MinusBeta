@@ -22,11 +22,8 @@ import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
 import net.minusmc.minusbounce.features.module.modules.combat.killaura.KillAuraBlocking
-import net.minusmc.minusbounce.utils.ClassUtils
+import net.minusmc.minusbounce.utils.*
 import net.minusmc.minusbounce.utils.EntityUtils.isSelected
-import net.minusmc.minusbounce.utils.RaycastUtils
-import net.minusmc.minusbounce.utils.Rotation
-import net.minusmc.minusbounce.utils.RotationUtils
 import net.minusmc.minusbounce.utils.extensions.getDistanceToEntityBox
 import net.minusmc.minusbounce.utils.extensions.getNearestPointBB
 import net.minusmc.minusbounce.utils.item.ItemUtils
@@ -135,6 +132,7 @@ class KillAura : Module() {
         clicks = 0
         prevTargetEntities.clear()
         stopBlocking()
+        blockingStatus = false
         blockingMode.onDisable()
     }
 
@@ -435,7 +433,10 @@ class KillAura : Module() {
 
     private fun attackEntity(entity: EntityLivingBase) {
         /* Unblock & Attack */
-        blockingMode.onPreAttack()
+        if (blockingStatus) {
+            blockingMode.onPreAttack()
+            blockingStatus = false
+        }
 
         /* Swing*/
         when (swingValue.get().lowercase()) {
@@ -446,7 +447,7 @@ class KillAura : Module() {
         when (mc.objectMouseOver.typeOfHit) {
             MovingObjectType.ENTITY -> mc.playerController.attackEntity(
                 mc.thePlayer,
-                mc.objectMouseOver.entityHit
+                if(raycastValue.get()) mc.objectMouseOver.entityHit else entity
             )
 
             MovingObjectType.BLOCK -> {
@@ -468,7 +469,10 @@ class KillAura : Module() {
         }
 
         /* AutoBlock */
-        blockingMode.onPostAttack()
+        if (canBlock && mc.thePlayer.getDistanceToEntityBox(target ?: return) <= autoBlockRangeValue.get()) {
+            blockingMode.onPostAttack()
+            blockingStatus = true
+        }
     }
 
     private fun getTargetRotation(entity: Entity): Rotation {
@@ -482,6 +486,7 @@ class KillAura : Module() {
             )
         }
 
+        /* We don't override. So Vec3(0.0, 0.0, 0.0) is a good solution */
         val rotation = RotationUtils.toRotation(
             Vec3(0.0, 0.0, 0.0),
             diff = Vec3(
@@ -497,14 +502,13 @@ class KillAura : Module() {
             predictValue.get(),
             throughWallsValue.get(),
             rangeValue.get()
-        ) ?: return rotation
+        ) ?: VecRotation(Vec3(0.0, 0.0, 0.0), rotation)
 
         return when (rotations.get().lowercase()) {
             /* Old BackTrack Rotation Function is getting vecRotation and DO NOTHING with it. then calculate from vec (input) */
             "backtrack" -> RotationUtils.toRotation(RotationUtils.getCenter(entity.entityBoundingBox))
             "grim" -> RotationUtils.toRotation(getNearestPointBB(mc.thePlayer.getPositionEyes(1F), boundingBox))
             "intave" -> {
-                /* We don't override. So Vec3(0.0, 0.0, 0.0) is a good solution */
                 Rotation(
                     rotation.yaw + Math.random().toFloat() * intaveRandomAmount.get() - intaveRandomAmount.get() / 2,
                     rotation.pitch + Math.random().toFloat() * intaveRandomAmount.get() - intaveRandomAmount.get() / 2
@@ -515,17 +519,11 @@ class KillAura : Module() {
     }
 
     fun startBlocking() {
-        if (canBlock && mc.thePlayer.getDistanceToEntityBox(target ?: return) <= autoBlockRangeValue.get()) {
-            mc.netHandler.addToSendQueue(C08PacketPlayerBlockPlacement(mc.thePlayer.inventory.getCurrentItem() ?: return))
-            blockingStatus = true
-        }
+        mc.netHandler.addToSendQueue(C08PacketPlayerBlockPlacement(mc.thePlayer.inventory.getCurrentItem() ?: return))
     }
 
     fun stopBlocking() {
-        if (blockingStatus) {
-            mc.playerController.onStoppedUsingItem(mc.thePlayer)
-            blockingStatus = false
-        }
+        mc.playerController.onStoppedUsingItem(mc.thePlayer)
     }
 
     val canBlock: Boolean

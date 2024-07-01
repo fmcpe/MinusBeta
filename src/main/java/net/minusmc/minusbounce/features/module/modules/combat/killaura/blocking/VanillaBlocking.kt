@@ -4,6 +4,7 @@ import net.minusmc.minusbounce.features.module.modules.combat.killaura.KillAuraB
 
 class VanillaBlocking: KillAuraBlocking("Vanilla") {
     override fun onPostAttack(){
-        killAura.startBlocking()
+        mc.rightClickMouse()
+        blockingStatus = true
     }
 }
