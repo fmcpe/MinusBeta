@@ -43,7 +43,7 @@ import kotlin.math.sqrt
 class Scaffold: Module(){
 
     private val modes = ListValue("Mode", arrayOf("Normal", "Snap", "Telly", "Legit"), "Normal")
-
+    private val ticks = IntegerValue("Ticks", 0, 1, 10) { modes.get() == "Telly" }
     private val delayValue = IntRangeValue("Delay", 0, 0, 0, 10)
     private val sprint = ListValue("Sprint", arrayOf("Normal", "VulcanToggle", "Omni", "Off"), "Normal")
 
@@ -589,7 +589,7 @@ class Scaffold: Module(){
                     getRotations()
                 }
             }
-            "telly" -> if (RotationUtils.offGroundTicks > 5) {
+            "telly" -> if (RotationUtils.offGroundTicks > ticks.get()) {
                 if (!isObjectMouseOverBlock(placeInfo!!.enumFacing, blockPlace!!)) {
                     getRotations()
                 }

@@ -24,12 +24,9 @@ import net.minecraft.util.FoodStats;
 import net.minecraft.util.MathHelper;
 import net.minusmc.minusbounce.MinusBounce;
 import net.minusmc.minusbounce.event.KnockBackEvent;
-import net.minusmc.minusbounce.features.module.modules.movement.KeepSprint;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
-
-import java.util.Objects;
 
 @Mixin(EntityPlayer.class)
 public abstract class MixinEntityPlayer extends MixinEntityLivingBase {
@@ -94,8 +91,6 @@ public abstract class MixinEntityPlayer extends MixinEntityLivingBase {
     @Overwrite
     public void attackTargetEntityWithCurrentItem(Entity targetEntity)
     {
-        final boolean state = !Objects.requireNonNull(MinusBounce.moduleManager.getModule(KeepSprint.class)).getState();
-        final boolean motion = !Objects.requireNonNull(MinusBounce.moduleManager.getModule(KeepSprint.class)).getMotion().get();
         if (targetEntity.canAttackWithItem())
         {
             if (!targetEntity.hitByEntity((EntityPlayer) (Object) this))
@@ -153,33 +148,18 @@ public abstract class MixinEntityPlayer extends MixinEntityLivingBase {
                                 for(int power = 0; power < event.getPower(); power++){
                                     targetEntity.addVelocity(-MathHelper.sin(this.rotationYaw * (float)Math.PI / 180.0F) * (float)i * 0.5F, event.getReduceY() ? 0.0D : 0.1D, MathHelper.cos(this.rotationYaw * (float)Math.PI / 180.0F) * (float)i * 0.5F);
                                 }
-
-                                if(state){
-                                    if(!motion){
-                                        this.motionX *= event.getMotion();
-                                        this.motionZ *= event.getMotion();
-                                    }
-                                } else {
-                                    this.motionX *= event.getMotion();
-                                    this.motionZ *= event.getMotion();
-                                    this.setSprinting(false);
-                                }
+                                this.motionX *= event.getMotion();
+                                this.motionZ *= event.getMotion();
+                                this.setSprinting(false);
                             }
                         } else if (event.getFull() && Minecraft.getMinecraft().thePlayer.hurtTime > 0) {
                             if(!event.isCancelled()){
                                 for(int power = 0; power < event.getPower(); power++){
                                     targetEntity.addVelocity(-MathHelper.sin(this.rotationYaw * (float)Math.PI / 180.0F) * (float)i * 0.5F, event.getReduceY() ? 0.0D : 0.1D, MathHelper.cos(this.rotationYaw * (float)Math.PI / 180.0F) * (float)i * 0.5F);
                                 }
-                                if(state){
-                                    if(!motion){
-                                        this.motionX *= event.getMotion();
-                                        this.motionZ *= event.getMotion();
-                                    }
-                                } else {
-                                    this.motionX *= event.getMotion();
-                                    this.motionZ *= event.getMotion();
-                                    this.setSprinting(false);
-                                }
+                                this.motionX *= event.getMotion();
+                                this.motionZ *= event.getMotion();
+                                this.setSprinting(false);
                             }
                         }
 
