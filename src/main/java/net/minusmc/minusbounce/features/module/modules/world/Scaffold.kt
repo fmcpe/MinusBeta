@@ -35,7 +35,6 @@ import org.lwjgl.opengl.GL11
 import java.awt.Color
 import kotlin.math.abs
 import kotlin.math.floor
-import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 
@@ -68,7 +67,6 @@ class Scaffold: Module(){
     private var targetBlock: BlockPos? = null
     private var placeInfo: PlaceInfo? = null
     private var blockPlace: BlockPos? = null
-    private var willBeFallInNextTick: Boolean = false
     private var xPos: Double = 0.0
     private var zPos: Double = 0.0
     private var startY = 0.0
@@ -323,7 +321,7 @@ class Scaffold: Module(){
         val c2 = a1 <= -0.015625
         val c3 = calculateRealY(mc.theWorld, bb, motionX, motionZ, 1.09, a1) <= -0.015625
 
-        willBeFallInNextTick = if (!mc.thePlayer.onGround) mc.thePlayer.motionY > 0 else c1 && c2 && c3
+        val willBeFallInNextTick = if (!mc.thePlayer.onGround) mc.thePlayer.motionY > 0 else c1 && c2 && c3
 
         val blockSlot = InventoryUtils.findBlockInHotbar() ?: return
         if (blockSlot != -1) {
@@ -352,18 +350,18 @@ class Scaffold: Module(){
         }
 
         if (ticksOnAir > RandomUtils.nextInt(delayValue.getMinValue(), delayValue.getMaxValue()) && isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)) {
-            if(willBeFallInNextTick && modes.get() == "Legit") {
-                if(mc.thePlayer.posY < mc.objectMouseOver.blockPos.y + 1.5){
-                    if(mc.objectMouseOver.sideHit != EnumFacing.UP && mc.objectMouseOver.sideHit != EnumFacing.DOWN){
+            when (modes.get().lowercase()){
+                "legit" -> if(willBeFallInNextTick){
+                    if(mc.thePlayer.posY < (mc.objectMouseOver.blockPos.y + 1.5)){
+                        if(mc.objectMouseOver.sideHit != EnumFacing.UP && mc.objectMouseOver.sideHit != EnumFacing.DOWN){
+                            rightClickMouse()
+                        }
+                    } else if(mc.objectMouseOver.sideHit != EnumFacing.DOWN && mc.gameSettings.keyBindJump.isKeyDown){
                         rightClickMouse()
                     }
-                } else if(mc.objectMouseOver.sideHit != EnumFacing.DOWN && mc.gameSettings.keyBindJump.isKeyDown){
-                    rightClickMouse()
                 }
-                ticksOnAir = 0
-                return
+                else -> rightClickMouse()
             }
-            rightClickMouse()
             ticksOnAir = 0
         }
 
@@ -387,13 +385,13 @@ class Scaffold: Module(){
     private fun rightClickMouse(){
         val itemStack = mc.thePlayer.inventory.getCurrentItem()
         var flag = true
-        if (!mc.theWorld.isAirBlock(mc.objectMouseOver.blockPos)) {
+        if (!mc.theWorld.isAirBlock(blockPlace)) {
             val i = itemStack?.stackSize ?: 0
             if (mc.playerController.onPlayerRightClick(
                     mc.thePlayer,
                     mc.theWorld, itemStack,
-                    mc.objectMouseOver.blockPos,
-                    mc.objectMouseOver.sideHit,
+                    blockPlace,
+                    placeInfo?.enumFacing,
                     mc.objectMouseOver.hitVec
                 )
             ) {
@@ -567,7 +565,6 @@ class Scaffold: Module(){
      *  @return block relative to the player
      */
     private fun calculateRotations() {
-        val playerYaw = mc.thePlayer.rotationYaw.roundToInt()
         when (modes.get().lowercase()) {
             "normal" -> if (ticksOnAir > 0 && !isObjectMouseOverBlock(placeInfo!!.enumFacing, blockPlace!!)) {
                 getRotations()
@@ -576,7 +573,7 @@ class Scaffold: Module(){
                 getRotations()
 
                 if (ticksOnAir <= 0 || isObjectMouseOverBlock(placeInfo!!.enumFacing, blockPlace!!)) {
-                    targetYaw = MovementUtils.getRawDirection().toFloat()
+                    targetYaw = MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw)
                 }
             }
             "legit" -> if (ticksOnAir > 0 && !isObjectMouseOverBlock(placeInfo!!.enumFacing, blockPlace!!)) {
@@ -610,33 +607,30 @@ class Scaffold: Module(){
     }
 
     private fun getRotations(){
-        val hitVec = Vec3(blockPlace) + 0.5 + Vec3(placeInfo?.enumFacing?.directionVec) * 0.5
-        for (pitch in 90 downTo 30){
-            val result = rayTrace(
-                Rotation(
-                    MathHelper.wrapAngleTo180_float(
-                        mc.thePlayer.rotationYaw - 180
-                    ), pitch.toFloat())
-            ) ?: continue
+        val vec1 = Vec3(placeInfo?.enumFacing?.directionVec)
+        val vec = Vec3(blockPlace)
+        RotationUtils.toRotation(vec + 0.5 + vec1 * 0.5).let{
+            targetYaw = it.yaw
+            targetPitch = it.pitch
+        }
 
-            if (result.blockPos == blockPlace && result.sideHit == placeInfo?.enumFacing) {
-                if(result.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK &&
-                    result.sideHit != EnumFacing.DOWN &&
-                    result.blockPos.y < (blockPlace?.y ?: return) &&
-                    (result.sideHit != EnumFacing.UP || (!sameY && mc.gameSettings.keyBindJump.isKeyDown))
-                ){
-                    RotationUtils.toRotation(result.hitVec).let {
-                        targetYaw = it.yaw
-                        targetPitch = it.pitch
-                        return
+        for(yaw in (mc.thePlayer.rotationYaw.toInt() - 180)..(mc.thePlayer.rotationYaw.toInt() + 180) step 45){
+            for (pitch in 90 downTo 30){
+                rayTrace(Rotation(yaw.toFloat(), pitch.toFloat()))?.let{
+                    if(it.blockPos == blockPlace &&
+                        it.sideHit == placeInfo?.enumFacing &&
+                        it.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK &&
+                        it.sideHit != EnumFacing.DOWN &&
+                        it.blockPos.y <= (blockPlace?.y ?: return) &&
+                        (it.sideHit != EnumFacing.UP || (!sameY && mc.gameSettings.keyBindJump.isKeyDown))
+                    ){
+                        RotationUtils.toRotation(it.hitVec).let{ r ->
+                            targetYaw = r.yaw
+                            targetPitch = r.pitch
+                        }
                     }
                 }
             }
-        }
-
-        RotationUtils.toRotation(hitVec).let {
-            targetYaw = it.yaw
-            targetPitch = it.pitch
         }
     }
 
@@ -721,5 +715,4 @@ class Scaffold: Module(){
      */
     private val sameY: Boolean
         get() = !sameYValue.get().equals("Off", true) && !mc.gameSettings.keyBindJump.isKeyDown && MovementUtils.isMoving
-
 }
