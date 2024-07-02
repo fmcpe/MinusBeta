@@ -23,8 +23,6 @@ import net.minusmc.minusbounce.utils.InventoryUtils.BLOCK_BLACKLIST
 import net.minusmc.minusbounce.utils.block.BlockUtils
 import net.minusmc.minusbounce.utils.block.BlockUtils.rayTrace
 import net.minusmc.minusbounce.utils.block.PlaceInfo
-import net.minusmc.minusbounce.utils.extensions.plus
-import net.minusmc.minusbounce.utils.extensions.times
 import net.minusmc.minusbounce.utils.extensions.tryJump
 import net.minusmc.minusbounce.utils.misc.RandomUtils
 import net.minusmc.minusbounce.utils.movement.MovementFixType
@@ -42,7 +40,7 @@ import kotlin.math.sqrt
 class Scaffold: Module(){
 
     private val modes = ListValue("Mode", arrayOf("Normal", "Snap", "Telly", "Legit"), "Normal")
-    private val ticks = IntegerValue("Ticks", 0, 1, 10) { modes.get() == "Telly" }
+    private val ticks = IntegerValue("Ticks", 0, 0, 10) { modes.get() == "Telly" }
     private val delayValue = IntRangeValue("Delay", 0, 0, 0, 10)
     private val sprint = ListValue("Sprint", arrayOf("Normal", "VulcanToggle", "Omni", "Off"), "Normal")
 
@@ -349,7 +347,12 @@ class Scaffold: Module(){
             return
         }
 
-        if (ticksOnAir > RandomUtils.nextInt(delayValue.getMinValue(), delayValue.getMaxValue()) && isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)) {
+        if (
+            mc.thePlayer.inventory.currentItem == InventoryUtils.serverSlot &&
+            !BadPacketUtils.bad(false, true, false, false, true) &&
+            ticksOnAir > RandomUtils.nextInt(delayValue.getMinValue(), delayValue.getMaxValue()) &&
+            isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)
+        ) {
             when (modes.get().lowercase()){
                 "legit" -> if(willBeFallInNextTick){
                     if(mc.thePlayer.posY < (mc.objectMouseOver.blockPos.y + 1.5)){
@@ -389,7 +392,8 @@ class Scaffold: Module(){
             val i = itemStack?.stackSize ?: 0
             if (mc.playerController.onPlayerRightClick(
                     mc.thePlayer,
-                    mc.theWorld, itemStack,
+                    mc.theWorld,
+                    itemStack,
                     blockPlace,
                     placeInfo?.enumFacing,
                     mc.objectMouseOver.hitVec
@@ -586,7 +590,7 @@ class Scaffold: Module(){
                     getRotations()
                 }
             }
-            "telly" -> if (RotationUtils.offGroundTicks > ticks.get()) {
+            "telly" -> if (RotationUtils.offGroundTicks >= ticks.get()) {
                 if (!isObjectMouseOverBlock(placeInfo!!.enumFacing, blockPlace!!)) {
                     getRotations()
                 }
@@ -607,13 +611,6 @@ class Scaffold: Module(){
     }
 
     private fun getRotations(){
-        val vec1 = Vec3(placeInfo?.enumFacing?.directionVec)
-        val vec = Vec3(blockPlace)
-        RotationUtils.toRotation(vec + 0.5 + vec1 * 0.5).let{
-            targetYaw = it.yaw
-            targetPitch = it.pitch
-        }
-
         for(yaw in (mc.thePlayer.rotationYaw.toInt() - 180)..(mc.thePlayer.rotationYaw.toInt() + 180) step 45){
             for (pitch in 90 downTo 30){
                 rayTrace(Rotation(yaw.toFloat(), pitch.toFloat()))?.let{
