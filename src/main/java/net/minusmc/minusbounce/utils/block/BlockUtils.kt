@@ -138,9 +138,9 @@ object BlockUtils : MinecraftInstance() {
     private val blockNames = mutableListOf<Pair<String, Int>>()
 
     fun rayTrace(rotation: Rotation?): MovingObjectPosition? {
-        return mc.renderViewEntity.worldObj.rayTraceBlocks(
-            mc.renderViewEntity.eyes,
-            mc.renderViewEntity.eyes + (
+        return mc.theWorld.rayTraceBlocks(
+            mc.thePlayer.eyes,
+            mc.thePlayer.eyes + (
                     RotationUtils.getVectorForRotation(
                         rotation ?: return null
                     ) * if (mc.playerController.currentGameType.isCreative) 5.0 else 4.5),

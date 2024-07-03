@@ -98,7 +98,7 @@ object RotationUtils : MinecraftInstance(), Listenable {
                 if(silent){
                     /* It will conflict with non-silent */
                     val targetRotation = Rotation(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch)
-                    targetRotation.fixedSensitivity(rotation = lastRotations)
+                    targetRotation.fixedSensitivity(r = lastRotations ?: serverRotation)
 
                     mc.thePlayer.rotationYaw = targetRotation.yaw + MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw - targetRotation.yaw)
                     mc.thePlayer.rotationPitch = targetRotation.pitch
@@ -179,9 +179,11 @@ object RotationUtils : MinecraftInstance(), Listenable {
     
     @EventTarget(priority = -5)
     fun onLook(event: LookEvent){
-        if(active && targetRotation != null){
-            event.yaw = targetRotation!!.yaw
-            event.pitch = targetRotation!!.pitch
+        if(active && targetRotation != null && lastRotations != null){
+            event.yaw = targetRotation?.yaw ?: return
+            event.pitch = targetRotation?.pitch ?: return
+            event.lastYaw = lastRotations?.yaw ?: return
+            event.lastPitch = lastRotations?.pitch ?: return
         }
     }
 
@@ -199,6 +201,7 @@ object RotationUtils : MinecraftInstance(), Listenable {
         fixType: MovementFixType = MovementFixType.FULL,
         silent: Boolean = true,
     ) {
+        rotation.isNan() ?: return
         this.type = if(silent) fixType else MovementFixType.NONE
         this.rotationSpeed = speed
         this.rotations = rotation
@@ -448,34 +451,31 @@ object RotationUtils : MinecraftInstance(), Listenable {
         val yDiff = getAngleDifference(targetRotation.yaw, currentRotation.yaw)
         val pDiff = getAngleDifference(targetRotation.pitch, currentRotation.pitch)
 
-        /* I love .let */
-        turnSpeed.let{
-            val distance = sqrt(yDiff * yDiff + pDiff * pDiff)
-            if(it < 0 || distance <= 0) return@let
-            val maxYaw = it * abs(yDiff / distance)
-            val maxPitch = it * abs(pDiff / distance)
+        val distance = sqrt(yDiff * yDiff + pDiff * pDiff)
+        if(turnSpeed < 0 || distance <= 0) return currentRotation
+        val maxYaw = turnSpeed * abs(yDiff / distance)
+        val maxPitch = turnSpeed * abs(pDiff / distance)
 
-            val yAdd = max(min(yDiff, maxYaw), -maxYaw)
-            val pAdd = max(min(pDiff, maxPitch), -maxPitch)
+        val yAdd = max(min(yDiff, maxYaw), -maxYaw)
+        val pAdd = max(min(pDiff, maxPitch), -maxPitch)
 
-            yaw = currentRotation.yaw + yAdd
-            pitch = currentRotation.pitch + pAdd
+        yaw = currentRotation.yaw + yAdd
+        pitch = currentRotation.pitch + pAdd
 
-            /* Randomize */
-            for (i in 1.0..Minecraft.getDebugFPS() / 20.0 + Math.random() * 10.0 step 1.0) {
-                if (abs(yAdd) + abs(pAdd) > 1) {
-                    yaw += (Math.random().toFloat() - 0.5f) / 1000f
-                    pitch -= Math.random().toFloat() / 200f
-                }
-
-                /* Fixing GCD */
-                val rotation = Rotation(yaw, pitch)
-                rotation.fixedSensitivity()
-
-                /* Setting Rotation */
-                yaw = rotation.yaw
-                pitch = max(-90.0F, min(90.0F, rotation.pitch))
+        /* Randomize */
+        for (i in 1.0..Minecraft.getDebugFPS() / 20.0 + Math.random() * 10.0 step 1.0) {
+            if (abs(yAdd) + abs(pAdd) > 1) {
+                yaw += (Math.random().toFloat() - 0.5f) / 1000f
+                pitch -= Math.random().toFloat() / 200f
             }
+
+            /* Fixing GCD */
+            val rotation = Rotation(yaw, pitch)
+            rotation.fixedSensitivity()
+
+            /* Setting Rotation */
+            yaw = rotation.yaw
+            pitch = rotation.pitch
         }
 
         return Rotation(yaw, pitch)

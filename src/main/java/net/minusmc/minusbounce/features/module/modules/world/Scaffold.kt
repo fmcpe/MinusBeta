@@ -2,6 +2,7 @@ package net.minusmc.minusbounce.features.module.modules.world
 
 import net.minecraft.block.Block
 import net.minecraft.block.BlockAir
+import net.minecraft.client.entity.EntityPlayerSP
 import net.minecraft.client.gui.ScaledResolution
 import net.minecraft.client.multiplayer.WorldClient
 import net.minecraft.client.renderer.GlStateManager
@@ -23,6 +24,7 @@ import net.minusmc.minusbounce.utils.InventoryUtils.BLOCK_BLACKLIST
 import net.minusmc.minusbounce.utils.block.BlockUtils
 import net.minusmc.minusbounce.utils.block.BlockUtils.rayTrace
 import net.minusmc.minusbounce.utils.block.PlaceInfo
+import net.minusmc.minusbounce.utils.extensions.plus
 import net.minusmc.minusbounce.utils.extensions.tryJump
 import net.minusmc.minusbounce.utils.misc.RandomUtils
 import net.minusmc.minusbounce.utils.movement.MovementFixType
@@ -33,6 +35,7 @@ import org.lwjgl.opengl.GL11
 import java.awt.Color
 import kotlin.math.abs
 import kotlin.math.floor
+import kotlin.math.pow
 import kotlin.math.sqrt
 
 
@@ -304,6 +307,8 @@ class Scaffold: Module(){
 
     @EventTarget
     fun onPreUpdate(event: PreUpdateEvent){
+        if (!isBlockUnder(1.0, true)) ticksOnAir++ else ticksOnAir = 0
+
         /* Player Position Update (Edge Exception + Legit Mode) */
         xPos = mc.thePlayer.posX
         zPos = mc.thePlayer.posZ
@@ -313,24 +318,10 @@ class Scaffold: Module(){
             zPos += mc.thePlayer.posZ - mc.thePlayer.lastReportedPosZ
         }
 
-        /* Falling prediction (Legit mode) */
-        val c1 = calculateRealY(mc.theWorld, bb, motionX, motionZ, 0.91 * 0.6) <= -0.015625
-        val a1 = calculateRealY(mc.theWorld, bb, motionX, motionZ, 1.0)
-        val c2 = a1 <= -0.015625
-        val c3 = calculateRealY(mc.theWorld, bb, motionX, motionZ, 1.09, a1) <= -0.015625
-
-        val willBeFallInNextTick = if (!mc.thePlayer.onGround) mc.thePlayer.motionY > 0 else c1 && c2 && c3
-
         val blockSlot = InventoryUtils.findBlockInHotbar() ?: return
         if (blockSlot != -1) {
             mc.thePlayer.inventory.currentItem = blockSlot - 36
             itemStack = mc.thePlayer.inventoryContainer.getSlot(blockSlot).stack
-        }
-
-        if (BlockUtils.blockRelativeToPlayer(0, -1, 0) is BlockAir) {
-            ticksOnAir++
-        } else {
-            ticksOnAir = 0
         }
 
         placeInfo = this.getPlacePossibility() ?: return
@@ -354,14 +345,12 @@ class Scaffold: Module(){
             isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)
         ) {
             when (modes.get().lowercase()){
-                "legit" -> if(willBeFallInNextTick){
-                    if(mc.thePlayer.posY < (mc.objectMouseOver.blockPos.y + 1.5)){
-                        if(mc.objectMouseOver.sideHit != EnumFacing.UP && mc.objectMouseOver.sideHit != EnumFacing.DOWN){
-                            rightClickMouse()
-                        }
-                    } else if(mc.objectMouseOver.sideHit != EnumFacing.DOWN && mc.gameSettings.keyBindJump.isKeyDown){
+                "legit" -> if(mc.thePlayer.posY < (mc.objectMouseOver.blockPos.y + 1.5)){
+                    if(mc.objectMouseOver.sideHit != EnumFacing.UP && mc.objectMouseOver.sideHit != EnumFacing.DOWN){
                         rightClickMouse()
                     }
+                } else if(mc.objectMouseOver.sideHit != EnumFacing.DOWN && mc.gameSettings.keyBindJump.isKeyDown){
+                    rightClickMouse()
                 }
                 else -> rightClickMouse()
             }
@@ -569,18 +558,24 @@ class Scaffold: Module(){
      *  @return block relative to the player
      */
     private fun calculateRotations() {
+        /* Falling prediction */
+        val c1 = calculateRealY(mc.theWorld, bb, motionX, motionZ, 0.546) <= -0.015625
+        val a1 = calculateRealY(mc.theWorld, bb, motionX, motionZ, 1.0)
+        val c2 = a1 <= -0.015625
+        val c3 = calculateRealY(mc.theWorld, bb, motionX, motionZ, 1.09, a1) <= -0.015625
+
         when (modes.get().lowercase()) {
-            "normal" -> if (ticksOnAir > 0 && !isObjectMouseOverBlock(placeInfo!!.enumFacing, blockPlace!!)) {
+            "normal" -> if (ticksOnAir > 0 && !isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return, RotationUtils.targetRotation ?: return)) {
                 getRotations()
             }
             "snap" -> {
                 getRotations()
 
-                if (ticksOnAir <= 0 || isObjectMouseOverBlock(placeInfo!!.enumFacing, blockPlace!!)) {
+                if (ticksOnAir <= 0 || isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return, RotationUtils.targetRotation ?: return)) {
                     targetYaw = MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw)
                 }
             }
-            "legit" -> if (ticksOnAir > 0 && !isObjectMouseOverBlock(placeInfo!!.enumFacing, blockPlace!!)) {
+            "legit" -> if (ticksOnAir > 0 && if (!mc.thePlayer.onGround) (mc.thePlayer.motionY > 0) else (c1 && c2 && c3) && !isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return, RotationUtils.targetRotation ?: return)) {
                 if (
                     xPos > (blockPlace?.x?.plus(0.288) ?: return) ||
                     xPos < (blockPlace?.x?.minus(1.288) ?: return) ||
@@ -591,7 +586,7 @@ class Scaffold: Module(){
                 }
             }
             "telly" -> if (RotationUtils.offGroundTicks >= ticks.get()) {
-                if (!isObjectMouseOverBlock(placeInfo!!.enumFacing, blockPlace!!)) {
+                if (!isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return, RotationUtils.targetRotation ?: return)) {
                     getRotations()
                 }
             } else {
@@ -611,6 +606,7 @@ class Scaffold: Module(){
     }
 
     private fun getRotations(){
+        val possible = mutableListOf<Rotation>()
         for(yaw in (mc.thePlayer.rotationYaw.toInt() - 180)..(mc.thePlayer.rotationYaw.toInt() + 180) step 45){
             for (pitch in 90 downTo 30){
                 rayTrace(Rotation(yaw.toFloat(), pitch.toFloat()))?.let{
@@ -621,13 +617,23 @@ class Scaffold: Module(){
                         it.blockPos.y <= (blockPlace?.y ?: return) &&
                         (it.sideHit != EnumFacing.UP || (!sameY && mc.gameSettings.keyBindJump.isKeyDown))
                     ){
-                        RotationUtils.toRotation(it.hitVec).let{ r ->
-                            targetYaw = r.yaw
-                            targetPitch = r.pitch
-                        }
+                        possible.add(Rotation(yaw.toFloat(), pitch.toFloat()))
                     }
                 }
             }
+        }
+
+        possible.minByOrNull {
+            mc.thePlayer.getDistanceSq(
+                rayTrace(
+                    it
+                )!!.hitVec + 0.5
+            ) + sqrt(
+                (it.yaw - targetYaw).pow(2) + (it.pitch - targetPitch).pow(2)
+            )
+        }?.let {
+            targetYaw = it.yaw
+            targetPitch = it.pitch
         }
     }
 
@@ -713,3 +719,5 @@ class Scaffold: Module(){
     private val sameY: Boolean
         get() = !sameYValue.get().equals("Off", true) && !mc.gameSettings.keyBindJump.isKeyDown && MovementUtils.isMoving
 }
+
+private fun EntityPlayerSP.getDistanceSq(add: Vec3): Double = this.getDistanceSq(add.xCoord, add.yCoord, add.zCoord)

@@ -58,6 +58,9 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
     public abstract boolean isOnLadder();
 
     @Shadow
+    public float prevRotationYawHead;
+
+    @Shadow
     public abstract void setLastAttacker(Entity entityIn);
 
     @Shadow
@@ -116,6 +119,23 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
         this.isAirBorne = true;
     }
 
+    /**
+     * @author .
+     * @reason .
+     */
+    @Overwrite
+    public Vec3 getLook(float partialTicks){
+        final LookEvent event = new LookEvent(this.rotationYaw, this.rotationPitch, this.prevRotationYaw, this.prevRotationPitch);
+        MinusBounce.eventManager.callEvent(event);
+        if(partialTicks == 1.0F){
+            return this.getVectorForRotation(event.getPitch(), event.getYaw());
+        } else {
+            final float f = event.getLastPitch() + (event.getPitch() - event.getLastPitch()) * partialTicks;
+            final float f1 = event.getLastYaw() + (event.getYaw() - event.getLastYaw()) * partialTicks;
+            return this.getVectorForRotation(f, f1);
+        }
+    }
+
     @Inject(method = "onLivingUpdate", at = @At("HEAD"))
     private void headLiving(CallbackInfo callbackInfo) {
         if (
@@ -125,21 +145,6 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
                             MinusBounce.moduleManager.getModule(Scaffold.class)
                     ).getValue("Tower")).get() == "Off"
         ) jumpTicks = 0;
-    }
-
-    /**
-     * interpolated look vector
-     *
-     * @author fmcpe
-     * @reason MouseObject
-     */
-    @Overwrite
-    public Vec3 getLook(float partialTicks)
-    {
-        final LookEvent event = new LookEvent(this.rotationYaw, this.rotationPitch);
-        MinusBounce.eventManager.callEvent(event);
-
-        return this.getVectorForRotation(event.getPitch(), event.getYaw());
     }
 
     @Inject(method = "isPotionActive(Lnet/minecraft/potion/Potion;)Z", at = @At("HEAD"), cancellable = true)

@@ -86,7 +86,7 @@ class JumpEvent(var motion: Float, var yaw: Float) : CancellableEvent()
  * @param yaw
  * @param pitch
  */
-class LookEvent(var yaw: Float, var pitch: Float) : Event()
+class LookEvent(var yaw: Float, var pitch: Float, var lastYaw: Float, var lastPitch: Float) : Event()
 
 /**
  * Called when movement input
@@ -110,6 +110,8 @@ class PreMotionEvent(var x: Double, var y: Double, var z: Double, var yaw: Float
  * Called after motion
  */
 class PostMotionEvent: Event()
+
+class ForceUpdate(var yaw: Float, var pitch: Float): Event()
 
 /**
  * Called in "onLivingUpdate" when the player is using a use item.

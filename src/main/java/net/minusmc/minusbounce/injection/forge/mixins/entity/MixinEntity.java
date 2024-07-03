@@ -5,12 +5,7 @@
  */
 package net.minusmc.minusbounce.injection.forge.mixins.entity;
 
-import net.minusmc.minusbounce.MinusBounce;
-import net.minusmc.minusbounce.event.StrafeEvent;
-import net.minusmc.minusbounce.event.LookEvent;
-import net.minusmc.minusbounce.features.module.modules.combat.HitBox;
 import net.minecraft.block.Block;
-import net.minecraft.block.material.Material;
 import net.minecraft.client.Minecraft;
 import net.minecraft.crash.CrashReportCategory;
 import net.minecraft.entity.Entity;
@@ -18,7 +13,13 @@ import net.minecraft.util.*;
 import net.minecraft.world.World;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.CapabilityDispatcher;
-import org.spongepowered.asm.mixin.*;
+import net.minusmc.minusbounce.MinusBounce;
+import net.minusmc.minusbounce.event.StrafeEvent;
+import net.minusmc.minusbounce.features.module.modules.combat.HitBox;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
@@ -85,10 +86,6 @@ public abstract class MixinEntity {
 
     @Shadow
     public World worldObj;
-
-    @Shadow
-    public void moveEntity(double x, double y, double z) {
-    }
 
     @Shadow
     public boolean isInWeb;
@@ -165,13 +162,20 @@ public abstract class MixinEntity {
     @Shadow
     public abstract boolean isSneaking();
 
-    @Shadow
-    public abstract boolean isInsideOfMaterial(Material materialIn);
-
     @Shadow(remap = false) 
     private CapabilityDispatcher capabilities;
 
     @Shadow public abstract boolean equals(Object p_equals_1_);
+
+    @Shadow
+    public float prevRotationPitch;
+
+    @Shadow
+    public float prevRotationYaw;
+
+    @Shadow
+    public void moveEntity(double x, double y, double z) {
+    }
 
     public int getNextStepDistance() {
         return nextStepDistance;
@@ -196,22 +200,8 @@ public abstract class MixinEntity {
     }
 
     /**
-     * interpolated look vector
-     * 
      * @author fmcpe
-     * @reason MouseObject
-     */
-    @Overwrite
-    public Vec3 getLook(float partialTicks)
-    {
-        final LookEvent event = new LookEvent(this.rotationYaw, this.rotationPitch);
-        MinusBounce.eventManager.callEvent(event);
-
-        return this.getVectorForRotation(event.getPitch(), event.getYaw());
-    }
-
-    /**
-     * @author fmcpe
+     * @reason StrafeEvent
      */
     @Overwrite
     public void moveFlying(float strafe, float forward, float friction){

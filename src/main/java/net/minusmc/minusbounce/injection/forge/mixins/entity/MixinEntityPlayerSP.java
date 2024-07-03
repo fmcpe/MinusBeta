@@ -188,48 +188,35 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
             boolean flag2 = d0 * d0 + d1 * d1 + d2 * d2 > 9.0E-4D || this.positionUpdateTicks >= 20;
             boolean flag3 = d3 != 0.0D || d4 != 0.0D;
 
-            if (this.ridingEntity == null)
-            {
-                if (flag2 && flag3)
-                {
+            if (this.ridingEntity == null) {
+                if (flag2 && flag3) {
                     this.sendQueue.addToSendQueue(new C03PacketPlayer.C06PacketPlayerPosLook(event.getX(), event.getY(), event.getZ(), event.getYaw(), event.getPitch(), event.getOnGround()));
-                }
-                else if (flag2)
-                {
+                } else if (flag2) {
                     this.sendQueue.addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(event.getX(), event.getY(), event.getZ(), event.getOnGround()));
-                }
-                else if (flag3)
-                {
+                } else if (flag3) {
                     this.sendQueue.addToSendQueue(new C03PacketPlayer.C05PacketPlayerLook(event.getYaw(), event.getPitch(), event.getOnGround()));
-                }
-                else
-                {
+                } else {
                     this.sendQueue.addToSendQueue(new C03PacketPlayer(event.getOnGround()));
                 }
-            }
-            else
-            {
-                this.sendQueue.addToSendQueue(new C03PacketPlayer.C06PacketPlayerPosLook(this.motionX, -999.0D, this.motionZ, event.getYaw(), event.getPitch(), event.getOnGround()));
-                flag2 = false;
-            }
 
-            ++this.positionUpdateTicks;
+                ++this.positionUpdateTicks;
 
-            if (flag2)
-            {
-                this.lastReportedPosX = event.getX();
-                this.lastReportedPosY = event.getY();
-                this.lastReportedPosZ = event.getZ();
-                this.positionUpdateTicks = 0;
-            }
+                if (flag2) {
+                    this.lastReportedPosX = event.getX();
+                    this.lastReportedPosY = event.getY();
+                    this.lastReportedPosZ = event.getZ();
+                    this.positionUpdateTicks = 0;
+                }
 
-            if (flag3)
-            {
-                this.lastReportedYaw = event.getYaw();
-                this.lastReportedPitch = event.getPitch();
+                if (flag3) {
+                    this.lastReportedYaw = event.getYaw();
+                    this.lastReportedPitch = event.getPitch();
+                }
+            } else {
+                this.sendQueue.addToSendQueue(new C03PacketPlayer.C05PacketPlayerLook(event.getYaw(), event.getPitch(), event.getOnGround()));
+                this.sendQueue.addToSendQueue(new C0CPacketInput(this.moveStrafing, this.moveForward, this.movementInput.jump, this.movementInput.sneak));
             }
         }
-        MinusBounce.eventManager.callEvent(new PostMotionEvent());
     }
 
     @Inject(method = "pushOutOfBlocks", at = @At("HEAD"), cancellable = true)
@@ -718,15 +705,9 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
 
             super.onUpdate();
 
-            if (this.isRiding())
-            {
-                this.sendQueue.addToSendQueue(new C03PacketPlayer.C05PacketPlayerLook(this.rotationYaw, this.rotationPitch, this.onGround));
-                this.sendQueue.addToSendQueue(new C0CPacketInput(this.moveStrafing, this.moveForward, this.movementInput.jump, this.movementInput.sneak));
-            }
-            else
-            {
-                this.onUpdateWalkingPlayer();
-            }
+            this.onUpdateWalkingPlayer();
+
+            MinusBounce.eventManager.callEvent(new PostMotionEvent());
         }
     }
 }

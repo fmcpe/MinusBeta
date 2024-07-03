@@ -21,9 +21,7 @@ data class Rotation(var yaw: Float, var pitch: Float) {
      * Set rotations to [player]
      */
     fun toPlayer(p: EntityPlayer) {
-        if(isNan()){
-            return
-        }
+        isNan() ?: return
 
         fixedSensitivity(mc.gameSettings.mouseSensitivity)
 
@@ -38,20 +36,23 @@ data class Rotation(var yaw: Float, var pitch: Float) {
     @JvmOverloads
     fun fixedSensitivity(
         s: Float = mc.gameSettings.mouseSensitivity,
-        rotation : Rotation? = MinecraftInstance.serverRotation
+        r : Rotation = MinecraftInstance.serverRotation
     ) {
-        rotation?.let{
-            val f = s * (1f + Math.random().toFloat() / 10000000f) * 0.6F + 0.2F
-            val m = f * f * f * 8.0F * 0.15f
-            yaw = it.yaw + round((yaw - it.yaw) / m) * m
-            pitch = (it.pitch + round((pitch - it.pitch) / m) * m).coerceIn(-90F, 90F)
-        }
+        yaw = getFixedSensitivityAngle(s, yaw, r.yaw)
+        pitch = getFixedSensitivityAngle(s, pitch, r.pitch).coerceIn(-90.0f, 90.0f)
     }
+
+    private fun getFixedSensitivityAngle(
+        s: Float,
+        targetAngle: Float,
+        startAngle: Float = 0f,
+        gcd: Float = (s * 0.6f + 0.2f).pow(3) * 1.2f
+    ) = startAngle + ((targetAngle - startAngle) / gcd).roundToInt() * gcd
 
     /**
      * Nan checks
      */
-    fun isNan() = yaw.isNaN() || pitch.isNaN() || pitch !in -90.0..90.0
+    fun isNan() = if(yaw.isNaN() || pitch.isNaN() || pitch !in -90.0..90.0) null else false
 
     override fun toString(): String {
         return "Rotation(yaw=$yaw, pitch=$pitch)"
