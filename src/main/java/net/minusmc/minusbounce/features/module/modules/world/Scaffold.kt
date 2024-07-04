@@ -29,30 +29,25 @@ import net.minusmc.minusbounce.utils.extensions.tryJump
 import net.minusmc.minusbounce.utils.misc.RandomUtils
 import net.minusmc.minusbounce.utils.movement.MovementFixType
 import net.minusmc.minusbounce.utils.render.RenderUtils
-import net.minusmc.minusbounce.utils.timer.MSTimer
 import net.minusmc.minusbounce.value.*
 import org.lwjgl.opengl.GL11
 import java.awt.Color
-import kotlin.math.abs
-import kotlin.math.floor
-import kotlin.math.pow
-import kotlin.math.sqrt
+import kotlin.math.*
 
 
 @ModuleInfo("Scaffold", "Scaffold", "Use huge balls to rolling on mid-air", ModuleCategory.WORLD)
 class Scaffold: Module(){
 
-    private val modes = ListValue("Mode", arrayOf("Normal", "Snap", "Telly", "Legit"), "Normal")
+    private val modes = ListValue("Mode", arrayOf("Normal", "Snap", "Telly", "None", "GodBridge", "Legit"), "Normal")
     private val ticks = IntegerValue("Ticks", 0, 0, 10) { modes.get() == "Telly" }
     private val delayValue = IntRangeValue("Delay", 0, 0, 0, 10)
-    private val sprint = ListValue("Sprint", arrayOf("Normal", "VulcanToggle", "Omni", "Off"), "Normal")
+    private val sprint = ListValue("Sprint", arrayOf("Normal", "Legit", "VulcanToggle", "Omni", "Off"), "Normal")
 
     private val speed = FloatRangeValue("Speed", 90f, 90f, 0f, 180f)
 
-    private val eagleValue = ListValue("Eagle", arrayOf("Off", "DelayedBlocks", "DelayedTimer"), "Off")
+    private val eagleValue = ListValue("Eagle", arrayOf("Off", "Normal"), "Off")
     private val eagleEdgeDistanceValue = FloatRangeValue("EagleEdgeDistance", 0f, 0f, 0f, 0.2f) { !eagleValue.get().equals("off", true) }
-    private val eagleBlocksValue = IntegerValue("EagleBlocks", 0, 1, 10) { eagleValue.get().equals("delayedblocks", true) }
-    private val eagleDelayValue = IntegerValue("EagleDelay", 0, 0, 20) { eagleValue.get().equals("delayedtimer", true) }
+    private val eagleBlocksValue = IntegerValue("EagleBlocks", 0, 1, 10) { eagleValue.get().equals("normal", true) }
     private val eagleSilent = BoolValue("Silent", false) { !eagleValue.get().equals("Off", true) }
 
     private val towerModeValue = ListValue("Tower", arrayOf("Off", "Air", "Legit", "MMC", "Matrix", "NCP", "Normal", "Vanilla", "Vulcan", "WatchDog"), "Off")
@@ -81,8 +76,6 @@ class Scaffold: Module(){
 
     private var placedBlocksWithoutEagle = 0
     private var eagleSneaking = false
-
-    private val eagleDelayTimer = MSTimer()
     private var itemStack: ItemStack? = null
 
     override fun onDisable() {
@@ -105,47 +98,47 @@ class Scaffold: Module(){
     @EventTarget
     fun onUpdate(event: UpdateEvent) {
         // Eagle
-        if (!eagleValue.equals("Off")) {
+        if (!eagleValue.equals("Off") && mc.thePlayer.onGround) {
             var dif = 0.5
+            val edge = RandomUtils.nextFloat(eagleEdgeDistanceValue.getMinValue(), eagleEdgeDistanceValue.getMaxValue())
             val blockPos = BlockPos(mc.thePlayer.posX, mc.thePlayer.posY - 1.0, mc.thePlayer.posZ)
 
-            for (facingType in StaticStorage.facings()) {
-                if (facingType == EnumFacing.UP || facingType == EnumFacing.DOWN) continue
+            if (edge > 0.0F) {
+                for (facingType in StaticStorage.facings()) {
+                    if (facingType == EnumFacing.UP || facingType == EnumFacing.DOWN) continue
 
-                val placeInfo = blockPos.offset(facingType)
-                if (BlockUtils.isReplaceable(blockPos)) {
-                    var calcDif = if (facingType == EnumFacing.NORTH || facingType == EnumFacing.SOUTH)
-                        abs(placeInfo.z + 0.5 - mc.thePlayer.posZ)
-                    else
-                        abs(placeInfo.x + 0.5 - mc.thePlayer.posX)
+                    val placeInfo = blockPos.offset(facingType)
+                    if (BlockUtils.isReplaceable(blockPos)) {
+                        var calcDif = if (facingType == EnumFacing.NORTH || facingType == EnumFacing.SOUTH)
+                            abs(placeInfo.z + 0.5 - mc.thePlayer.posZ)
+                        else
+                            abs(placeInfo.x + 0.5 - mc.thePlayer.posX)
 
-                    calcDif -= 0.5
+                        calcDif -= 0.5
 
-                    if (calcDif < dif)
-                        dif = calcDif
+                        if (calcDif < dif)
+                            dif = calcDif
+                    }
                 }
             }
 
-            val canSneak = when (eagleValue.get()) {
-                "DelayedBlocks" -> placedBlocksWithoutEagle >= eagleBlocksValue.get()
-                "DelayedTimer" -> eagleDelayTimer.hasTimePassed(eagleDelayValue.get() * 100)
-                else -> false
-            }
-
-            if (canSneak) {
-                val shouldEagle = BlockUtils.isReplaceable(blockPos) || dif < RandomUtils.nextFloat(eagleEdgeDistanceValue.getMinValue(), eagleEdgeDistanceValue.getMaxValue())
+            if (placedBlocksWithoutEagle >= eagleBlocksValue.get()) {
+                val shouldEagle = BlockUtils.isReplaceable(blockPos) ||  (edge > 0 && dif < edge)
 
                 if (eagleSilent.get()) {
-                    if (eagleSneaking != shouldEagle)
+                    if (eagleSneaking != shouldEagle) {
                         mc.netHandler.addToSendQueue(C0BPacketEntityAction(mc.thePlayer, if (shouldEagle) C0BPacketEntityAction.Action.START_SNEAKING else C0BPacketEntityAction.Action.STOP_SNEAKING))
+                    }
 
                     eagleSneaking = shouldEagle
-                } else
+                } else {
                     mc.gameSettings.keyBindSneak.pressed = shouldEagle
+                }
 
                 placedBlocksWithoutEagle = 0
-            } else
+            } else {
                 placedBlocksWithoutEagle++
+            }
         }
     }
     @EventTarget
@@ -161,7 +154,12 @@ class Scaffold: Module(){
         mc.timer.timerSpeed = timer.get()
 
         when (sprint.get().lowercase()) {
-            "normal" -> mc.gameSettings.keyBindSprint.pressed = true
+            "normal" -> {
+                mc.gameSettings.keyBindSprint.pressed = true
+            }
+            "legit" -> {
+                mc.gameSettings.keyBindSprint.pressed = abs(MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw) - MathHelper.wrapAngleTo180_float(RotationUtils.targetRotation!!.yaw)) < 90
+            }
             "omni" -> mc.thePlayer.isSprinting = true
             "vulcantoggle" -> {
                 mc.netHandler.addToSendQueue(C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.START_SPRINTING))
@@ -307,7 +305,7 @@ class Scaffold: Module(){
 
     @EventTarget
     fun onPreUpdate(event: PreUpdateEvent){
-        if (!isBlockUnder(1.0, true)) ticksOnAir++ else ticksOnAir = 0
+        if (blockRelativeToPlayer(0, -1, 0) is BlockAir) ticksOnAir++ else ticksOnAir = 0
 
         /* Player Position Update (Edge Exception + Legit Mode) */
         xPos = mc.thePlayer.posX
@@ -565,17 +563,22 @@ class Scaffold: Module(){
         val c3 = calculateRealY(mc.theWorld, bb, motionX, motionZ, 1.09, a1) <= -0.015625
 
         when (modes.get().lowercase()) {
-            "normal" -> if (ticksOnAir > 0 && !isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return, RotationUtils.targetRotation ?: return)) {
-                getRotations()
+            "godbridge" -> {
+                if (ticksOnAir > 0 && !isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)) {
+                    val d = (mc.thePlayer.rotationYaw / 45).roundToInt()
+                    val y = d * 45
+                    targetYaw = if(d % 2 == 0) y - 135.0F else y - 180.0F
+                    targetPitch = if(d % 2 == 0) 75.5F else 75.6F
+                }
             }
             "snap" -> {
                 getRotations()
 
-                if (ticksOnAir <= 0 || isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return, RotationUtils.targetRotation ?: return)) {
+                if (ticksOnAir <= 0 || isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)) {
                     targetYaw = MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw)
                 }
             }
-            "legit" -> if (ticksOnAir > 0 && if (!mc.thePlayer.onGround) (mc.thePlayer.motionY > 0) else (c1 && c2 && c3) && !isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return, RotationUtils.targetRotation ?: return)) {
+            "legit" -> if (ticksOnAir > 0 && if (!mc.thePlayer.onGround) (mc.thePlayer.motionY > 0) else (c1 && c2 && c3) && !isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)) {
                 if (
                     xPos > (blockPlace?.x?.plus(0.288) ?: return) ||
                     xPos < (blockPlace?.x?.minus(1.288) ?: return) ||
@@ -586,12 +589,15 @@ class Scaffold: Module(){
                 }
             }
             "telly" -> if (RotationUtils.offGroundTicks >= ticks.get()) {
-                if (!isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return, RotationUtils.targetRotation ?: return)) {
+                if (!isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)) {
                     getRotations()
                 }
             } else {
                 getRotations()
                 targetYaw = MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw)
+            }
+            else -> if (ticksOnAir > 0 && !isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)) {
+                getRotations()
             }
         }
 
@@ -600,8 +606,10 @@ class Scaffold: Module(){
             Rotation(targetYaw, targetPitch),
             2,
             RandomUtils.nextFloat(speed.getMinValue(), speed.getMaxValue()),
-            if (movementCorrection.get()) MovementFixType.FULL
-            else MovementFixType.NONE
+            if (movementCorrection.get() && !modes.get().equals("none", true)) MovementFixType.FULL
+            else MovementFixType.NONE,
+            true,
+            !modes.get().equals("none", true)
         )
     }
 

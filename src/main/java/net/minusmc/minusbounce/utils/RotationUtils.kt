@@ -30,12 +30,13 @@ object RotationUtils : MinecraftInstance(), Listenable {
     @JvmField
     var onGroundTicks: Int = 0
 
-    var active: Boolean = false
+    private var active: Boolean = false
     private var smoothed: Boolean = false
     private var silent: Boolean = false
     private var lastRotations: Rotation? = null
     private var rotations: Rotation? = null
     private var rotationSpeed: Float = 0f
+    private var set: Boolean = true
     var type: MovementFixType = MovementFixType.NONE
 
     private var x = random.nextDouble()
@@ -85,17 +86,19 @@ object RotationUtils : MinecraftInstance(), Listenable {
 
             if(this.silent){
                 targetRotation?.let{
-                    event.yaw = it.yaw
-                    event.pitch = it.pitch
+                    if(set){
+                        event.yaw = it.yaw
+                        event.pitch = it.pitch
+                    }
                 }
             } else {
-                targetRotation!!.toPlayer(mc.thePlayer)
+                if(set) targetRotation!!.toPlayer(mc.thePlayer)
             }
 
             if (abs((targetRotation!!.yaw - mc.thePlayer.rotationYaw) % 360) < 1 && abs((targetRotation!!.pitch - mc.thePlayer.rotationPitch)) < 1) {
                 active = false
 
-                if(silent){
+                if(silent && set){
                     /* It will conflict with non-silent */
                     val targetRotation = Rotation(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch)
                     targetRotation.fixedSensitivity(r = lastRotations ?: serverRotation)
@@ -105,8 +108,10 @@ object RotationUtils : MinecraftInstance(), Listenable {
                 }
             }
 
-            mc.thePlayer.renderYawOffset = targetRotation!!.yaw
-            mc.thePlayer.rotationYawHead = targetRotation!!.yaw
+            if(set){
+                mc.thePlayer.renderYawOffset = targetRotation!!.yaw
+                mc.thePlayer.rotationYawHead = targetRotation!!.yaw
+            }
             lastRotations = targetRotation
         } else {
             lastRotations = Rotation(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch)
@@ -200,6 +205,7 @@ object RotationUtils : MinecraftInstance(), Listenable {
         speed: Float = 180f,
         fixType: MovementFixType = MovementFixType.FULL,
         silent: Boolean = true,
+        set: Boolean = true
     ) {
         rotation.isNan() ?: return
         this.type = if(silent) fixType else MovementFixType.NONE
@@ -207,6 +213,7 @@ object RotationUtils : MinecraftInstance(), Listenable {
         this.rotations = rotation
         this.keepLength = keepLength
         this.silent = silent
+        this.set = set
         active = true
 
         smooth()

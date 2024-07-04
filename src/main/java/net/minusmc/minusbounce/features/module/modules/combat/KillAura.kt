@@ -434,7 +434,7 @@ class KillAura : Module() {
 
     private fun attackEntity(entity: EntityLivingBase) {
         /* Unblock & Attack */
-        if (blockingStatus) {
+        if (blockingStatus && !autoBlockModeValue.get().equals("none", true)) {
             blockingMode.onPreAttack()
             blockingStatus = false
         }
@@ -471,8 +471,10 @@ class KillAura : Module() {
 
         /* AutoBlock */
         if (canBlock && mc.thePlayer.getDistanceToEntityBox(target ?: return) <= autoBlockRangeValue.get()) {
-            blockingMode.onPostAttack()
-            blockingStatus = true
+            if(!autoBlockModeValue.get().equals("none", true)){
+                blockingMode.onPostAttack()
+                blockingStatus = true
+            }
         }
     }
 
