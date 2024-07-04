@@ -12,13 +12,9 @@ import net.minecraft.block.state.IBlockState
 import net.minecraft.util.*
 import net.minusmc.minusbounce.utils.MinecraftInstance
 import net.minusmc.minusbounce.utils.Rotation
-import net.minusmc.minusbounce.utils.RotationUtils
-import net.minusmc.minusbounce.utils.extensions.eyes
 import net.minusmc.minusbounce.utils.extensions.plus
 import net.minusmc.minusbounce.utils.extensions.times
-import kotlin.math.cos
 import kotlin.math.floor
-import kotlin.math.sin
 
 
 object BlockUtils : MinecraftInstance() {
@@ -135,53 +131,12 @@ object BlockUtils : MinecraftInstance() {
     @JvmStatic
     fun floorVec3(vec3: Vec3) = Vec3(floor(vec3.xCoord),floor(vec3.yCoord),floor(vec3.zCoord))
 
-    private val blockNames = mutableListOf<Pair<String, Int>>()
-
     fun rayTrace(rotation: Rotation?): MovingObjectPosition? {
-        return mc.theWorld.rayTraceBlocks(
-            mc.thePlayer.eyes,
-            mc.thePlayer.eyes + (
-                    RotationUtils.getVectorForRotation(
-                        rotation ?: return null
-                    ) * if (mc.playerController.currentGameType.isCreative) 5.0 else 4.5),
-            false,
-            false,
-            true
-        )
-    }
-
-    /**
-     * Thanks!
-     *
-     * I don't know ?
-     * @author fmcpe
-     * @author MWHunter
-     */
-    fun calculateDirection(rotation: Rotation): Vec3 {
-        val rotX = rotation.yaw * Math.PI / 180f
-        val rotY = rotation.pitch * Math.PI / 180f
-
-        return Vec3(-cos(rotY) * sin(rotX), -sin(rotY), cos(rotY) * cos(rotX))
-    }
-
-    fun getPointAtDistance(direction: Vec3, origin: Vec3, distance: Double): Vec3 {
-        val dir = Vec3(direction.xCoord, direction.yCoord, direction.zCoord)
-        val orig = Vec3(origin.xCoord, origin.yCoord, origin.zCoord)
-        return orig + (dir * distance)
-    }
-
-    /**
-     * Raytrace from a rotation.
-     * 
-     * @author fmcpe
-     */
-    @JvmOverloads
-    fun distanceRayTrace(rotation: Rotation?, range: Float = mc.playerController.blockReachDistance): MovingObjectPosition? {
-        rotation ?: return mc.objectMouseOver
-
-        val vec = RotationUtils.getVectorForRotation(rotation)
-        val vector = eyesPos.addVector(vec.xCoord * range, vec.yCoord * range, vec.zCoord * range)
-        return mc.theWorld.rayTraceBlocks(eyesPos, vector, false, false, true)
+        val (yaw, pitch) = rotation ?: return null
+        val eyes = mc.thePlayer.getPositionEyes(mc.timer.renderPartialTicks)
+        val range = if (mc.playerController.currentGameType.isCreative) 5.0 else 4.5
+        val vec = eyes + (mc.thePlayer.getVectorForRotation(pitch, yaw) * range)
+        return mc.theWorld.rayTraceBlocks(eyes, vec, false, false, true)
     }
 
     fun block(x: Double, y: Double, z: Double): Block {
@@ -189,27 +144,5 @@ object BlockUtils : MinecraftInstance() {
     }
 
     fun blockRelativeToPlayer(offsetX: Int, offsetY: Int, offsetZ: Int) = blockRelativeToPlayer(offsetX.toDouble(), offsetY.toDouble(), offsetZ.toDouble())
-
-    /**
-     * Search blocks around the player in a specific [radius]
-     */
-    @JvmStatic
-    fun searchBlocks(radius: Int): Map<BlockPos, Block> {
-        val blocks = mutableMapOf<BlockPos, Block>()
-
-        for (x in radius downTo -radius + 1) {
-            for (y in radius downTo -radius + 1) {
-                for (z in radius downTo -radius + 1) {
-                    val blockPos = BlockPos(mc.thePlayer.posX.toInt() + x, mc.thePlayer.posY.toInt() + y,
-                        mc.thePlayer.posZ.toInt() + z)
-                    val block = getBlock(blockPos) ?: continue
-
-                    blocks[blockPos] = block
-                }
-            }
-        }
-
-        return blocks
-    }
 }
 
