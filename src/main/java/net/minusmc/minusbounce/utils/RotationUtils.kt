@@ -49,12 +49,12 @@ object RotationUtils : MinecraftInstance(), Listenable {
             targetRotation = limitAngleChange(lastRotations ?: return, rotations ?: return , rotationSpeed - Math.random().toFloat())
         }
 
-        smoothed = true
         mc.entityRenderer.getMouseOver(1.0F)
+        smoothed = true
     }
 
     @EventTarget(priority = -5)
-    fun onUpdate(event: PreUpdateEvent) {
+    fun onTick(event: PreUpdateEvent) {
         if (targetRotation == null || lastRotations == null || rotations == null || !active) {
             targetRotation = mc.thePlayer.rotation
             lastRotations = mc.thePlayer.rotation
@@ -84,15 +84,19 @@ object RotationUtils : MinecraftInstance(), Listenable {
         if (active && targetRotation != null) {
             keepLength--
 
+            // No Setting Rotation
+            if(!set){
+                lastRotations = targetRotation
+                return
+            }
+
             if(this.silent){
                 targetRotation?.let{
-                    if(set){
-                        event.yaw = it.yaw
-                        event.pitch = it.pitch
-                    }
+                    event.yaw = it.yaw
+                    event.pitch = it.pitch
                 }
             } else {
-                if(set) targetRotation!!.toPlayer(mc.thePlayer)
+                targetRotation!!.toPlayer(mc.thePlayer)
             }
 
             if (abs((targetRotation!!.yaw - mc.thePlayer.rotationYaw) % 360) < 1 && abs((targetRotation!!.pitch - mc.thePlayer.rotationPitch)) < 1) {
@@ -108,10 +112,8 @@ object RotationUtils : MinecraftInstance(), Listenable {
                 }
             }
 
-            if(set){
-                mc.thePlayer.renderYawOffset = targetRotation!!.yaw
-                mc.thePlayer.rotationYawHead = targetRotation!!.yaw
-            }
+            mc.thePlayer.renderYawOffset = targetRotation!!.yaw
+            mc.thePlayer.rotationYawHead = targetRotation!!.yaw
             lastRotations = targetRotation
         } else {
             lastRotations = Rotation(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch)

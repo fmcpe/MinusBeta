@@ -133,9 +133,10 @@ object BlockUtils : MinecraftInstance() {
 
     fun rayTrace(rotation: Rotation?): MovingObjectPosition? {
         val (yaw, pitch) = rotation ?: return null
-        val eyes = mc.thePlayer.getPositionEyes(mc.timer.renderPartialTicks)
+        val eyes = mc.thePlayer.getPositionEyes(1.0F)
         val range = if (mc.playerController.currentGameType.isCreative) 5.0 else 4.5
-        val vec = eyes + (mc.thePlayer.getVectorForRotation(pitch, yaw) * range)
+        val look = mc.thePlayer.getVectorForRotation(pitch, yaw)
+        val vec = eyes + (look * range)
         return mc.theWorld.rayTraceBlocks(eyes, vec, false, false, true)
     }
 

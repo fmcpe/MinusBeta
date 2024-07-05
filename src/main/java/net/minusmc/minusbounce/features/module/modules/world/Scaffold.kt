@@ -25,7 +25,6 @@ import net.minusmc.minusbounce.utils.block.BlockUtils
 import net.minusmc.minusbounce.utils.block.BlockUtils.rayTrace
 import net.minusmc.minusbounce.utils.block.PlaceInfo
 import net.minusmc.minusbounce.utils.extensions.plus
-import net.minusmc.minusbounce.utils.extensions.tryJump
 import net.minusmc.minusbounce.utils.misc.RandomUtils
 import net.minusmc.minusbounce.utils.movement.MovementFixType
 import net.minusmc.minusbounce.utils.render.RenderUtils
@@ -304,7 +303,7 @@ class Scaffold: Module(){
 
 
     @EventTarget
-    fun onPreUpdate(event: PreUpdateEvent){
+    fun onTick(event: PreUpdateEvent){
         if (blockRelativeToPlayer(0, -1, 0) is BlockAir) ticksOnAir++ else ticksOnAir = 0
 
         /* Player Position Update (Edge Exception + Legit Mode) */
@@ -390,9 +389,7 @@ class Scaffold: Module(){
                 flag = false
             }
 
-            if (itemStack == null) {
-                return
-            }
+            itemStack ?: return
 
             if (itemStack.stackSize == 0) {
                 mc.thePlayer.inventory.mainInventory[mc.thePlayer.inventory.currentItem] = null
@@ -538,17 +535,19 @@ class Scaffold: Module(){
 
     @EventTarget
     fun onStrafe(event: StrafeEvent) {
+        if(!movementCorrection.get()){
+            MovementUtils.useDiagonalSpeed()
+        }
+    }
+
+    @EventTarget
+    fun onInput(event: MoveInputEvent){
         if (
             modes.get().equals("telly", true) &&
             mc.thePlayer.onGround &&
-            MovementUtils.isMoving &&
-            !mc.gameSettings.keyBindJump.isKeyDown
+            MovementUtils.isMoving
         ) {
-            mc.thePlayer.tryJump()
-        }
-
-        if(!movementCorrection.get()){
-            MovementUtils.useDiagonalSpeed()
+            event.jump = true
         }
     }
 
@@ -604,7 +603,7 @@ class Scaffold: Module(){
         /* Setting rotations */
         RotationUtils.setRotations(
             Rotation(targetYaw, targetPitch),
-            2,
+            0,
             RandomUtils.nextFloat(speed.getMinValue(), speed.getMaxValue()),
             if (movementCorrection.get() && !modes.get().equals("none", true)) MovementFixType.FULL
             else MovementFixType.NONE,
@@ -635,7 +634,7 @@ class Scaffold: Module(){
             mc.thePlayer.getDistanceSq(
                 rayTrace(
                     it
-                )!!.hitVec + 0.5
+                )!!.hitVec + Vec3(0.2, 0.8, 0.2)
             ) + sqrt(
                 (it.yaw - targetYaw).pow(2) + (it.pitch - targetPitch).pow(2)
             )
@@ -649,11 +648,8 @@ class Scaffold: Module(){
      * @author fmcpe
      *
      * 6/21/2024
-     * Simple Raytrace
+     * Raytrace
      * From MCP
-     *
-     * isObjectMouseOverBlock()
-     * rayTrace()
      */
     @JvmOverloads
     fun isObjectMouseOverBlock(
@@ -662,9 +658,11 @@ class Scaffold: Module(){
         rotation: Rotation? = null,
         obj: MovingObjectPosition? = rayTrace(rotation) ?: mc.objectMouseOver,
     ): Boolean{
-        obj?.hitVec ?: return false
+        if (obj != null) {
+            return obj.blockPos == block && obj.sideHit == facing
+        }
 
-        return obj.blockPos == block && obj.sideHit == facing
+        return false
     }
 
     private fun buildForward(realYaw: Float = MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw)): Boolean {
