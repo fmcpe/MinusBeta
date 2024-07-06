@@ -23,7 +23,7 @@ import net.minecraft.util.EnumFacing
  *
  * @param targetEntity Attacked entity
  */
-class AttackEvent(val targetEntity: Entity?) : CancellableEvent()
+class AttackEvent(var targetEntity: Entity?) : CancellableEvent()
 
 class KnockBackEvent(var motion: Double, var full: Boolean, var power: Int, var postPower: Int, var strong: Boolean, var reduceY: Boolean) : CancellableEvent()
 
@@ -39,6 +39,9 @@ class BlockBBEvent(blockPos: BlockPos, val block: Block, var boundingBox: AxisAl
     val y = blockPos.y
     val z = blockPos.z
 }
+
+class TimeDelay: Event()
+class GameLoop: Event()
 
 /**
  * Called when player clicks a block

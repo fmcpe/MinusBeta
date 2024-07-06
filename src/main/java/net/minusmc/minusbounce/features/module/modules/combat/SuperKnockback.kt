@@ -7,9 +7,10 @@ package net.minusmc.minusbounce.features.module.modules.combat
 
 import net.minecraft.entity.EntityLivingBase
 import net.minecraft.network.play.client.C0BPacketEntityAction
+import net.minusmc.minusbounce.MinusBounce
 import net.minusmc.minusbounce.event.AttackEvent
 import net.minusmc.minusbounce.event.EventTarget
-import net.minusmc.minusbounce.event.UpdateEvent
+import net.minusmc.minusbounce.event.TickEvent
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
@@ -20,8 +21,7 @@ import net.minusmc.minusbounce.value.ListValue
 @ModuleInfo(name = "SuperKnockback", spacedName = "Super Knockback", description = "Increases knockback dealt to other entities.", category = ModuleCategory.COMBAT)
 class SuperKnockback : Module() {
     private val hurtTimeValue = IntegerValue("HurtTime", 10, 0, 10)
-    private val modeValue = ListValue("Mode", arrayOf("ExtraPacket", "Legit", "Silent", "WTap", "Packet"), "ExtraPacket")
-    //custom useless mode :V
+    private val modeValue = ListValue("Mode", arrayOf("ExtraPacket", "Legit", "Silent", "WTap", "Fast", "Packet"), "ExtraPacket")
     private val delay = IntegerValue("Delay", 0, 0, 500, "ms")
 
     val timer = MSTimer()
@@ -29,7 +29,6 @@ class SuperKnockback : Module() {
     private var ticks = 0
 
     @EventTarget
-    // I added since LB only have one SuperKnockback mode.ik there is superkb script that better than this
     fun onAttack(event: AttackEvent) {
         if (event.targetEntity is EntityLivingBase) {
             if (event.targetEntity.hurtTime > hurtTimeValue.get() || !timer.hasTimePassed(delay.get().toLong()))
@@ -44,6 +43,16 @@ class SuperKnockback : Module() {
                     mc.netHandler.addToSendQueue(C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.STOP_SPRINTING))
                     mc.netHandler.addToSendQueue(C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.START_SPRINTING))
                     mc.thePlayer.serverSprintState = true
+                }
+                "fast" -> {
+                    val ka = MinusBounce.moduleManager.getModule(KillAura::class.java) ?: return
+                    val backtrack = MinusBounce.moduleManager.getModule(BackTrack::class.java) ?: return
+                    if (!backtrack.state || backtrack.delayedPackets.isEmpty()) {
+                        if ((ka.target ?: return).hurtTime == 10) {
+                            mc.gameSettings.keyBindSprint.pressed = false
+                            mc.gameSettings.keyBindSprint.pressed = true
+                        }
+                    }
                 }
                 "silent" -> ticks = 1
                 "legit", "wtap" -> ticks = 2
@@ -60,7 +69,7 @@ class SuperKnockback : Module() {
     }
 
     @EventTarget
-    fun onUpdate(event: UpdateEvent) {
+    fun onUpdate(event: TickEvent) {
         when (modeValue.get().lowercase()) {
             "legit" -> if (ticks == 2) {
                 mc.gameSettings.keyBindForward.pressed = false
@@ -84,6 +93,10 @@ class SuperKnockback : Module() {
                 ticks = 0
             }
         }
+    }
+
+    override fun onDisable() {
+        mc.gameSettings.keyBindSprint.pressed = false
     }
 
     override val tag: String

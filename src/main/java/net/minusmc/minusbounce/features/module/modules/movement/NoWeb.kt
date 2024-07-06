@@ -6,13 +6,14 @@
 package net.minusmc.minusbounce.features.module.modules.movement
 
 import net.minusmc.minusbounce.event.EventTarget
-import net.minusmc.minusbounce.event.UpdateEvent
 import net.minusmc.minusbounce.event.JumpEvent
-import net.minusmc.minusbounce.features.module.modules.movement.nowebs.NoWebMode
-import net.minusmc.minusbounce.utils.ClassUtils
+import net.minusmc.minusbounce.event.TickEvent
+import net.minusmc.minusbounce.event.UpdateEvent
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
+import net.minusmc.minusbounce.features.module.modules.movement.nowebs.NoWebMode
+import net.minusmc.minusbounce.utils.ClassUtils
 import net.minusmc.minusbounce.value.ListValue
 
 @ModuleInfo(name = "NoWeb", spacedName = "No Web", description = "Prevents you from getting slowed down in webs.", category = ModuleCategory.MOVEMENT)
@@ -44,8 +45,14 @@ class NoWeb : Module() {
         mode.onUpdate()
     }
 
+    @EventTarget
     fun onJump(event: JumpEvent){
         mode.onJump(event)
+    }
+
+    @EventTarget
+    fun onTick(event: TickEvent){
+        mode.onTick()
     }
 
     override fun onDisable() {

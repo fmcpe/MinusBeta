@@ -13,6 +13,7 @@ import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
 import net.minusmc.minusbounce.utils.extensions.getDistanceToEntityBox
+import net.minusmc.minusbounce.value.FloatValue
 import net.minusmc.minusbounce.value.IntegerValue
 
 @ModuleInfo(name = "TickBase", description = "Tick Base", category = ModuleCategory.COMBAT)
@@ -21,6 +22,7 @@ open class TickBase : Module() {
     var freezing = false
 
     private val ticks = IntegerValue("Ticks", 3, 1, 10)
+    private val range = FloatValue("Range", 3.5F, 0.5F, 8.0F)
 
     override fun onEnable() {
         counter = -1
@@ -31,8 +33,7 @@ open class TickBase : Module() {
         MinusBounce.moduleManager[KillAura::class.java]?.let{
             if(counter-- > 0) return -1 else freezing = false
 
-            /* You know what? #F NPE */
-            if(it.state && (it.target == null || mc.thePlayer.getDistanceToEntityBox(it.target ?: return@let) > it.rangeValue.get())) {
+            if(it.state && (it.target == null || mc.thePlayer.getDistanceToEntityBox(it.target ?: return@let) > range.get())) {
                 it.updateTarget()
 
                 if(it.target != null){

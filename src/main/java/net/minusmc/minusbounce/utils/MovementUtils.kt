@@ -6,7 +6,6 @@
 package net.minusmc.minusbounce.utils
 
 import net.minecraft.potion.Potion
-import net.minecraft.util.MathHelper
 import net.minusmc.minusbounce.event.EventTarget
 import net.minusmc.minusbounce.event.Listenable
 import net.minusmc.minusbounce.event.MoveEvent
@@ -25,29 +24,20 @@ object MovementUtils : MinecraftInstance(), Listenable {
             AABBOffGroundticks = 0
         }
     }
+
+    fun strafe(speed: Float, yaw: Float) {
+        mc.thePlayer.motionX = -sin(yaw.toDouble()) * speed.toDouble()
+        mc.thePlayer.motionZ = cos(yaw.toDouble()) * speed.toDouble()
+    }
+
     val speed: Float
         get() = getSpeed(mc.thePlayer.motionX, mc.thePlayer.motionZ).toFloat()
 
     val isMoving: Boolean
         get() = mc.thePlayer != null && (mc.thePlayer.moveForward != 0f || mc.thePlayer.moveStrafing != 0f)
 
-    fun getSpeed(motionX: Double, motionZ: Double): Double {
+    private fun getSpeed(motionX: Double, motionZ: Double): Double {
         return sqrt(motionX * motionX + motionZ * motionZ)
-    }
-
-    fun accelerate() {
-        accelerate(speed)
-    }
-
-    fun accelerate(speed: Float) {
-        if (!isMoving) return
-        val yaw = getDirection()
-        mc.thePlayer.motionX += -sin(yaw) * speed
-        mc.thePlayer.motionZ += cos(yaw) * speed
-    }
-
-    fun hasMotion(): Boolean {
-        return mc.thePlayer.motionX != 0.0 && mc.thePlayer.motionZ != 0.0 && mc.thePlayer.motionY != 0.0
     }
 
     fun strafe() {
@@ -89,8 +79,8 @@ object MovementUtils : MinecraftInstance(), Listenable {
     fun moveFlying(increase: Double) {
         if (!isMoving) return
         val yaw = direction()
-        mc.thePlayer.motionX += -MathHelper.sin(yaw.toFloat()) * increase
-        mc.thePlayer.motionZ += MathHelper.cos(yaw.toFloat()) * increase
+        mc.thePlayer.motionX += -sin(yaw.toFloat()) * increase
+        mc.thePlayer.motionZ += cos(yaw.toFloat()) * increase
     }
 
     /**

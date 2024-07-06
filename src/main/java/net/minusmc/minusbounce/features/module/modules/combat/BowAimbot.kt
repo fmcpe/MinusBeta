@@ -5,6 +5,9 @@
  */
 package net.minusmc.minusbounce.features.module.modules.combat
 
+import net.minecraft.entity.Entity
+import net.minecraft.entity.EntityLivingBase
+import net.minecraft.item.ItemBow
 import net.minusmc.minusbounce.event.EventTarget
 import net.minusmc.minusbounce.event.Render3DEvent
 import net.minusmc.minusbounce.event.UpdateEvent
@@ -15,20 +18,14 @@ import net.minusmc.minusbounce.utils.EntityUtils
 import net.minusmc.minusbounce.utils.RotationUtils
 import net.minusmc.minusbounce.utils.render.RenderUtils
 import net.minusmc.minusbounce.value.BoolValue
-import net.minusmc.minusbounce.value.FloatValue
 import net.minusmc.minusbounce.value.ListValue
-import net.minecraft.entity.Entity
-import net.minecraft.entity.EntityLivingBase
-import net.minecraft.item.ItemBow
 import java.awt.Color
 
 @ModuleInfo(name = "BowAimbot", spacedName = "Bow Aimbot", description = "Automatically aims at players when using a bow.", category = ModuleCategory.COMBAT)
 class BowAimbot : Module() {
 
     private val silentValue = BoolValue("Silent", true)
-    private val predictValue = BoolValue("Predict", true)
     private val throughWallsValue = BoolValue("ThroughWalls", false)
-    private val predictSizeValue = FloatValue("PredictSize", 2F, 0.1F, 5F, "m")
     private val priorityValue = ListValue("Priority", arrayOf("Health", "Distance", "Direction"), "Direction")
     private val markValue = BoolValue("Mark", true)
 
@@ -46,7 +43,7 @@ class BowAimbot : Module() {
             val entity = getTarget(throughWallsValue.get(), priorityValue.get()) ?: return
 
             target = entity
-            RotationUtils.faceBow(target!!, silentValue.get(), predictValue.get(), predictSizeValue.get())
+            RotationUtils.faceBow(target!!, silentValue.get())
         }
     }
 

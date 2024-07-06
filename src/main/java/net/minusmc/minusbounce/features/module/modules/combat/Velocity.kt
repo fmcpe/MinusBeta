@@ -27,7 +27,7 @@ class Velocity : Module() {
         get() = modes.find { modeValue.get().equals(it.modeName, true) }
             ?: throw NullPointerException() // this should not happen
 
-    private val modeValue: ListValue = object : ListValue("Mode", modes.map { it.modeName }.toTypedArray(), "Cancel") {
+    val modeValue: ListValue = object : ListValue("Mode", modes.map { it.modeName }.toTypedArray(), "Cancel") {
         override fun onChange(oldValue: String, newValue: String) {
             if (state) onDisable()
         }

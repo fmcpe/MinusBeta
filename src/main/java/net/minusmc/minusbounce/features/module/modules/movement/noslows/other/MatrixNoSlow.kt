@@ -1,4 +1,4 @@
-package net.minusmc.minusbounce.features.module.modules.movement.noslows.matrix
+package net.minusmc.minusbounce.features.module.modules.movement.noslows.other
 
 import net.minecraft.network.Packet
 import net.minecraft.network.play.INetHandlerPlayServer

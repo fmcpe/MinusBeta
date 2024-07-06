@@ -9,6 +9,7 @@ import net.minecraft.client.network.NetworkPlayerInfo
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityLivingBase
 import net.minecraft.entity.boss.EntityDragon
+import net.minecraft.entity.item.EntityArmorStand
 import net.minecraft.entity.monster.EntityGhast
 import net.minecraft.entity.monster.EntityGolem
 import net.minecraft.entity.monster.EntityMob
@@ -17,14 +18,13 @@ import net.minecraft.entity.passive.EntityAnimal
 import net.minecraft.entity.passive.EntityBat
 import net.minecraft.entity.passive.EntitySquid
 import net.minecraft.entity.passive.EntityVillager
-import net.minecraft.entity.item.EntityArmorStand
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.scoreboard.ScorePlayerTeam
 import net.minusmc.minusbounce.MinusBounce
 import net.minusmc.minusbounce.features.module.modules.client.Target
 import net.minusmc.minusbounce.features.module.modules.combat.AntiBot.isBot
-import net.minusmc.minusbounce.features.module.modules.combat.KillAura
 import net.minusmc.minusbounce.features.module.modules.misc.Teams
+import net.minusmc.minusbounce.utils.extensions.getDistanceToEntityBox
 import net.minusmc.minusbounce.utils.render.ColorUtils
 
 object EntityUtils : MinecraftInstance() {

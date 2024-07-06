@@ -5,6 +5,8 @@
  */
 package net.minusmc.minusbounce.utils
 
+import com.google.common.base.Predicate
+import com.google.common.base.Predicates
 import net.minecraft.client.Minecraft
 import net.minecraft.entity.Entity
 import net.minecraft.util.*
@@ -30,7 +32,7 @@ object RotationUtils : MinecraftInstance(), Listenable {
     @JvmField
     var onGroundTicks: Int = 0
 
-    private var active: Boolean = false
+    var active: Boolean = false
     private var smoothed: Boolean = false
     private var silent: Boolean = false
     private var lastRotations: Rotation? = null
@@ -38,6 +40,9 @@ object RotationUtils : MinecraftInstance(), Listenable {
     private var rotationSpeed: Float = 0f
     private var set: Boolean = true
     var type: MovementFixType = MovementFixType.NONE
+
+    //SilentMove stuffs
+    private var ticks: Int = 0
 
     private var x = random.nextDouble()
     private var y = random.nextDouble()
@@ -128,43 +133,30 @@ object RotationUtils : MinecraftInstance(), Listenable {
 
     @EventTarget(priority = -5)
     fun onInput(e: MoveInputEvent){
+        val predicted = mutableListOf<ListInput>()
+        val movingYaw = MathHelper.wrapAngleTo180_float(MovementUtils.getRawDirection(mc.thePlayer.rotationYaw, e.strafe, e.forward))
+        val calcYaw = MathHelper.wrapAngleTo180_float(targetRotation?.yaw ?: return)
         if(e.forward == 0.0f && e.strafe == 0.0f) return
 
-        val possible = mutableListOf<Input>()
-        for (strafe in -1..1 step 1){
-            for (forward in -1..1 step 1){
-                if(strafe == 0 && forward == 0) continue
+        listOf(
+            Input(-1f, -1f),
+            Input(-1f, 0f),
+            Input(-1f, 1f),
+            Input(0f, -1f),
+            Input(0f, 1f),
+            Input(1f, -1f),
+            Input(1f, 0f),
+            Input(1f, 1f),
+        ).forEach {
+            val predict = MathHelper.wrapAngleTo180_float(MovementUtils.getRawDirection(calcYaw, it.strafe, it.forward))
+            predicted.add(ListInput(predict, it))
+        }
 
-                possible.add(Input(strafe.toFloat(), forward.toFloat()))
+        predicted.minByOrNull { abs(it.yaw - movingYaw) }?.let{
+            if(type == MovementFixType.FULL && active) {
+                e.forward = it.input.forward
+                e.strafe = it.input.strafe
             }
-        }
-
-        val predicted = mutableListOf<ListInput>()
-        possible.forEach {
-            predicted.add(ListInput(
-                MathHelper.wrapAngleTo180_float(
-                    MovementUtils.getRawDirection(
-                        targetRotation?.yaw ?: return,
-                        it.strafe,
-                        it.forward
-                    )
-                ), it)
-            )
-        }
-
-        val closest = predicted.minByOrNull {
-            abs(it.yaw - MathHelper.wrapAngleTo180_float(
-                MovementUtils.getRawDirection(
-                    mc.thePlayer.rotationYaw,
-                    e.strafe,
-                    e.forward)
-                )
-            )
-        } ?: return
-
-        if(type == MovementFixType.FULL && active) {
-            e.forward = closest.input.forward
-            e.strafe = closest.input.strafe
         }
     }
     data class Input(val strafe: Float, val forward: Float)
@@ -207,7 +199,7 @@ object RotationUtils : MinecraftInstance(), Listenable {
         speed: Float = 180f,
         fixType: MovementFixType = MovementFixType.FULL,
         silent: Boolean = true,
-        set: Boolean = true
+        set: Boolean = true,
     ) {
         rotation.isNan() ?: return
         this.type = if(silent) fixType else MovementFixType.NONE
@@ -225,6 +217,60 @@ object RotationUtils : MinecraftInstance(), Listenable {
      * @return YESSSS!!!
      */
     override fun handleEvents() = true
+
+    fun rayTrace(range: Double, rotations: Rotation): Entity? {
+        if (range == 3.0) {
+            return mc.objectMouseOver.entityHit
+        } else {
+            val vec3 = mc.thePlayer.getPositionEyes(1.0f)
+            val vec31 = getVectorForRotation(rotations)
+            val vec32 = vec3.addVector(vec31.xCoord * range, vec31.yCoord * range, vec31.zCoord * range)
+            var pointedEntity: Entity? = null
+            val f = 1.0f
+            val list: List<*> = mc.theWorld.getEntitiesInAABBexcluding(
+                mc.renderViewEntity,
+                mc.renderViewEntity.entityBoundingBox.addCoord(
+                    vec31.xCoord * range,
+                    vec31.yCoord * range,
+                    vec31.zCoord * range
+                ).expand(f.toDouble(), f.toDouble(), f.toDouble()),
+                Predicates.and(EntitySelectors.NOT_SPECTATING,
+                    Predicate { obj: Entity? -> obj!!.canBeCollidedWith() })
+            )
+            var d2 = range
+            val var11 = list.iterator()
+
+            while (true) {
+                while (var11.hasNext()) {
+                    val o = var11.next()!!
+                    val entity1 = o as Entity
+                    val f1 = entity1.collisionBorderSize
+                    val axisalignedbb = entity1.entityBoundingBox.expand(f1.toDouble(), f1.toDouble(), f1.toDouble())
+                    val movingobjectposition = axisalignedbb.calculateIntercept(vec3, vec32)
+                    if (axisalignedbb.isVecInside(vec3)) {
+                        if (d2 >= 0.0) {
+                            pointedEntity = entity1
+                            d2 = 0.0
+                        }
+                    } else if (movingobjectposition != null) {
+                        val d3 = vec3.distanceTo(movingobjectposition.hitVec)
+                        if (d3 < d2 || d2 == 0.0) {
+                            if (entity1 === mc.renderViewEntity.ridingEntity) {
+                                if (d2 == 0.0) {
+                                    pointedEntity = entity1
+                                }
+                            } else {
+                                pointedEntity = entity1
+                                d2 = d3
+                            }
+                        }
+                    }
+                }
+
+                return pointedEntity
+            }
+        }
+    }
 
     /**
      * Face block
@@ -305,24 +351,93 @@ object RotationUtils : MinecraftInstance(), Listenable {
      *
      * @param target your enemy
      * @param silent client side rotations
-     * @param predict predict new enemy position
-     * @param predictSize predict size of predict
      */
-    fun faceBow(target: Entity, silent: Boolean, predict: Boolean, predictSize: Float) {
-        val player = mc.thePlayer
-        val (posX, posY, posZ) = Vec3(
-            target.posX + (if (predict) (target.posX - target.prevPosX) * predictSize else 0.0) - (player.posX + (if (predict) player.posX - player.prevPosX else 0.0)),
-            target.entityBoundingBox.minY + (if (predict) (target.entityBoundingBox.minY - target.prevPosY) * predictSize else 0.0) + target.eyeHeight - 0.15 - (player.entityBoundingBox.minY + if (predict) player.posY - player.prevPosY else 0.0) - player.getEyeHeight(),
-            target.posZ + (if (predict) (target.posZ - target.prevPosZ) * predictSize else 0.0) - (player.posZ + if (predict) player.posZ - player.prevPosZ else 0.0)
-        )
-        val posSqrt = sqrt(posX * posX + posZ * posZ)
+    fun faceBow(target: Entity, silent: Boolean) {
+        var velocity = (72000 - mc.thePlayer.getItemInUseCount()) / 20.0f
+        velocity = (velocity * velocity + velocity * 2.0f) / 3.0f
+        if (velocity > 1.0f) {
+            velocity = 1.0f
+        }
 
-        var velocity = player.itemInUseDuration / 20f
-        velocity = (velocity * velocity + velocity * 2) / 3
-        if (velocity > 1) velocity = 1f
+        val d = mc.thePlayer.getDistanceToEntity(target) / 2.5
+        val posX = target.posX + (target.posX - target.prevPosX) * d - mc.thePlayer.posX
+        val posY = target.posY + (target.posY - target.prevPosY) * 1.0 + target.height * 0.5 - mc.thePlayer.posY - mc.thePlayer.getEyeHeight()
+        val posZ = target.posZ + (target.posZ - target.prevPosZ) * d - mc.thePlayer.posZ
 
-        val rotation = Rotation((atan2(posZ, posX) * 180 / Math.PI).toFloat() - 90, -Math.toDegrees(atan((velocity * velocity - sqrt(velocity * velocity * velocity * velocity - 0.006f * (0.006f * (posSqrt * posSqrt) + 2 * posY * (velocity * velocity)))) / (0.006f * posSqrt))).toFloat())
-        setRotations(rotation, silent = silent)
+        val yaw = Math.toDegrees(atan2(posZ, posX)).toFloat() - 90.0f
+
+        val hDistance = sqrt(posX * posX + posZ * posZ)
+        val hDistanceSq = hDistance * hDistance
+        val g = 0.006f
+
+        val velocitySq = velocity * velocity
+        val velocityPow4 = velocitySq * velocitySq
+
+        val neededPitch = -Math.toDegrees(
+            atan(
+                (velocitySq - sqrt(
+                    velocityPow4 - g * (g * hDistanceSq + 2.0 * posY * velocitySq)
+                    )
+                ) / (g * hDistance)
+            )
+        ).toFloat()
+
+        setRotations(if (java.lang.Float.isNaN(neededPitch)) getRotations(target, 0.0, 0.0, 0.0) else Rotation(yaw, neededPitch), silent = silent)
+    }
+
+    fun getRotations(ent: Entity, offsetX: Double, offsetY: Double, offsetZ: Double): Rotation {
+        val eyeHeight = ent.eyeHeight.toDouble()
+        var y = ent.posY
+        val playerY = mc.thePlayer.posY + mc.thePlayer.getEyeHeight().toDouble()
+        if (playerY >= y + eyeHeight) {
+            y += eyeHeight
+            y -= 0.4
+        } else if (!(playerY < y)) {
+            y = playerY - 0.4
+        }
+
+        var best: Vec3 = getBestHitVec(ent)
+        var nearest = 15.0
+        val boundingBox = ent.entityBoundingBox
+
+        for(x1 in boundingBox.minX..boundingBox.maxX step 0.07){
+            for(z1 in boundingBox.minZ..boundingBox.maxZ step 0.07){
+                for(y1 in boundingBox.minY..boundingBox.maxY step 0.07){
+                    val pos = Vec3(x1, y1, z1)
+                    if (mc.theWorld.rayTraceBlocks(mc.thePlayer.getPositionEyes(1.0F), pos) == null) {
+                        val eyes = mc.thePlayer.getPositionEyes(1.0f)
+                        val dist =
+                            sqrt((x1 - eyes.xCoord).pow(2.0) + (y1 - eyes.yCoord).pow(2.0) + (z1 - eyes.zCoord).pow(2.0))
+                        if (dist <= nearest) {
+                            nearest = dist
+                            best = pos
+                        }
+                    }
+                }
+            }
+        }
+
+        return getRotationFromPosition(best.xCoord + offsetX, y - offsetY, best.zCoord + offsetZ)
+    }
+
+    fun getRotationFromPosition(x: Double, y: Double, z: Double): Rotation {
+        val xDiff = x - mc.thePlayer.posX
+        val zDiff = z - mc.thePlayer.posZ
+        val yDiff = y - mc.thePlayer.posY - 1.2
+        val dist = MathHelper.sqrt_double(xDiff * xDiff + zDiff * zDiff).toDouble()
+        val yaw = (atan2(zDiff, xDiff) * 180.0 / 3.141592653589793).toFloat() - 90.0f
+        val pitch = (-(atan2(yDiff, dist) * 180.0 / 3.141592653589793)).toFloat()
+        return Rotation(yaw, pitch)
+    }
+
+    fun getBestHitVec(entity: Entity): Vec3 {
+        val positionEyes = mc.thePlayer.getPositionEyes(1.0f)
+        val f11 = entity.collisionBorderSize
+        val entityBoundingBox = entity.entityBoundingBox.expand(f11.toDouble(), f11.toDouble(), f11.toDouble())
+        val ex = MathHelper.clamp_double(positionEyes.xCoord, entityBoundingBox.minX, entityBoundingBox.maxX)
+        val ey = MathHelper.clamp_double(positionEyes.yCoord, entityBoundingBox.minY, entityBoundingBox.maxY)
+        val ez = MathHelper.clamp_double(positionEyes.zCoord, entityBoundingBox.minZ, entityBoundingBox.maxZ)
+        return Vec3(ex, ey - 0.4, ez)
     }
 
     /**

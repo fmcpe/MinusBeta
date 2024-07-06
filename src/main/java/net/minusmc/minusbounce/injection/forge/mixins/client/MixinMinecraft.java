@@ -5,19 +5,6 @@
  */
 package net.minusmc.minusbounce.injection.forge.mixins.client;
 
-import net.minusmc.minusbounce.MinusBounce;
-import net.minusmc.minusbounce.event.*;
-import net.minusmc.minusbounce.features.module.modules.combat.AutoClicker;
-import net.minusmc.minusbounce.features.module.modules.combat.TickBase;
-import net.minusmc.minusbounce.features.module.modules.exploit.MultiActions;
-import net.minusmc.minusbounce.features.module.modules.misc.Patcher;
-import net.minusmc.minusbounce.features.module.modules.world.FastPlace;
-import net.minusmc.minusbounce.injection.forge.mixins.accessors.MinecraftForgeClientAccessor;
-import net.minusmc.minusbounce.ui.client.GuiMainMenu;
-import net.minusmc.minusbounce.utils.CPSCounter;
-import net.minusmc.minusbounce.utils.MinecraftInstance;
-import net.minusmc.minusbounce.utils.render.IconUtils;
-import net.minusmc.minusbounce.utils.render.RenderUtils;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.MusicTicker;
@@ -26,7 +13,6 @@ import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.gui.*;
 import net.minecraft.client.gui.achievement.GuiAchievement;
 import net.minecraft.client.gui.inventory.GuiInventory;
-import net.minecraft.client.main.GameConfiguration;
 import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.network.NetHandlerPlayClient;
@@ -45,7 +31,7 @@ import net.minecraft.client.shader.Framebuffer;
 import net.minecraft.client.stream.IStream;
 import net.minecraft.crash.CrashReport;
 import net.minecraft.crash.CrashReportCategory;
-import net.minecraft.entity.*;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.play.client.C16PacketClientStatus;
@@ -56,9 +42,21 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.util.*;
 import net.minecraft.world.EnumDifficulty;
-import net.minecraftforge.client.ForgeHooksClient;
 import net.minecraftforge.client.MinecraftForgeClient;
 import net.minecraftforge.fml.common.FMLCommonHandler;
+import net.minusmc.minusbounce.MinusBounce;
+import net.minusmc.minusbounce.event.*;
+import net.minusmc.minusbounce.features.module.modules.combat.AutoClicker;
+import net.minusmc.minusbounce.features.module.modules.combat.TickBase;
+import net.minusmc.minusbounce.features.module.modules.exploit.MultiActions;
+import net.minusmc.minusbounce.features.module.modules.misc.Patcher;
+import net.minusmc.minusbounce.features.module.modules.world.FastPlace;
+import net.minusmc.minusbounce.injection.forge.mixins.accessors.MinecraftForgeClientAccessor;
+import net.minusmc.minusbounce.ui.client.GuiMainMenu;
+import net.minusmc.minusbounce.utils.CPSCounter;
+import net.minusmc.minusbounce.utils.MinecraftInstance;
+import net.minusmc.minusbounce.utils.render.IconUtils;
+import net.minusmc.minusbounce.utils.render.RenderUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -70,7 +68,6 @@ import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.injection.*;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -96,7 +93,7 @@ public abstract class MixinMinecraft {
     public boolean skipRenderWorld;
 
     @Shadow
-    private int leftClickCounter;
+    public int leftClickCounter;
 
     @Shadow
     public MovingObjectPosition objectMouseOver;
@@ -128,7 +125,8 @@ public abstract class MixinMinecraft {
     public GameSettings gameSettings;
 
     @Shadow
-    private Profiler mcProfiler;
+    @Final
+    public Profiler mcProfiler;
 
     @Shadow
     private boolean isGamePaused;
@@ -137,12 +135,12 @@ public abstract class MixinMinecraft {
     public final Timer timer = new Timer(20.0F);
 
     @Shadow
-    private void rightClickMouse() {
+    public void rightClickMouse() {
 
     }
 
     @Shadow
-    private void clickMouse() {
+    public void clickMouse() {
 
     }
 
@@ -168,6 +166,7 @@ public abstract class MixinMinecraft {
     private PlayerUsageSnooper usageSnooper = new PlayerUsageSnooper("client", (IPlayerUsage) this, MinecraftServer.getCurrentTimeMillis());
 
     @Shadow
+    @Final
     private Queue<FutureTask<?>> scheduledTasks;
 
     @Shadow
@@ -188,14 +187,16 @@ public abstract class MixinMinecraft {
     long startNanoTime = System.nanoTime();
 
     @Shadow
-    public abstract void checkGLError(String message);
+    protected abstract void checkGLError(String message);
 
     @Shadow
     long debugUpdateTime = getSystemTime();
 
     @Shadow
     private IStream stream;
+
     @Shadow
+    @Final
     public final FrameTimer frameTimer = new FrameTimer();
 
     @Shadow
@@ -217,6 +218,7 @@ public abstract class MixinMinecraft {
     public abstract boolean isSingleplayer();
 
     @Shadow
+    @Final
     private static final Logger logger = LogManager.getLogger();
 
     @Shadow
@@ -271,10 +273,37 @@ public abstract class MixinMinecraft {
     public abstract void displayInGameMenu();
 
     @Shadow
+    boolean running;
+
+    @Shadow
+    public abstract void displayCrashReport(CrashReport crashReportIn);
+
+    @Shadow
     public void displayGuiScreen(GuiScreen p_displayGuiScreen_1_) {}
 
     @Shadow
+    public abstract CrashReport addGraphicsAndWorldToCrashReport(CrashReport theCrash);
+
+    @Shadow
+    private boolean hasCrashed;
+
+    @Shadow
+    private CrashReport crashReporter;
+
+    @Shadow
     public abstract int getLimitFramerate();
+
+    @Shadow
+    protected abstract void startGame();
+
+    @Shadow
+    public abstract void freeMemory();
+
+    @Shadow
+    public abstract void shutdownMinecraftApplet();
+
+    @Unique
+    public Timer minusBounce$fakeTimer = new Timer(20.0F);
 
     @Inject(method = "run", at = @At("HEAD"))
     private void init(CallbackInfo callbackInfo) {
@@ -285,8 +314,84 @@ public abstract class MixinMinecraft {
             displayHeight = 622;
     }
 
+    /**
+     * @author .
+     * @reason .
+     */
+    @Overwrite
+    public void run()
+    {
+        this.running = true;
+
+        try
+        {
+            this.startGame();
+        }
+        catch (Throwable throwable)
+        {
+            CrashReport crashreport = CrashReport.makeCrashReport(throwable, "Initializing game");
+            crashreport.makeCategory("Initialization");
+            this.displayCrashReport(this.addGraphicsAndWorldToCrashReport(crashreport));
+            return;
+        }
+
+        while (true)
+        {
+            try
+            {
+                while (this.running)
+                {
+                    MinusBounce.eventManager.callEvent(new GameLoop());
+                    if (!this.hasCrashed || this.crashReporter == null)
+                    {
+                        try
+                        {
+                            this.runGameLoop();
+                        }
+                        catch (OutOfMemoryError var10)
+                        {
+                            this.freeMemory();
+                            this.displayGuiScreen(new GuiMemoryErrorScreen());
+                            System.gc();
+                        }
+                    }
+                    else
+                    {
+                        this.displayCrashReport(this.crashReporter);
+                    }
+                }
+            }
+            catch (MinecraftError var12)
+            {
+                break;
+            }
+            catch (ReportedException reportedexception)
+            {
+                this.addGraphicsAndWorldToCrashReport(reportedexception.getCrashReport());
+                this.freeMemory();
+                logger.fatal((String)"Reported exception thrown!", (Throwable)reportedexception);
+                this.displayCrashReport(reportedexception.getCrashReport());
+                break;
+            }
+            catch (Throwable throwable1)
+            {
+                CrashReport crashreport1 = this.addGraphicsAndWorldToCrashReport(new CrashReport("Unexpected error", throwable1));
+                this.freeMemory();
+                logger.fatal("Unreported exception thrown!", throwable1);
+                this.displayCrashReport(crashreport1);
+                break;
+            }
+            finally
+            {
+                this.shutdownMinecraftApplet();
+            }
+
+            return;
+        }
+    }
+
     @Inject(method = "startGame", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;checkGLError(Ljava/lang/String;)V", ordinal = 2, shift = At.Shift.AFTER))
-    private void startGame(CallbackInfo callbackInfo) {
+    private void start(CallbackInfo callbackInfo) {
         MinusBounce.INSTANCE.startClient();
     }
 
@@ -354,10 +459,14 @@ public abstract class MixinMinecraft {
             float f = this.timer.renderPartialTicks;
             this.timer.updateTimer();
             this.timer.renderPartialTicks = f;
+            float f2 = this.timer.renderPartialTicks;
+            this.minusBounce$fakeTimer.updateTimer();
+            this.minusBounce$fakeTimer.renderPartialTicks = f2;
         }
         else
         {
             this.timer.updateTimer();
+            this.minusBounce$fakeTimer.updateTimer();
         }
 
         this.mcProfiler.startSection("scheduledExecutables");
@@ -406,6 +515,10 @@ public abstract class MixinMinecraft {
             } else {
                 this.runTick();
             }
+        }
+
+        for (int j = 0; j < this.minusBounce$fakeTimer.elapsedTicks; ++j){
+            MinusBounce.eventManager.callEvent(new TimeDelay());
         }
 
         this.mcProfiler.endStartSection("preRenderErrors");

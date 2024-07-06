@@ -8,12 +8,14 @@ package net.minusmc.minusbounce.features.module.modules.render
 import net.minecraft.client.renderer.GlStateManager
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityLivingBase
+import net.minusmc.minusbounce.MinusBounce
 import net.minusmc.minusbounce.event.EventTarget
 import net.minusmc.minusbounce.event.Render2DEvent
 import net.minusmc.minusbounce.event.Render3DEvent
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
+import net.minusmc.minusbounce.features.module.modules.combat.BackTrack
 import net.minusmc.minusbounce.ui.font.GameFontRenderer.Companion.getColorIndex
 import net.minusmc.minusbounce.utils.ClientUtils
 import net.minusmc.minusbounce.utils.EntityUtils
@@ -83,6 +85,9 @@ class ESP : Module() {
     private val colorTeam = BoolValue("Team", false)
     @EventTarget
     fun onRender3D(event: Render3DEvent?) {
+        val backTrack = MinusBounce.moduleManager.getModule(BackTrack::class.java) ?: return
+        if(backTrack.state && backTrack.delayedPackets.isNotEmpty()) return
+
         val mode = modeValue.get()
         val mvMatrix: Matrix4f = getMatrix(GL11.GL_MODELVIEW_MATRIX)
         val projectionMatrix: Matrix4f = getMatrix(GL11.GL_PROJECTION_MATRIX)
@@ -301,6 +306,8 @@ class ESP : Module() {
 
     @EventTarget
     fun onRender2D(event: Render2DEvent) {
+        val backTrack = MinusBounce.moduleManager.getModule(BackTrack::class.java) ?: return
+        if(backTrack.state && backTrack.delayedPackets.isNotEmpty()) return
         val mode = modeValue.get().lowercase(Locale.getDefault())
         val shader = (if (mode.equals(
                 "shaderoutline",

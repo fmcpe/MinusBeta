@@ -57,7 +57,7 @@ class KillAura : Module() {
 
     // Range & throughWalls
     val rangeValue = FloatValue("Range", 3.7f, 1f, 8f, "m")
-    private val throughWallsValue = BoolValue("ThroughWalls", true)
+    val throughWallsValue = BoolValue("ThroughWalls", true)
 
     // Rotations & TurnSpeed
     private val rotations = ListValue("RotationMode", arrayOf("Vanilla", "BackTrack", "Grim", "Intave", "None"), "BackTrack")
@@ -68,7 +68,7 @@ class KillAura : Module() {
     //Target / Modes
     private val priorityValue = ListValue("Priority", arrayOf("Health", "Distance", "HurtResistance", "HurtTime", "Armor"), "Distance")
     val targetModeValue = ListValue("TargetMode", arrayOf("Single", "Switch"), "Switch")
-    private val switchDelayValue = IntegerValue("SwitchDelay", 1000, 1, 2000, "ms") {
+    val switchDelayValue = IntegerValue("SwitchDelay", 1000, 1, 2000, "ms") {
         targetModeValue.get().equals("switch", true)
     }
 

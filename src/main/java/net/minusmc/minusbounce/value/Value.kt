@@ -19,7 +19,7 @@ import net.minusmc.minusbounce.utils.FontUtils
 import java.awt.Color
 import java.util.*
 
-abstract class Value<T>(var name: String, protected var value: T, var canDisplay: () -> Boolean) {
+abstract class Value<T>(var name: String, var value: T, var canDisplay: () -> Boolean) {
     val defaultValue = value
     val displayableFunction: () -> Boolean
         get() = canDisplay

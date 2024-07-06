@@ -17,7 +17,6 @@ import net.minusmc.minusbounce.utils.timer.MSTimer
 import net.minusmc.minusbounce.value.BoolValue
 import net.minusmc.minusbounce.value.FloatValue
 import net.minusmc.minusbounce.value.IntegerValue
-import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.abs
 
 
@@ -29,7 +28,7 @@ class BackTrack : Module() {
     private val delayPing = BoolValue("Ping", true)
     private val delayVelocity = BoolValue("Velocity", true) { delayPing.get() }
 
-    private val delayedPackets = CopyOnWriteArrayList<DelayedPacket>()
+    val delayedPackets = mutableListOf<DelayedPacket>()
 
     private var lastTarget: EntityLivingBase? = null
 
@@ -41,83 +40,82 @@ class BackTrack : Module() {
 
     fun onPacket(event: PacketEvent) {
         val packet = event.packet
-        if (mc.thePlayer == null || mc.thePlayer.ticksExisted < 5) {
-            if (!delayedPackets.isEmpty()) {
-                delayedPackets.clear()
-            }
-        }
 
-        if (currentTarget !== lastTarget) {
-            clearPackets()
-        }
-
-        if (currentTarget == null) {
+        if (currentTarget == null || currentTarget != lastTarget) {
             clearPackets()
         } else {
-            if (packet is S14PacketEntity) {
-                if (packet.getEntity(mc.netHandler.clientWorldController) === currentTarget) {
-                    val x = (currentTarget!!.serverPosX + packet.posX) / 32.0
-                    val y = (currentTarget!!.serverPosY + packet.posY) / 32.0
-                    val z = (currentTarget!!.serverPosZ + packet.posZ) / 32.0
+            when (packet) {
+                is S14PacketEntity -> {
+                    if (packet.getEntity(mc.netHandler.clientWorldController) == currentTarget) {
+                        val x = (currentTarget!!.serverPosX + packet.posX) / 32.0
+                        val y = (currentTarget!!.serverPosY + packet.posY) / 32.0
+                        val z = (currentTarget!!.serverPosZ + packet.posZ) / 32.0
 
-                    if (getDistanceCustomPosition(x, y, z, currentTarget!!.eyeHeight.toDouble()) >= minRange.get()
-                    ) {
+                        if (getDistanceCustomPosition(x, y, z, currentTarget!!.eyeHeight.toDouble()) >= minRange.get()
+                        ) {
+                            event.cancelEvent()
+                            delayedPackets.add(DelayedPacket(packet))
+                        }
+                    }
+                }
+
+                is S18PacketEntityTeleport -> {
+                    if (packet.entityId == currentTarget!!.entityId) {
+                        val serverX = packet.x.toDouble()
+                        val serverY = packet.y.toDouble()
+                        val serverZ = packet.z.toDouble()
+
+                        val d0 = serverX / 32.0
+                        val d1 = serverY / 32.0
+                        val d2 = serverZ / 32.0
+
+                        val x: Double
+                        val y: Double
+                        val z: Double
+
+                        if (abs(serverX - d0) < 0.03125 && abs(serverY - d1) < 0.015625 && abs(
+                                serverZ - d2
+                            ) < 0.03125
+                        ) {
+                            x = currentTarget!!.posX
+                            y = currentTarget!!.posY
+                            z = currentTarget!!.posZ
+                        } else {
+                            x = d0
+                            y = d1
+                            z = d2
+                        }
+
+                        if (getDistanceCustomPosition(
+                                x,
+                                y,
+                                z,
+                                currentTarget!!.eyeHeight.toDouble()
+                            ) >= minRange.get()
+                        ) {
+                            event.cancelEvent()
+                            delayedPackets.add(DelayedPacket(packet))
+                        }
+                    }
+                }
+
+                is S32PacketConfirmTransaction, is S00PacketKeepAlive -> {
+                    if (delayedPackets.isNotEmpty() && delayPing.get()) {
                         event.cancelEvent()
                         delayedPackets.add(DelayedPacket(packet))
                     }
                 }
-            } else if (packet is S18PacketEntityTeleport) {
-                if (packet.entityId == currentTarget!!.entityId) {
-                    val serverX = packet.x.toDouble()
-                    val serverY = packet.y.toDouble()
-                    val serverZ = packet.z.toDouble()
 
-                    val d0 = serverX / 32.0
-                    val d1 = serverY / 32.0
-                    val d2 = serverZ / 32.0
-
-                    val x: Double
-                    val y: Double
-                    val z: Double
-
-                    if (abs(serverX - d0) < 0.03125 && abs(serverY - d1) < 0.015625 && abs(
-                            serverZ - d2
-                        ) < 0.03125
-                    ) {
-                        x = currentTarget!!.posX
-                        y = currentTarget!!.posY
-                        z = currentTarget!!.posZ
-                    } else {
-                        x = d0
-                        y = d1
-                        z = d2
-                    }
-
-                    if (getDistanceCustomPosition(
-                            x,
-                            y,
-                            z,
-                            currentTarget!!.eyeHeight.toDouble()
-                        ) >= minRange.get()
-                    ) {
-                        event.cancelEvent()
-                        delayedPackets.add(DelayedPacket(packet))
-                    }
-                }
-            } else if (packet is S32PacketConfirmTransaction || packet is S00PacketKeepAlive) {
-                if (!delayedPackets.isEmpty() && delayPing.get()) {
-                    event.cancelEvent()
-                    delayedPackets.add(DelayedPacket(packet))
-                }
-            } else if (packet is S12PacketEntityVelocity) {
-                if (packet.entityID == mc.thePlayer.entityId) {
-                    if (!delayedPackets.isEmpty() && delayPing.get() && delayVelocity.get()) {
-                        event.cancelEvent()
-                        lastVelocity = Vec3(
-                            packet.getMotionX() / 8000.0,
-                            packet.getMotionY() / 8000.0,
-                            packet.getMotionZ() / 8000.0
-                        )
+                is S12PacketEntityVelocity -> {
+                    if (packet.entityID == mc.thePlayer.entityId) {
+                        if (delayedPackets.isNotEmpty() && delayPing.get() && delayVelocity.get()) {
+                            event.cancelEvent()
+                            lastVelocity = Vec3(
+                                packet.getMotionX() / 8000.0,
+                                packet.getMotionY() / 8000.0,
+                                packet.getMotionZ() / 8000.0
+                            )
+                        }
                     }
                 }
             }
@@ -127,47 +125,37 @@ class BackTrack : Module() {
     }
 
     @EventTarget
-    fun onPostMotion(event: PostMotionEvent?) {
-        updatePackets()
+    fun onPostMotion(event: PostMotionEvent) {
+        if(delayedPackets.isNotEmpty()){
+            if (delayedPackets.first().timer.hasTimeElapsed(delay.get().toDouble(), true)) {
+                clearPackets()
+            }
+        }
     }
 
+    private val currentTarget: EntityLivingBase?
+        get() = MinusBounce.moduleManager.getModule(KillAura::class.java)?.target ?: getCursorTarget()
 
-    val currentTarget: EntityLivingBase?
-        get(){
-            assert(mc.objectMouseOver != null)
-            return MinusBounce.moduleManager.getModule(KillAura::class.java)?.let {
-                if(it.state && it.target != null) it.target else null
-            } ?: when {
-                EntityUtils.isSelected(mc.objectMouseOver.entityHit, true) -> {
-                    lastCursorTarget = mc.objectMouseOver.entityHit as EntityLivingBase
-                    mc.objectMouseOver.entityHit as EntityLivingBase
+    private fun getCursorTarget(): EntityLivingBase? {
+        try {
+            val entity = (mc.objectMouseOver.entityHit ?: return null) as EntityLivingBase
+            return when {
+                EntityUtils.isSelected(entity, true) -> {
+                    lastCursorTarget = entity
+                    entity
                 }
                 lastCursorTarget != null -> {
                     if (++cursorTargetTicks > 10) {
                         lastCursorTarget = null
                         null
-                    } else lastCursorTarget
+                    } else {
+                        lastCursorTarget
+                    }
                 }
                 else -> null
             }
-        }
-
-    fun updatePackets() {
-        if (!delayedPackets.isEmpty()) {
-            for (p in delayedPackets) {
-                if (p.timer.hasTimePassed(delay.get())) {
-                    clearPackets()
-
-                    if (lastVelocity != null) {
-                        mc.thePlayer.motionX = lastVelocity!!.xCoord
-                        mc.thePlayer.motionY = lastVelocity!!.yCoord
-                        mc.thePlayer.motionZ = lastVelocity!!.zCoord
-                        lastVelocity = null
-                    }
-
-                    return
-                }
-            }
+        } catch (_: Exception){
+            return null
         }
     }
 
@@ -215,8 +203,8 @@ class BackTrack : Module() {
             val d0 = serverPosX / 32.0
             val d1 = serverPosY / 32.0
             val d2 = serverPosZ / 32.0
-            val f = (packetIn.yaw * 360).toFloat() / 256.0f
-            val f1 = (packetIn.pitch * 360).toFloat() / 256.0f
+            val f = (packetIn.yaw * 360) / 256.0f
+            val f1 = (packetIn.pitch * 360) / 256.0f
 
             val isCloseEnough = abs(posX - d0) < 0.03125 &&
                     abs(posY - d1) < 0.015625 &&

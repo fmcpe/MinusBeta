@@ -8,6 +8,18 @@ package net.minusmc.minusbounce.utils.timer
 class MSTimer {
     var time = -1L
 
+    fun hasTimeElapsed(delay: Double, reset: Boolean): Boolean {
+        if ((System.currentTimeMillis() - this.time).toDouble() > delay) {
+            if (reset) {
+                this.reset()
+            }
+
+            return true
+        } else {
+            return false
+        }
+    }
+
     fun hasTimePassed(delay: Int): Boolean {
         return hasTimePassed(delay.toLong())
     }
