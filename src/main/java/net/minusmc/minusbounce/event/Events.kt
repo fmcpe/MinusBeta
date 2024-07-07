@@ -23,7 +23,7 @@ import net.minecraft.util.EnumFacing
  *
  * @param targetEntity Attacked entity
  */
-class AttackEvent(var targetEntity: Entity?) : CancellableEvent()
+class AttackEvent(val targetEntity: Entity?) : CancellableEvent()
 
 class KnockBackEvent(var motion: Double, var full: Boolean, var power: Int, var postPower: Int, var strong: Boolean, var reduceY: Boolean) : CancellableEvent()
 
