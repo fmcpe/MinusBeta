@@ -88,31 +88,31 @@ public abstract class MixinEntityLivingBase extends MixinEntity implements IEnti
     private double realPosX;
     
     public double getRealPosX() {
-        return trueX;
+        return realPosX;
     }
 
     public void setRealPosX(double x) {
-        trueX = x;
+        realPosX = x;
     }
 
     private double realPosY;
 
     public double getRealPosY() {
-        return trueY;
+        return realPosY;
     }
 
     public void setRealPosY(double y) {
-        trueY = y;
+        realPosY = y;
     }
 
     private double realPosZ;
 
     public double getRealPosZ() {
-        return trueZ;
+        return realPosZ;
     }
 
     public void setRealPosZ(double z) {
-        trueZ = z;
+        realPosZ = z;
     }
 
     @Inject(method = "updatePotionEffects", at = @At(value = "INVOKE", target = "Lnet/minecraft/potion/PotionEffect;onUpdate(Lnet/minecraft/entity/EntityLivingBase;)Z"),
