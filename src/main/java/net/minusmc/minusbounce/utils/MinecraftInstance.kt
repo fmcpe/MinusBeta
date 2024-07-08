@@ -6,9 +6,11 @@
 package net.minusmc.minusbounce.utils
 
 import net.minecraft.client.Minecraft
+import net.minecraft.entity.EntityLivingBase
 import net.minecraft.util.AxisAlignedBB
 import net.minecraft.util.Vec3
 import net.minusmc.minusbounce.injection.implementations.IEntityPlayerSP
+import net.minusmc.minusbounce.injection.implementations.IEntityLivingBase
 
 open class MinecraftInstance {
     companion object {
@@ -31,5 +33,23 @@ open class MinecraftInstance {
 
         val eyesPos: Vec3
             get() = mc.thePlayer.getPositionEyes(mc.timer.renderPartialTicks)
+
+        val EntityLivingBase.realPosX: Double
+            get() = (this as IEntityLivingBase).realPosX
+            set(value: Double) {
+                (this as IEntityLivingBase).realPosX = value
+            }
+
+        val EntityLivingBase.realPosY: Double
+            get() = (this as IEntityLivingBase).realPosY
+            set(value: Double) {
+                (this as IEntityLivingBase).realPosY = value
+            }
+
+        val EntityLivingBase.realPosZ: Double
+            get() = (this as IEntityLivingBase).realPosZ
+            set(value: Double) {
+                (this as IEntityLivingBase).realPosZ = value
+            }
     }
 }
