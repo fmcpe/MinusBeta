@@ -23,6 +23,7 @@ import net.minusmc.minusbounce.features.module.modules.client.Animations;
 import net.minusmc.minusbounce.features.module.modules.movement.NoJumpDelay;
 import net.minusmc.minusbounce.features.module.modules.render.AntiBlind;
 import net.minusmc.minusbounce.features.module.modules.world.Scaffold;
+import net.minusmc.minusbounce.injection.implementations.IEntityLivingBase;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
