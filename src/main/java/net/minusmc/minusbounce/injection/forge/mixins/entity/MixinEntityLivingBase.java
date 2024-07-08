@@ -36,7 +36,7 @@ import java.util.Iterator;
 import java.util.Objects;
 
 @Mixin(EntityLivingBase.class)
-public abstract class MixinEntityLivingBase extends MixinEntity {
+public abstract class MixinEntityLivingBase extends MixinEntity implements IEntityLivingBase {
 
 
     @Shadow
@@ -83,6 +83,36 @@ public abstract class MixinEntityLivingBase extends MixinEntity {
     @Shadow public float moveStrafing;
 
     @Shadow public float moveForward;
+
+    private double realPosX;
+    
+    public double getRealPosX() {
+        return trueX;
+    }
+
+    public void setRealPosX(double x) {
+        trueX = x;
+    }
+
+    private double realPosY;
+
+    public double getRealPosY() {
+        return trueY;
+    }
+
+    public void setRealPosY(double y) {
+        trueY = y;
+    }
+
+    private double realPosZ;
+
+    public double getRealPosZ() {
+        return trueZ;
+    }
+
+    public void setRealPosZ(double z) {
+        trueZ = z;
+    }
 
     @Inject(method = "updatePotionEffects", at = @At(value = "INVOKE", target = "Lnet/minecraft/potion/PotionEffect;onUpdate(Lnet/minecraft/entity/EntityLivingBase;)Z"),
         locals = LocalCapture.CAPTURE_FAILSOFT, cancellable = true)
