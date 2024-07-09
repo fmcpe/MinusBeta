@@ -36,19 +36,19 @@ open class MinecraftInstance {
 
         var EntityLivingBase.realPosX: Double
             get() = (this as IEntityLivingBase).realPosX
-            set(value: Double) {
+            set(value) {
                 (this as IEntityLivingBase).realPosX = value
             }
 
         var EntityLivingBase.realPosY: Double
             get() = (this as IEntityLivingBase).realPosY
-            set(value: Double) {
+            set(value) {
                 (this as IEntityLivingBase).realPosY = value
             }
 
         var EntityLivingBase.realPosZ: Double
             get() = (this as IEntityLivingBase).realPosZ
-            set(value: Double) {
+            set(value) {
                 (this as IEntityLivingBase).realPosZ = value
             }
     }

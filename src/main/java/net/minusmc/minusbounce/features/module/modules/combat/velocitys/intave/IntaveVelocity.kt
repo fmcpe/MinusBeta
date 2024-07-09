@@ -45,7 +45,6 @@ class IntaveVelocity : VelocityMode("Intave") {
     override fun onInput(event: MoveInputEvent) {
         if(mc.thePlayer.hurtTime > 0 && mc.objectMouseOver.entityHit != null){
             event.forward = 1.0F
-            event.strafe = 0.0F
         }
     }
 

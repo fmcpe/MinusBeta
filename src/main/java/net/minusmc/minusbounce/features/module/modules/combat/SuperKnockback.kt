@@ -38,7 +38,6 @@ class SuperKnockback : Module() {
                     if (mc.thePlayer.isSprinting)
                         mc.thePlayer.isSprinting = true
                     mc.netHandler.addToSendQueue(C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.STOP_SPRINTING))
-
                     mc.netHandler.addToSendQueue(C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.START_SPRINTING))
                     mc.netHandler.addToSendQueue(C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.STOP_SPRINTING))
                     mc.netHandler.addToSendQueue(C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.START_SPRINTING))
@@ -47,11 +46,8 @@ class SuperKnockback : Module() {
                 "fast" -> {
                     val ka = MinusBounce.moduleManager.getModule(KillAura::class.java) ?: return
                     val backtrack = MinusBounce.moduleManager.getModule(BackTrack::class.java) ?: return
-                    if (!backtrack.state || backtrack.delayedPackets.isEmpty()) {
-                        if ((ka.target ?: return).hurtTime == 10) {
-                            mc.gameSettings.keyBindSprint.pressed = false
-                            mc.gameSettings.keyBindSprint.pressed = true
-                        }
+                    if (!backtrack.state || backtrack.packets.isEmpty()) {
+                        if ((ka.target ?: return).hurtTime == 10) ticks = 1
                     }
                 }
                 "silent" -> ticks = 1
@@ -85,7 +81,7 @@ class SuperKnockback : Module() {
                 mc.thePlayer.isSprinting = true
                 ticks = 0
             }
-            "slient" -> if (ticks == 1) {
+            "slient", "fast" -> if (ticks == 1) {
                 mc.netHandler.addToSendQueue(C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.STOP_SPRINTING))
                 ticks = 2
             } else if (ticks == 2) {

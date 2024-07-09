@@ -86,7 +86,7 @@ class ESP : Module() {
     @EventTarget
     fun onRender3D(event: Render3DEvent?) {
         val backTrack = MinusBounce.moduleManager.getModule(BackTrack::class.java) ?: return
-        if(backTrack.state && backTrack.delayedPackets.isNotEmpty()) return
+        if(backTrack.state && backTrack.packets.isNotEmpty()) return
 
         val mode = modeValue.get()
         val mvMatrix: Matrix4f = getMatrix(GL11.GL_MODELVIEW_MATRIX)
@@ -307,7 +307,7 @@ class ESP : Module() {
     @EventTarget
     fun onRender2D(event: Render2DEvent) {
         val backTrack = MinusBounce.moduleManager.getModule(BackTrack::class.java) ?: return
-        if(backTrack.state && backTrack.delayedPackets.isNotEmpty()) return
+        if(backTrack.state && backTrack.packets.isNotEmpty()) return
         val mode = modeValue.get().lowercase(Locale.getDefault())
         val shader = (if (mode.equals(
                 "shaderoutline",

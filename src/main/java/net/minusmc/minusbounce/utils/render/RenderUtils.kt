@@ -9,8 +9,7 @@ import net.minecraft.client.gui.Gui
 import net.minecraft.client.gui.Gui.drawModalRectWithCustomSizedTexture
 import net.minecraft.client.gui.ScaledResolution
 import net.minecraft.client.renderer.*
-import net.minecraft.client.renderer.GlStateManager.disableBlend
-import net.minecraft.client.renderer.GlStateManager.enableTexture2D
+import net.minecraft.client.renderer.GlStateManager.*
 import net.minecraft.client.renderer.culling.Frustum
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats
 import net.minecraft.enchantment.Enchantment
@@ -190,7 +189,7 @@ object RenderUtils : MinecraftInstance() {
         val r = (color shr 16 and 0xFF) / 255.0f
         val g = (color shr 8 and 0xFF) / 255.0f
         val b = (color and 0xFF) / 255.0f
-        GlStateManager.color(r, g, b, alpha)
+        color(r, g, b, alpha)
     }
 
     private val frustrum = Frustum()
@@ -247,7 +246,7 @@ object RenderUtils : MinecraftInstance() {
         paramXEnd: Float,
         paramYEnd: Float,
         radius: Float,
-        color: Int
+        color: Int,
     ) {
         var paramXStart = paramXStart
         var paramYStart = paramYStart
@@ -370,7 +369,7 @@ object RenderUtils : MinecraftInstance() {
         paramYEnd: Float,
         radius: Float,
         color: Int,
-        popPush: Boolean = true
+        popPush: Boolean = true,
     ) {
         var paramXStart = paramXStart
         var paramYStart = paramYStart
@@ -447,7 +446,7 @@ object RenderUtils : MinecraftInstance() {
         rTR: Float,
         rBR: Float,
         rBL: Float,
-        color: Int
+        color: Int,
     ) {
         var paramXStart = paramXStart
         var paramYStart = paramYStart
@@ -1011,7 +1010,7 @@ object RenderUtils : MinecraftInstance() {
 
     fun drawBorderedRect(
         x: Float, y: Float, x2: Float, y2: Float, width: Float,
-        color1: Int, color2: Int
+        color1: Int, color2: Int,
     ) {
         drawRect(x, y, x2, y2, color2)
         drawBorder(x, y, x2, y2, width, color1)
@@ -1020,7 +1019,7 @@ object RenderUtils : MinecraftInstance() {
     //Insane override func xd
     fun drawBorderedRect(
         x: Number, y: Number, x2: Number, y2: Number, width: Number,
-        color1: Int, color2: Int
+        color1: Int, color2: Int,
     ){
         drawBorderedRect(x.toFloat(), y.toFloat(), x2.toFloat(), y2.toFloat(), width.toFloat(), color1, color2)
     }
@@ -1146,9 +1145,9 @@ object RenderUtils : MinecraftInstance() {
     }
 
     fun drawGradientCircle(x: Float, y: Float, radius: Float, start: Int, end: Int, color1: Color, color2: Color) {
-        GlStateManager.enableBlend()
-        GlStateManager.disableTexture2D()
-        GlStateManager.tryBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO)
+        enableBlend()
+        disableTexture2D()
+        tryBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ZERO)
         glEnable(GL_LINE_SMOOTH)
         glLineWidth(2f)
         glBegin(GL_LINE_STRIP)
@@ -1159,7 +1158,7 @@ object RenderUtils : MinecraftInstance() {
             val f22 = (c shr 16 and 255).toFloat() / 255.0f
             val f3 = (c shr 8 and 255).toFloat() / 255.0f
             val f4 = (c and 255).toFloat() / 255.0f
-            GlStateManager.color(f22, f3, f4, f2)
+            color(f22, f3, f4, f2)
             glVertex2f(
                 (x + Math.cos(i * Math.PI / 180) * (radius * 1.001f)).toFloat(),
                 (y + Math.sin(i * Math.PI / 180) * (radius * 1.001f)).toFloat()
@@ -1294,7 +1293,7 @@ object RenderUtils : MinecraftInstance() {
         r: Float,
         g: Float,
         b: Float,
-        al: Float
+        al: Float,
     ) {
         glDisable(GL_DEPTH_TEST)
         glEnable(GL_BLEND)
@@ -1756,7 +1755,7 @@ object RenderUtils : MinecraftInstance() {
         color: Int,
         color2: Int,
         color3: Int,
-        color4: Int
+        color4: Int,
     ) {
         var x = x
         var y = y
@@ -1838,7 +1837,7 @@ object RenderUtils : MinecraftInstance() {
         width: Float,
         radius: Float,
         color: Int,
-        color2: Int
+        color2: Int,
     ) {
         var x = x
         var y = y
@@ -1921,7 +1920,7 @@ object RenderUtils : MinecraftInstance() {
         color: Int,
         color2: Int,
         color3: Int,
-        color4: Int
+        color4: Int,
     ) {
         var x = x
         var y = y
@@ -2030,7 +2029,7 @@ object RenderUtils : MinecraftInstance() {
         y1: Float,
         radius: Float,
         color: Int,
-        color2: Int
+        color2: Int,
     ) {
         var x = x
         var y = y
@@ -2146,6 +2145,73 @@ object RenderUtils : MinecraftInstance() {
 
     fun setGlState(cap: Int, state: Boolean) {
         if (state) glEnable(cap) else glDisable(cap)
+    }
+
+    fun stop3D() {
+        enableCull()
+        glEnable(GL_TEXTURE_2D)
+        glEnable(GL_DEPTH_TEST)
+        glDepthMask(true)
+        glDisable(GL_BLEND)
+    }
+
+    fun start3D() {
+        glDisable(GL_TEXTURE_2D)
+        glDisable(GL_DEPTH_TEST)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glDepthMask(false)
+        disableCull()
+    }
+
+    fun renderHitbox(bb: AxisAlignedBB, type: Int) {
+        glBegin(type)
+
+        glVertex3d(bb.minX, bb.minY, bb.maxZ)
+        glVertex3d(bb.maxX, bb.minY, bb.maxZ)
+        glVertex3d(bb.maxX, bb.minY, bb.minZ)
+        glVertex3d(bb.minX, bb.minY, bb.minZ)
+
+        glEnd()
+
+        glBegin(type)
+
+        glVertex3d(bb.minX, bb.maxY, bb.maxZ)
+        glVertex3d(bb.maxX, bb.maxY, bb.maxZ)
+        glVertex3d(bb.maxX, bb.maxY, bb.minZ)
+        glVertex3d(bb.minX, bb.maxY, bb.minZ)
+
+        glEnd()
+
+        glBegin(type)
+
+        glVertex3d(bb.minX, bb.minY, bb.minZ)
+        glVertex3d(bb.minX, bb.minY, bb.maxZ)
+        glVertex3d(bb.minX, bb.maxY, bb.maxZ)
+        glVertex3d(bb.minX, bb.maxY, bb.minZ)
+
+        glEnd()
+        glBegin(type)
+
+        glVertex3d(bb.maxX, bb.minY, bb.minZ)
+        glVertex3d(bb.maxX, bb.minY, bb.maxZ)
+        glVertex3d(bb.maxX, bb.maxY, bb.maxZ)
+        glVertex3d(bb.maxX, bb.maxY, bb.minZ)
+
+        glEnd()
+        glBegin(type)
+        glVertex3d(bb.minX, bb.minY, bb.minZ)
+        glVertex3d(bb.maxX, bb.minY, bb.minZ)
+        glVertex3d(bb.maxX, bb.maxY, bb.minZ)
+        glVertex3d(bb.minX, bb.maxY, bb.minZ)
+
+        glEnd()
+        glBegin(type)
+        glVertex3d(bb.minX, bb.minY, bb.maxZ)
+        glVertex3d(bb.maxX, bb.minY, bb.maxZ)
+        glVertex3d(bb.maxX, bb.maxY, bb.maxZ)
+        glVertex3d(bb.minX, bb.maxY, bb.maxZ)
+
+        glEnd()
     }
 
 }

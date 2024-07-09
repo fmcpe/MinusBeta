@@ -1,242 +1,230 @@
 package net.minusmc.minusbounce.features.module.modules.combat
 
+import net.minecraft.client.renderer.GlStateManager
 import net.minecraft.entity.EntityLivingBase
+import net.minecraft.network.INetHandler
 import net.minecraft.network.Packet
-import net.minecraft.network.play.client.C0FPacketConfirmTransaction
 import net.minecraft.network.play.server.*
-import net.minecraft.util.Vec3
+import net.minecraft.util.AxisAlignedBB
 import net.minusmc.minusbounce.MinusBounce
 import net.minusmc.minusbounce.event.EventTarget
+import net.minusmc.minusbounce.event.GameLoop
 import net.minusmc.minusbounce.event.PacketEvent
-import net.minusmc.minusbounce.event.PostMotionEvent
+import net.minusmc.minusbounce.event.Render3DEvent
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
-import net.minusmc.minusbounce.utils.EntityUtils
+import net.minusmc.minusbounce.features.module.modules.world.Scaffold
+import net.minusmc.minusbounce.utils.render.ColorUtils
+import net.minusmc.minusbounce.utils.render.RenderUtils
 import net.minusmc.minusbounce.utils.timer.MSTimer
 import net.minusmc.minusbounce.value.BoolValue
 import net.minusmc.minusbounce.value.FloatValue
-import net.minusmc.minusbounce.value.IntegerValue
-import kotlin.math.abs
+import org.lwjgl.opengl.GL11
 
 
 @ModuleInfo("BackTrack", "Back Track", "Let you attack in their previous position", ModuleCategory.COMBAT)
 class BackTrack : Module() {
-    private val delay = IntegerValue("Delay", 500, 100, 5000)
-    private val minRange = FloatValue("MinRange", 2.8f, 1f, 6f)
+    var packets = ArrayList<Packet<*>>()
+    var timer = MSTimer()
+    var delay = FloatValue("Delay", 400F, 0F, 1000F)
+    var hitRange = FloatValue("Range", 3F, 0F, 10F)
+    var esp = BoolValue("ESP", true)
 
-    private val delayPing = BoolValue("Ping", true)
-    private val delayVelocity = BoolValue("Velocity", true) { delayPing.get() }
+    override fun onEnable() {
+        packets.clear()
+    }
+    
+    fun onPacket(e: PacketEvent) {
+        val packet = e.packet
+        if (
+            mc.thePlayer == null
+            || mc.theWorld == null
+            || mc.netHandler.networkManager.netHandler == null
+            || MinusBounce.moduleManager.getModule(Scaffold::class.java)?.state == true
+        ) {
+            packets.clear()
+            return
+        }
 
-    val delayedPackets = mutableListOf<DelayedPacket>()
+        when(packet) {
+            is S14PacketEntity -> {
+                val entity = mc.theWorld.getEntityByID(packet.entityId)
 
-    private var lastTarget: EntityLivingBase? = null
-
-    private var lastCursorTarget: EntityLivingBase? = null
-
-    private var cursorTargetTicks = 0
-
-    private var lastVelocity: Vec3? = null
-
-    fun onPacket(event: PacketEvent) {
-        val packet = event.packet
-
-        if (currentTarget == null || currentTarget != lastTarget) {
-            clearPackets()
-        } else {
-            when (packet) {
-                is S14PacketEntity -> {
-                    if (packet.getEntity(mc.netHandler.clientWorldController) == currentTarget) {
-                        val x = (currentTarget!!.serverPosX + packet.posX) / 32.0
-                        val y = (currentTarget!!.serverPosY + packet.posY) / 32.0
-                        val z = (currentTarget!!.serverPosZ + packet.posZ) / 32.0
-
-                        if (getDistanceCustomPosition(x, y, z, currentTarget!!.eyeHeight.toDouble()) >= minRange.get()
-                        ) {
-                            event.cancelEvent()
-                            delayedPackets.add(DelayedPacket(packet))
-                        }
-                    }
+                if (entity is EntityLivingBase) {
+                    entity.realPosX += packet.func_149062_c()
+                    entity.realPosY += packet.func_149061_d()
+                    entity.realPosZ += packet.func_149064_e()
                 }
+            }
 
-                is S18PacketEntityTeleport -> {
-                    if (packet.entityId == currentTarget!!.entityId) {
-                        val serverX = packet.x.toDouble()
-                        val serverY = packet.y.toDouble()
-                        val serverZ = packet.z.toDouble()
+            is S18PacketEntityTeleport -> {
+                val entity = mc.theWorld.getEntityByID(packet.entityId)
 
-                        val d0 = serverX / 32.0
-                        val d1 = serverY / 32.0
-                        val d2 = serverZ / 32.0
-
-                        val x: Double
-                        val y: Double
-                        val z: Double
-
-                        if (abs(serverX - d0) < 0.03125 && abs(serverY - d1) < 0.015625 && abs(
-                                serverZ - d2
-                            ) < 0.03125
-                        ) {
-                            x = currentTarget!!.posX
-                            y = currentTarget!!.posY
-                            z = currentTarget!!.posZ
-                        } else {
-                            x = d0
-                            y = d1
-                            z = d2
-                        }
-
-                        if (getDistanceCustomPosition(
-                                x,
-                                y,
-                                z,
-                                currentTarget!!.eyeHeight.toDouble()
-                            ) >= minRange.get()
-                        ) {
-                            event.cancelEvent()
-                            delayedPackets.add(DelayedPacket(packet))
-                        }
-                    }
-                }
-
-                is S32PacketConfirmTransaction, is S00PacketKeepAlive -> {
-                    if (delayedPackets.isNotEmpty() && delayPing.get()) {
-                        event.cancelEvent()
-                        delayedPackets.add(DelayedPacket(packet))
-                    }
-                }
-
-                is S12PacketEntityVelocity -> {
-                    if (packet.entityID == mc.thePlayer.entityId) {
-                        if (delayedPackets.isNotEmpty() && delayPing.get() && delayVelocity.get()) {
-                            event.cancelEvent()
-                            lastVelocity = Vec3(
-                                packet.getMotionX() / 8000.0,
-                                packet.getMotionY() / 8000.0,
-                                packet.getMotionZ() / 8000.0
-                            )
-                        }
-                    }
+                if (entity is EntityLivingBase) {
+                    entity.realPosX = packet.x.toDouble()
+                    entity.realPosY = packet.y.toDouble()
+                    entity.realPosZ = packet.z.toDouble()
                 }
             }
         }
 
-        lastTarget = currentTarget
+        if (entity == null) {
+            resetPackets(mc.netHandler.networkManager.netHandler)
+        } else {
+            addPackets(packet, e)
+        }
+    }
+
+    private val entity: EntityLivingBase?
+        get() = MinusBounce.moduleManager.getModule(KillAura::class.java)?.target
+
+    @EventTarget
+    fun onGameLoop(e: GameLoop?) {
+        if (
+            entity != null &&
+            entity!!.entityBoundingBox != null &&
+            mc.thePlayer != null &&
+            mc.theWorld != null &&
+            entity!!.realPosX != 0.0 &&
+            entity!!.realPosY != 0.0 &&
+            entity!!.realPosZ != 0.0 &&
+            entity!!.width != 0f &&
+            entity!!.height != 0f
+        ) {
+            val realX = entity!!.realPosX / 32
+            val realY = entity!!.realPosY / 32
+            val realZ = entity!!.realPosZ / 32
+
+            if (mc.thePlayer.getDistance(entity!!.posX, entity!!.posY, entity!!.posZ) > 3) {
+                if (mc.thePlayer.getDistance(
+                        entity!!.posX,
+                        entity!!.posY,
+                        entity!!.posZ
+                    ) >= mc.thePlayer.getDistance(
+                        realX,
+                        realY, realZ
+                    )
+                ) {
+                    resetPackets(mc.netHandler.networkManager.netHandler)
+                }
+            }
+
+            if (mc.thePlayer.getDistance(realX, realY, realZ) > hitRange.get()
+                || timer.hasTimeElapsed(delay.get().toDouble(), true)
+            ) {
+                resetPackets(mc.netHandler.networkManager.netHandler)
+            }
+        }
     }
 
     @EventTarget
-    fun onPostMotion(event: PostMotionEvent) {
-        if(delayedPackets.isNotEmpty()){
-            if (delayedPackets.first().timer.hasTimeElapsed(delay.get().toDouble(), true)) {
-                clearPackets()
+    fun onRender3D(e: Render3DEvent) {
+        if (
+            entity != null &&
+            entity!!.entityBoundingBox != null &&
+            mc.thePlayer != null &&
+            mc.theWorld != null &&
+            entity!!.realPosX != 0.0 &&
+            entity!!.realPosY != 0.0 &&
+            entity!!.realPosZ != 0.0 &&
+            entity!!.width != 0f &&
+            entity!!.height != 0f &&
+            esp.get()
+        ) {
+            var render = true
+            val realX = entity!!.realPosX / 32
+            val realY = entity!!.realPosY / 32
+            val realZ = entity!!.realPosZ / 32
+
+            if (mc.thePlayer.getDistance(entity!!.posX, entity!!.posY, entity!!.posZ) >= mc.thePlayer.getDistance(
+                    realX,
+                    realY, realZ
+                )
+            ) {
+                render = false
+            }
+
+            if (mc.thePlayer.getDistance(realX, realY, realZ) > hitRange.get()
+                || timer.hasTimeElapsed(delay.get().toDouble(), false)
+            ) {
+                render = false
+            }
+
+            if (
+                entity != null &&
+                entity != mc.thePlayer &&
+                !entity!!.isInvisible &&
+                entity!!.width != 0f &&
+                entity!!.height != 0f &&
+                render
+            ) {
+                val color = ColorUtils.getColor(210.0F, 0.7F, 0.75F)
+                val x = entity!!.realPosX / 32.0 - mc.renderManager.renderPosX
+                val y = entity!!.realPosY / 32.0 - mc.renderManager.renderPosY
+                val z = entity!!.realPosZ / 32.0 - mc.renderManager.renderPosZ
+                GlStateManager.pushMatrix()
+                RenderUtils.start3D()
+                RenderUtils.color(color)
+                RenderUtils.renderHitbox(
+                    AxisAlignedBB(
+                        x - entity!!.width / 2,
+                        y,
+                        z - entity!!.width / 2,
+                        x + entity!!.width / 2,
+                        y + entity!!.height,
+                        z + entity!!.width / 2
+                    ), GL11.GL_QUADS
+                )
+                RenderUtils.color(color)
+                RenderUtils.renderHitbox(
+                    AxisAlignedBB(
+                        x - entity!!.width / 2,
+                        y,
+                        z - entity!!.width / 2,
+                        x + entity!!.width / 2,
+                        y + entity!!.height,
+                        z + entity!!.width / 2
+                    ), GL11.GL_LINE_LOOP
+                )
+                RenderUtils.stop3D()
+                GlStateManager.popMatrix()
             }
         }
     }
 
-    private val currentTarget: EntityLivingBase?
-        get() = MinusBounce.moduleManager.getModule(KillAura::class.java)?.target ?: getCursorTarget()
-
-    private fun getCursorTarget(): EntityLivingBase? {
-        try {
-            val entity = (mc.objectMouseOver.entityHit ?: return null) as EntityLivingBase
-            return when {
-                EntityUtils.isSelected(entity, true) -> {
-                    lastCursorTarget = entity
-                    entity
-                }
-                lastCursorTarget != null -> {
-                    if (++cursorTargetTicks > 10) {
-                        lastCursorTarget = null
-                        null
-                    } else {
-                        lastCursorTarget
-                    }
-                }
-                else -> null
-            }
-        } catch (_: Exception){
-            return null
-        }
-    }
-
-    fun clearPackets() {
-        if (lastVelocity != null) {
-            mc.thePlayer.motionX = lastVelocity!!.xCoord
-            mc.thePlayer.motionY = lastVelocity!!.yCoord
-            mc.thePlayer.motionZ = lastVelocity!!.zCoord
-            lastVelocity = null
-        }
-
-        if (delayedPackets.isNotEmpty()) {
-            delayedPackets.forEach { p ->
-                when (val packet = p.packet) {
-                    is S14PacketEntity -> handleEntityMovement(packet)
-                    is S18PacketEntityTeleport -> handleEntityTeleport(packet)
-                    is S32PacketConfirmTransaction -> handleConfirmTransaction(packet)
-                    is S00PacketKeepAlive -> mc.netHandler.handleKeepAlive(packet)
+    private fun resetPackets(netHandler: INetHandler) {
+        if (packets.size > 0) {
+            synchronized(packets) {
+                while (packets.size != 0) {
+                    try {
+                        (packets[0] as Packet<INetHandler>).processPacket(netHandler)
+                    } catch (_: Exception) { }
+                    packets.remove(packets[0])
                 }
             }
-            delayedPackets.clear()
         }
     }
 
-    private fun handleEntityMovement(packetIn: S14PacketEntity) {
-        packetIn.getEntity(mc.netHandler.clientWorldController)?.apply {
-            serverPosX += packetIn.posX
-            serverPosY += packetIn.posY
-            serverPosZ += packetIn.posZ
-            val d0 = serverPosX / 32.0
-            val d1 = serverPosY / 32.0
-            val d2 = serverPosZ / 32.0
-            val f = if (packetIn.func_149060_h()) (packetIn.yaw * 360) / 256.0f else rotationYaw
-            val f1 = if (packetIn.func_149060_h()) (packetIn.pitch * 360) / 256.0f else rotationPitch
-            setPositionAndRotation2(d0, d1, d2, f, f1, 3, false)
-            onGround = packetIn.onGround
+    private fun addPackets(packet: Packet<*>, event: PacketEvent) {
+        synchronized(packets) {
+            if (this.blockPacket(packet)) {
+                packets.add(packet)
+                event.cancelEvent()
+            }
         }
     }
 
-    fun handleEntityTeleport(packetIn: S18PacketEntityTeleport) {
-        mc.netHandler.clientWorldController.getEntityByID(packetIn.entityId)?.apply {
-            serverPosX = packetIn.x
-            serverPosY = packetIn.y
-            serverPosZ = packetIn.z
-            val d0 = serverPosX / 32.0
-            val d1 = serverPosY / 32.0
-            val d2 = serverPosZ / 32.0
-            val f = (packetIn.yaw * 360) / 256.0f
-            val f1 = (packetIn.pitch * 360) / 256.0f
-
-            val isCloseEnough = abs(posX - d0) < 0.03125 &&
-                    abs(posY - d1) < 0.015625 &&
-                    abs(posZ - d2) < 0.03125
-
-            setPositionAndRotation2(if (isCloseEnough) posX else d0, d1, d2, f, f1, 3, true)
-            onGround = packetIn.onGround
-        }
-    }
-
-    fun handleConfirmTransaction(packetIn: S32PacketConfirmTransaction) {
-        when (packetIn.windowId) {
-            0 -> mc.thePlayer.inventoryContainer
-            mc.thePlayer.openContainer.windowId -> mc.thePlayer.openContainer
-            else -> null
-        }?.takeIf { !packetIn.func_148888_e() }?.let {
-            mc.netHandler.addToSendQueue(C0FPacketConfirmTransaction(packetIn.windowId, packetIn.actionNumber, true))
-        }
-    }
-
-    fun getDistanceCustomPosition(x: Double, y: Double, z: Double, eyeHeight: Double): Double {
-        val playerVec = Vec3(mc.thePlayer.posX, mc.thePlayer.posY + mc.thePlayer.getEyeHeight(), mc.thePlayer.posZ)
-
-        val yDiff = mc.thePlayer.posY - y
-
-        val targetY =
-            if (yDiff > 0) y + eyeHeight else if (-yDiff < mc.thePlayer.getEyeHeight()) mc.thePlayer.posY + mc.thePlayer.getEyeHeight() else y
-
-        val targetVec = Vec3(x, targetY, z)
-
-        return playerVec.distanceTo(targetVec) - 0.3f
+    private fun blockPacket(packet: Packet<*>): Boolean {
+        return (packet is S14PacketEntity
+                || packet is S19PacketEntityHeadLook
+                || packet is S18PacketEntityTeleport
+                || packet is S0FPacketSpawnMob
+                || packet is S08PacketPlayerPosLook
+                || packet is S03PacketTimeUpdate    
+                || packet is S00PacketKeepAlive
+                || packet is S12PacketEntityVelocity
+                || packet is S27PacketExplosion
+                || packet is S32PacketConfirmTransaction)
     }
 }
-
-data class DelayedPacket(val packet: Packet<*>, val timer: MSTimer = MSTimer())
