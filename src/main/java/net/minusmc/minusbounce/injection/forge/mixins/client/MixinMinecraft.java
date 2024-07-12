@@ -47,10 +47,12 @@ import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minusmc.minusbounce.MinusBounce;
 import net.minusmc.minusbounce.event.*;
 import net.minusmc.minusbounce.features.module.modules.combat.AutoClicker;
+import net.minusmc.minusbounce.features.module.modules.combat.KillAura;
 import net.minusmc.minusbounce.features.module.modules.combat.TickBase;
 import net.minusmc.minusbounce.features.module.modules.exploit.MultiActions;
 import net.minusmc.minusbounce.features.module.modules.misc.Patcher;
 import net.minusmc.minusbounce.features.module.modules.world.FastPlace;
+import net.minusmc.minusbounce.features.module.modules.world.Scaffold;
 import net.minusmc.minusbounce.injection.forge.mixins.accessors.MinecraftForgeClientAccessor;
 import net.minusmc.minusbounce.ui.client.GuiMainMenu;
 import net.minusmc.minusbounce.utils.CPSCounter;
@@ -71,6 +73,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.FutureTask;
@@ -140,9 +143,7 @@ public abstract class MixinMinecraft {
     }
 
     @Shadow
-    public void clickMouse() {
-
-    }
+    public abstract void clickMouse();
 
     @Shadow
     private void middleClickMouse() {
@@ -620,6 +621,10 @@ public abstract class MixinMinecraft {
         return (Sys.getTime() * 1000) / Sys.getTimerResolution();
     }
 
+    /**
+     * @author .
+     * @reason .
+     */
     @Overwrite
     public void runTick() throws IOException
     {
@@ -1181,8 +1186,9 @@ public abstract class MixinMinecraft {
     private void clickMouse(CallbackInfo callbackInfo) {
         CPSCounter.INSTANCE.registerClick(CPSCounter.MouseButton.LEFT);
 
-        if (Patcher.INSTANCE.getNoHitDelay().get() || MinusBounce.moduleManager.getModule(AutoClicker.class).getState())
+        if (Patcher.INSTANCE.getNoHitDelay().get() || Objects.requireNonNull(MinusBounce.moduleManager.getModule(AutoClicker.class)).getState() || Objects.requireNonNull(MinusBounce.moduleManager.getModule(KillAura.class)).getState()) {
             leftClickCounter = 0;
+        }
     }
 
     @Inject(method = "middleClickMouse", at = @At("HEAD"))
@@ -1195,9 +1201,13 @@ public abstract class MixinMinecraft {
         CPSCounter.INSTANCE.registerClick(CPSCounter.MouseButton.RIGHT);
 
         final FastPlace fastPlace = MinusBounce.moduleManager.getModule(FastPlace.class);
+        final Scaffold scaffold = MinusBounce.moduleManager.getModule(Scaffold.class);
 
-        if (fastPlace.getState())
-            rightClickDelayTimer = fastPlace.getSpeedValue().get();
+        assert fastPlace != null;
+        assert scaffold != null;
+        if (fastPlace.getState() || scaffold.getState()) {
+            rightClickDelayTimer = scaffold.getState() ? fastPlace.getSpeedValue().get() : 0;
+        }
     }
 
     @Inject(method = "loadWorld(Lnet/minecraft/client/multiplayer/WorldClient;Ljava/lang/String;)V", at = @At("HEAD"))
@@ -1220,6 +1230,7 @@ public abstract class MixinMinecraft {
 
     /**
      * @author CCBlueX
+     * @reason .
      */
     @Overwrite
     public void sendClickBlockToController(boolean leftClick) {
@@ -1242,7 +1253,6 @@ public abstract class MixinMinecraft {
                 this.playerController.resetBlockRemoving();
         }
     }
-    // li do luc nay build thanh cong phai stop
 
     /**
      * @author CCBlueX

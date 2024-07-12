@@ -6,4 +6,8 @@ public interface IEntityPlayerSP {
 	Rotation getServerRotation();
 
 	Rotation getPlayerRotation();
+
+	int getReSprint();
+
+	void setReSprint(int v);
 }

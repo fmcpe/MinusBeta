@@ -10,7 +10,7 @@ import net.minecraft.network.play.client.C0BPacketEntityAction
 import net.minusmc.minusbounce.MinusBounce
 import net.minusmc.minusbounce.event.AttackEvent
 import net.minusmc.minusbounce.event.EventTarget
-import net.minusmc.minusbounce.event.TickEvent
+import net.minusmc.minusbounce.event.UpdateEvent
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
@@ -21,8 +21,9 @@ import net.minusmc.minusbounce.value.ListValue
 @ModuleInfo(name = "SuperKnockback", spacedName = "Super Knockback", description = "Increases knockback dealt to other entities.", category = ModuleCategory.COMBAT)
 class SuperKnockback : Module() {
     private val hurtTimeValue = IntegerValue("HurtTime", 10, 0, 10)
-    private val modeValue = ListValue("Mode", arrayOf("ExtraPacket", "Legit", "Silent", "WTap", "Fast", "Packet"), "ExtraPacket")
+    private val modeValue = ListValue("Mode", arrayOf("ExtraPacket", "LegitFast", "Silent", "Packet"), "ExtraPacket")
     private val delay = IntegerValue("Delay", 0, 0, 500, "ms")
+    var forward: Float = 0.0F
 
     val timer = MSTimer()
 
@@ -31,8 +32,10 @@ class SuperKnockback : Module() {
     @EventTarget
     fun onAttack(event: AttackEvent) {
         if (event.targetEntity is EntityLivingBase) {
-            if (event.targetEntity.hurtTime > hurtTimeValue.get() || !timer.hasTimePassed(delay.get().toLong()))
+            val backtrack = MinusBounce.moduleManager.getModule(BackTrack::class.java) ?: return
+            if (event.targetEntity.hurtTime >= hurtTimeValue.get() || !timer.hasTimePassed(delay.get().toLong()) || (backtrack.state && backtrack.packets.isNotEmpty()))
                 return
+
             when (modeValue.get().lowercase()) {
                 "extrapacket" -> {
                     if (mc.thePlayer.isSprinting)
@@ -43,15 +46,8 @@ class SuperKnockback : Module() {
                     mc.netHandler.addToSendQueue(C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.START_SPRINTING))
                     mc.thePlayer.serverSprintState = true
                 }
-                "fast" -> {
-                    val ka = MinusBounce.moduleManager.getModule(KillAura::class.java) ?: return
-                    val backtrack = MinusBounce.moduleManager.getModule(BackTrack::class.java) ?: return
-                    if (!backtrack.state || backtrack.packets.isEmpty()) {
-                        if ((ka.target ?: return).hurtTime == 10) ticks = 1
-                    }
-                }
                 "silent" -> ticks = 1
-                "legit", "wtap" -> ticks = 2
+                "legitfast" -> mc.thePlayer.reSprint = 2
                 "packet" -> {
                     if(mc.thePlayer.isSprinting)
                         mc.thePlayer.isSprinting = true
@@ -65,23 +61,9 @@ class SuperKnockback : Module() {
     }
 
     @EventTarget
-    fun onUpdate(event: TickEvent) {
+    fun onUpdate(event: UpdateEvent) {
         when (modeValue.get().lowercase()) {
-            "legit" -> if (ticks == 2) {
-                mc.gameSettings.keyBindForward.pressed = false
-                ticks = 1
-            } else if (ticks == 1) {
-                mc.gameSettings.keyBindForward.pressed = true
-                ticks = 0
-            }
-            "wtap" -> if (ticks == 2) {
-                mc.thePlayer.isSprinting = false
-                ticks = 1
-            } else if (ticks == 1) {
-                mc.thePlayer.isSprinting = true
-                ticks = 0
-            }
-            "slient", "fast" -> if (ticks == 1) {
+            "slient" -> if (ticks == 1) {
                 mc.netHandler.addToSendQueue(C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.STOP_SPRINTING))
                 ticks = 2
             } else if (ticks == 2) {

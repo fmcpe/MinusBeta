@@ -6,22 +6,27 @@
 package net.minusmc.minusbounce.features.module.modules.combat
 
 import net.minecraft.block.material.Material
+import net.minecraft.client.settings.KeyBinding
 import net.minecraft.enchantment.Enchantment
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityLivingBase
 import net.minecraft.entity.item.EntityArmorStand
 import net.minecraft.item.ItemSword
 import net.minecraft.item.ItemTool
-import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement
-import net.minecraft.network.play.client.C0APacketAnimation
+import net.minecraft.network.play.client.*
+import net.minecraft.potion.Potion
+import net.minecraft.util.BlockPos
+import net.minecraft.util.EnumFacing
 import net.minecraft.util.MovingObjectPosition
 import net.minecraft.util.MovingObjectPosition.MovingObjectType
 import net.minecraft.util.Vec3
+import net.minusmc.minusbounce.MinusBounce
 import net.minusmc.minusbounce.event.*
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
 import net.minusmc.minusbounce.features.module.modules.combat.killaura.KillAuraBlocking
+import net.minusmc.minusbounce.features.module.modules.world.Scaffold
 import net.minusmc.minusbounce.utils.*
 import net.minusmc.minusbounce.utils.EntityUtils.isSelected
 import net.minusmc.minusbounce.utils.extensions.getDistanceToEntityBox
@@ -54,6 +59,7 @@ class KillAura : Module() {
     //CPS & HurtTime
     private val cps = IntRangeValue("CPS", 5, 8, 1, 20)
     private val hurtTimeValue = IntegerValue("HurtTime", 10, 0, 10)
+    private val modes = ListValue("ClickMode", arrayOf("Normal", "Legit", "Blatant"), "Blatant")
 
     // Range & throughWalls
     val rangeValue = FloatValue("Range", 3.7f, 1f, 8f, "m")
@@ -119,6 +125,7 @@ class KillAura : Module() {
     private val attackTimer = MSTimer()
     private var attackDelay = 0L
     private var clicks = 0
+    private var swing = false
     private var attackTickTimes = mutableListOf<Pair<MovingObjectPosition, Int>>()
 
     // Fake block status
@@ -131,7 +138,7 @@ class KillAura : Module() {
         attackTickTimes.clear()
         clicks = 0
         prevTargetEntities.clear()
-        stopBlocking()
+        stopBlocking(false)
         blockingStatus = false
         blockingMode.onDisable()
     }
@@ -151,25 +158,11 @@ class KillAura : Module() {
 
         updateTarget()
 
-        /* AutoWeapon? */
-        /* Find the best weapon in HotBar */
-        (0..8)
-            .map { Pair(it, mc.thePlayer.inventory.getStackInSlot(it)) }
-            .filter { it.second != null && (it.second.item is ItemSword || it.second.item is ItemTool) }
-            .maxByOrNull { (it.second.attributeModifiers["generic.attackDamage"].first()?.amount ?: 0.0) + 1.25 * ItemUtils.getEnchantment(it.second, Enchantment.sharpness) }
-            ?.let{
-                mc.thePlayer.inventory.currentItem = if (it.component1() != mc.thePlayer.inventory.currentItem) it.component1() else return@let
+        if(!BadPacketUtils.bad(false, true, true, false, true)) {
+            repeat(clicks) {
+                runAttack(it + 1 == clicks)
+                clicks--
             }
-
-        if(target == null){
-            stopBlocking()
-            blockingStatus = false
-            return
-        }
-
-        repeat (clicks) {
-            runAttack(it + 1 == clicks)
-            clicks--
         }
     }
 
@@ -299,13 +292,17 @@ class KillAura : Module() {
     /**
      * shouldDelayClick && runWithModifiedRaycastResult
      * @author ccbluex
-     * LiquidBounce 1.8.9 (legacy)
+     * LiquidBounce legacy
      *
      * runAttack
      * @author fmcpe
-     * Ofc me!!
      */
     private fun runAttack(isLastClicks: Boolean) {
+        if(BadPacketUtils.bad(false, true, true, true, true) &&
+            (autoBlockModeValue.get().equals("none", true)
+                || autoBlockModeValue.get().equals("reblock", true))){
+                return
+            }
         target ?: return
 
         if(hitable){
@@ -433,12 +430,36 @@ class KillAura : Module() {
     }
 
     private fun attackEntity(entity: EntityLivingBase) {
+        /* AutoWeapon? */
+        /* Find the best weapon in HotBar */
+        (0..8)
+            .map { Pair(it, mc.thePlayer.inventory.getStackInSlot(it)) }
+            .filter { it.second != null && (it.second.item is ItemSword || it.second.item is ItemTool) }
+            .maxByOrNull { (it.second.attributeModifiers["generic.attackDamage"].first()?.amount ?: 0.0) + 1.25 * ItemUtils.getEnchantment(it.second, Enchantment.sharpness) }
+            ?.let{
+                mc.thePlayer.inventory.currentItem = if (it.component1() != mc.thePlayer.inventory.currentItem) it.component1() else return@let
+            }
+
         /* Unblock & Attack */
         if (blockingStatus && !autoBlockModeValue.get().equals("none", true)) {
             blockingMode.onPreAttack()
-            blockingStatus = false
         }
 
+        when(modes.get().lowercase()){
+            "normal" -> clickNormal(entity)
+            "legit" -> clickLegit()
+            "blatant" -> clickBlatant(entity)
+        }
+
+        /* AutoBlock */
+        if (canBlock && mc.thePlayer.getDistanceToEntityBox(target ?: return) <= autoBlockRangeValue.get()) {
+            if(!autoBlockModeValue.get().equals("none", true)){
+                blockingMode.onPostAttack()
+            }
+        }
+    }
+
+    private fun clickNormal(entity: EntityLivingBase){
         /* Swing*/
         when (swingValue.get().lowercase()) {
             "normal" -> mc.thePlayer.swingItem()
@@ -468,13 +489,24 @@ class KillAura : Module() {
                 mc.leftClickCounter = 10
             }
         }
+    }
 
-        /* AutoBlock */
-        if (canBlock && mc.thePlayer.getDistanceToEntityBox(target ?: return) <= autoBlockRangeValue.get()) {
-            if(!autoBlockModeValue.get().equals("none", true)){
-                blockingMode.onPostAttack()
-                blockingStatus = true
-            }
+    private fun clickLegit() {
+        KeyBinding.onTick(mc.gameSettings.keyBindAttack.keyCode)
+    }
+
+    private fun clickBlatant(entity: EntityLivingBase){
+        /* Swing*/
+        when (swingValue.get().lowercase()) {
+            "normal" -> mc.thePlayer.swingItem()
+            "packet" -> mc.netHandler.addToSendQueue(C0APacketAnimation())
+        }
+
+        mc.playerController.syncCurrentPlayItem()
+        mc.netHandler.addToSendQueue(C02PacketUseEntity(entity, C02PacketUseEntity.Action.ATTACK))
+        if(mc.thePlayer.fallDistance > 0 && !mc.thePlayer.onGround && !mc.thePlayer.isOnLadder && !mc.thePlayer.isInWater && !mc.thePlayer.isPotionActive(
+                Potion.blindness) && mc.thePlayer.ridingEntity == null){
+            mc.thePlayer.onCriticalHit(entity)
         }
     }
 
@@ -521,12 +553,26 @@ class KillAura : Module() {
         }
     }
 
-    fun startBlocking() {
-        mc.netHandler.addToSendQueue(C08PacketPlayerBlockPlacement(mc.thePlayer.inventory.getCurrentItem() ?: return))
+    fun startBlocking(check: Boolean, interact: Boolean) {
+        if(!blockingStatus || !check){
+            if(interact && target != null && mc.objectMouseOver.entityHit == target){
+                KeyBinding.onTick(mc.gameSettings.keyBindUseItem.keyCode)
+            }
+
+            mc.netHandler.addToSendQueue(C08PacketPlayerBlockPlacement(mc.thePlayer.inventory.getCurrentItem() ?: return))
+            blockingStatus = true
+        }
     }
 
-    fun stopBlocking() {
-        mc.playerController.onStoppedUsingItem(mc.thePlayer)
+    fun stopBlocking(swingCheck: Boolean) {
+        if(blockingStatus && (!swingCheck || !swing)){
+            if(!mc.gameSettings.keyBindUseItem.isKeyDown){
+                mc.netHandler.addToSendQueue(C07PacketPlayerDigging(C07PacketPlayerDigging.Action.RELEASE_USE_ITEM, BlockPos.ORIGIN, EnumFacing.DOWN))
+            } else {
+                mc.gameSettings.keyBindUseItem.pressed = false
+            }
+            blockingStatus = false
+        }
     }
 
     val canBlock: Boolean
@@ -537,6 +583,12 @@ class KillAura : Module() {
 
     @EventTarget
     fun onPreMotion(event: PreMotionEvent) {
+        if(target == null || mc.thePlayer.isDead || MinusBounce.moduleManager.getModule(Scaffold::class.java)?.state ?: return){
+            stopBlocking(false)
+            blockingStatus = false
+            return
+        }
+
         blockingMode.onPreMotion()
     }
 
@@ -547,6 +599,14 @@ class KillAura : Module() {
 
     @EventTarget
     fun onPacket(event: PacketEvent) {
+        val packet = event.packet
+        if(event.eventType == EventState.SEND){
+            when(packet){
+                is C0APacketAnimation -> swing = true
+                is C03PacketPlayer -> swing = false
+            }
+        }
+
         blockingMode.onPacket(event)
     }
 }

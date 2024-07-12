@@ -67,8 +67,8 @@ object PlayerUtils {
             }
             var off = 0
             while (off < mc.thePlayer.posY.toInt() + 2) {
-                val bb = mc.thePlayer.entityBoundingBox.offset(0.0, (-off).toDouble(), 0.0)
-                if (!mc.theWorld.getCollidingBoundingBoxes(mc.thePlayer, bb).isEmpty()) {
+                val bb = mc.thePlayer.entityBoundingBox.offset(0.0, -off.toDouble(), 0.0)
+                if (mc.theWorld.getCollidingBoundingBoxes(mc.thePlayer, bb).isNotEmpty()) {
                     return true
                 }
                 off += 2

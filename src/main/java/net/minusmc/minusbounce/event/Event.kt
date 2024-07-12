@@ -24,6 +24,13 @@ open class CancellableEvent : Event() {
         isCancelled = true
     }
 
+    /**
+     * Allows you to stop cancel a event
+     */
+    fun stopCancel(){
+        isCancelled = false
+    }
+
 }
 
 enum class EventState(val stateName: String) {

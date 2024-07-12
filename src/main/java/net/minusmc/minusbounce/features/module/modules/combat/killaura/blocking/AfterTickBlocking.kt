@@ -4,10 +4,10 @@ import net.minusmc.minusbounce.features.module.modules.combat.killaura.KillAuraB
 
 class AfterTickBlocking: KillAuraBlocking("AfterTick") {
     override fun onPreAttack() {
-        killAura.stopBlocking()
+        killAura.stopBlocking(false)
     }
     
     override fun onPostMotion() {
-        killAura.startBlocking()
+        killAura.startBlocking(true, false)
     }
 }

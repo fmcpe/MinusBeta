@@ -94,7 +94,7 @@ class Velocity : Module() {
         mode.onStrafe(event)
     }
 
-    @EventTarget
+    @EventTarget(priority = -999)
     fun onInput(event: MoveInputEvent) {
         mode.onInput(event)
     }
@@ -104,6 +104,9 @@ class Velocity : Module() {
         mode.onAttack(event)
     }
 
+    fun onGameLoop(event: GameLoop){
+        mode.gameLoop()
+    }
     @EventTarget
     fun onKnockBack(event: KnockBackEvent) {
         mode.onKnockBack(event)

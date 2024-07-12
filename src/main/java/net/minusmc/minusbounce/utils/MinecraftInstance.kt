@@ -6,11 +6,14 @@
 package net.minusmc.minusbounce.utils
 
 import net.minecraft.client.Minecraft
+import net.minecraft.client.entity.EntityPlayerSP
+import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityLivingBase
 import net.minecraft.util.AxisAlignedBB
 import net.minecraft.util.Vec3
-import net.minusmc.minusbounce.injection.implementations.IEntityPlayerSP
+import net.minusmc.minusbounce.injection.implementations.IEntity
 import net.minusmc.minusbounce.injection.implementations.IEntityLivingBase
+import net.minusmc.minusbounce.injection.implementations.IEntityPlayerSP
 
 open class MinecraftInstance {
     companion object {
@@ -50,6 +53,18 @@ open class MinecraftInstance {
             get() = (this as IEntityLivingBase).realPosZ
             set(value) {
                 (this as IEntityLivingBase).realPosZ = value
+            }
+
+        var EntityPlayerSP.reSprint: Int
+            get() = (this as IEntityPlayerSP).reSprint
+            set(value) {
+                (this as IEntityPlayerSP).reSprint = value
+            }
+
+        var Entity.ticksSprint: Int
+            get() = (this as IEntity).ticksSprint
+            set(value) {
+                (this as IEntity).ticksSprint = value
             }
     }
 }

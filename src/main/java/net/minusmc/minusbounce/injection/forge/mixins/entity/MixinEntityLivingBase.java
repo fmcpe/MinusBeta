@@ -170,12 +170,11 @@ public abstract class MixinEntityLivingBase extends MixinEntity implements IEnti
     @Inject(method = "onLivingUpdate", at = @At("HEAD"))
     private void headLiving(CallbackInfo callbackInfo) {
         if (
-            Objects.requireNonNull(MinusBounce.moduleManager.getModule(NoJumpDelay.class)).getState() &&
-            Objects.requireNonNull(
-                    Objects.requireNonNull(
-                            MinusBounce.moduleManager.getModule(Scaffold.class)
-                    ).getValue("Tower")).get() == "Off"
-        ) jumpTicks = 0;
+            Objects.requireNonNull(MinusBounce.moduleManager.getModule(NoJumpDelay.class)).getState() ||
+            Objects.requireNonNull(MinusBounce.moduleManager.getModule(Scaffold.class)).getState()
+        ) {
+            jumpTicks = 0;
+        }
     }
 
     @Inject(method = "isPotionActive(Lnet/minecraft/potion/Potion;)Z", at = @At("HEAD"), cancellable = true)

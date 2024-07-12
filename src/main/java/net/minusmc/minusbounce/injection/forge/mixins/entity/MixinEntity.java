@@ -16,6 +16,7 @@ import net.minecraftforge.common.capabilities.CapabilityDispatcher;
 import net.minusmc.minusbounce.MinusBounce;
 import net.minusmc.minusbounce.event.StrafeEvent;
 import net.minusmc.minusbounce.features.module.modules.combat.HitBox;
+import net.minusmc.minusbounce.injection.implementations.IEntity;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -30,7 +31,7 @@ import java.util.Random;
 import java.util.UUID;
 
 @Mixin(Entity.class)
-public abstract class MixinEntity {
+public abstract class MixinEntity implements IEntity {
 
     @Shadow
     public double posX;
@@ -189,6 +190,18 @@ public abstract class MixinEntity {
         return fire;
     }
 
+    public int ticksSprint = 0;
+
+    @Override
+    public int getTicksSprint(){
+        return ticksSprint;
+    }
+
+    @Override
+    public void setTicksSprint(int v){
+        ticksSprint = v;
+    }
+
     @Inject(method = "getCollisionBorderSize", at = @At("HEAD"), cancellable = true)
     private void getCollisionBorderSize(final CallbackInfoReturnable<Float> callbackInfoReturnable) {
         final HitBox hitBox = MinusBounce.moduleManager.getModule(HitBox.class);
@@ -247,6 +260,11 @@ public abstract class MixinEntity {
     @Inject(method = "spawnRunningParticles", at = @At("HEAD"), cancellable = true)
     private void checkGroundState(CallbackInfo ci) {
         if (!this.onGround) ci.cancel();
+    }
+
+    @Inject(method = "onUpdate", at = @At("HEAD"))
+    private void onUpdate(CallbackInfo ci) {
+        setTicksSprint(isSprinting() ? getTicksSprint() + 1 : 0);
     }
 
 

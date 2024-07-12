@@ -2,8 +2,8 @@ package net.minusmc.minusbounce.features.module.modules.combat.killaura.blocking
 
 import net.minusmc.minusbounce.features.module.modules.combat.killaura.KillAuraBlocking
 
-class VanillaBlocking: KillAuraBlocking("Vanilla") {
+class ReBlock: KillAuraBlocking("ReBlock") {
     override fun onPostAttack(){
-        killAura.startBlocking(true, false)
+        killAura.startBlocking(false, false)
     }
 }

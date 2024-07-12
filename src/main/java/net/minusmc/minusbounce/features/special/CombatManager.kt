@@ -1,26 +1,29 @@
 package net.minusmc.minusbounce.features.special
 
-import net.minecraft.entity.EntityLiving
 import net.minecraft.entity.EntityLivingBase
 import net.minecraft.entity.player.EntityPlayer
 import net.minusmc.minusbounce.MinusBounce
 import net.minusmc.minusbounce.event.*
-import net.minusmc.minusbounce.utils.extensions.*
 import net.minusmc.minusbounce.utils.EntityUtils
 import net.minusmc.minusbounce.utils.MinecraftInstance
 import net.minusmc.minusbounce.utils.timer.MSTimer
 
-class CombatManager: MinecraftInstance(), Listenable {
-	var inCombat = false
-	var target: EntityLivingBase? = null
-	private val attackedEntityList = mutableListOf<EntityLivingBase>()
+class CombatManager : Listenable, MinecraftInstance() {
+	private val lastAttackTimer = MSTimer()
 
-	private val attackTimer = MSTimer()
+	var inCombat = false
+		private set
+	var target: EntityLivingBase? = null
+		private set
+	private val attackedEntityList = mutableListOf<EntityLivingBase>()
+	val focusedPlayerList = mutableListOf<EntityPlayer>()
 
 	@EventTarget
-	fun onUpdate(event: PreUpdateEvent) {
-		mc.thePlayer ?: return
-		attackedEntityList.map {it}.forEach {
+	fun onUpdate(event: UpdateEvent) {
+		if (mc.thePlayer == null) return
+
+		// bypass java.util.ConcurrentModificationException
+		attackedEntityList.map { it }.forEach {
 			if (it.isDead) {
 				MinusBounce.eventManager.callEvent(EntityKilledEvent(it))
 				attackedEntityList.remove(it)
@@ -29,13 +32,13 @@ class CombatManager: MinecraftInstance(), Listenable {
 
 		inCombat = false
 
-		if (!attackTimer.hasTimePassed(250)) {
+		if (!lastAttackTimer.hasTimePassed(500)) {
 			inCombat = true
 			return
 		}
 
 		if (target != null) {
-			if (mc.thePlayer.getDistanceToEntityBox(target!!) > 7 || !inCombat || target!!.isDead) {
+			if (mc.thePlayer.getDistanceToEntity(target) > 7 || !inCombat || target!!.isDead) {
 				target = null
 			} else {
 				inCombat = true
@@ -49,19 +52,38 @@ class CombatManager: MinecraftInstance(), Listenable {
 
 		if (target is EntityLivingBase && EntityUtils.isSelected(target, true)) {
 			this.target = target
-			if (!attackedEntityList.contains(target)) attackedEntityList.add(target)
+			if (!attackedEntityList.contains(target)) {
+				attackedEntityList.add(target)
+			}
 		}
-
-		attackTimer.reset()
+		lastAttackTimer.reset()
 	}
 
 	@EventTarget
 	fun onWorld(event: WorldEvent) {
-		attackedEntityList.clear()
-		target = null
 		inCombat = false
+		target = null
+		attackedEntityList.clear()
+		focusedPlayerList.clear()
+	}
+
+	fun getNearByEntity(radius: Float): EntityLivingBase? {
+		return try {
+			mc.theWorld.loadedEntityList
+				.filter { mc.thePlayer.getDistanceToEntity(it) < radius && EntityUtils.isSelected(it, true) }
+				.sortedBy { it.getDistanceToEntity(mc.thePlayer) }[0] as EntityLivingBase?
+		} catch (e: Exception) {
+			null
+		}
+	}
+
+	fun isFocusEntity(entity: EntityPlayer): Boolean {
+		if (focusedPlayerList.isEmpty()) {
+			return true // no need 2 focus
+		}
+
+		return focusedPlayerList.contains(entity)
 	}
 
 	override fun handleEvents() = true
-
 }

@@ -84,7 +84,8 @@ class NoFall : Module() {
     @EventTarget
     fun onPacket(event: PacketEvent) {
         mc.thePlayer ?: return
-        if (!MinusBounce.moduleManager[Fly::class.java]!!.state && voidCheckValue.get() && !PlayerUtils.isBlockUnder) return
+        val fly = MinusBounce.moduleManager[Fly::class.java] ?: return
+        if (!fly.state && voidCheckValue.get() && !PlayerUtils.isBlockUnder) return
 
         mode.onPacket(event)
     }

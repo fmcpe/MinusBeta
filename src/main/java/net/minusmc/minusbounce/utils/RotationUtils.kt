@@ -37,12 +37,9 @@ object RotationUtils : MinecraftInstance(), Listenable {
     private var silent: Boolean = false
     private var lastRotations: Rotation? = null
     private var rotations: Rotation? = null
-    private var rotationSpeed: Float = 0f
+    var rotationSpeed: Float = 0f
     private var set: Boolean = true
     var type: MovementFixType = MovementFixType.NONE
-
-    //SilentMove stuffs
-    private var ticks: Int = 0
 
     private var x = random.nextDouble()
     private var y = random.nextDouble()
@@ -575,31 +572,28 @@ object RotationUtils : MinecraftInstance(), Listenable {
         val yDiff = getAngleDifference(targetRotation.yaw, currentRotation.yaw)
         val pDiff = getAngleDifference(targetRotation.pitch, currentRotation.pitch)
 
-        val distance = sqrt(yDiff * yDiff + pDiff * pDiff)
-        if(turnSpeed < 0 || distance <= 0) return currentRotation
-        val maxYaw = turnSpeed * abs(yDiff / distance)
-        val maxPitch = turnSpeed * abs(pDiff / distance)
+        if(turnSpeed != 0.0F) {
+            val yAdd = if(yDiff > turnSpeed) turnSpeed else yDiff.coerceAtLeast(-turnSpeed)
+            val pAdd = if(pDiff > turnSpeed) turnSpeed else pDiff.coerceAtLeast(-turnSpeed)
 
-        val yAdd = max(min(yDiff, maxYaw), -maxYaw)
-        val pAdd = max(min(pDiff, maxPitch), -maxPitch)
+            yaw = currentRotation.yaw + yAdd
+            pitch = currentRotation.pitch + pAdd
 
-        yaw = currentRotation.yaw + yAdd
-        pitch = currentRotation.pitch + pAdd
+            /* Randomize */
+            for (i in 1.0..Minecraft.getDebugFPS() / 20.0 + Math.random() * 10.0 step 1.0) {
+                if (abs(yAdd) + abs(pAdd) > 1) {
+                    yaw += (Math.random().toFloat() - 0.5f) / 1000f
+                    pitch -= Math.random().toFloat() / 200f
+                }
 
-        /* Randomize */
-        for (i in 1.0..Minecraft.getDebugFPS() / 20.0 + Math.random() * 10.0 step 1.0) {
-            if (abs(yAdd) + abs(pAdd) > 1) {
-                yaw += (Math.random().toFloat() - 0.5f) / 1000f
-                pitch -= Math.random().toFloat() / 200f
+                /* Fixing GCD */
+                val rotation = Rotation(yaw, pitch)
+                rotation.fixedSensitivity()
+
+                /* Setting Rotation */
+                yaw = rotation.yaw
+                pitch = rotation.pitch
             }
-
-            /* Fixing GCD */
-            val rotation = Rotation(yaw, pitch)
-            rotation.fixedSensitivity()
-
-            /* Setting Rotation */
-            yaw = rotation.yaw
-            pitch = rotation.pitch
         }
 
         return Rotation(yaw, pitch)

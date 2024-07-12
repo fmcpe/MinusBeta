@@ -6,6 +6,7 @@ import net.minecraft.client.entity.EntityPlayerSP
 import net.minecraft.client.gui.ScaledResolution
 import net.minecraft.client.multiplayer.WorldClient
 import net.minecraft.client.renderer.GlStateManager
+import net.minecraft.client.settings.KeyBinding
 import net.minecraft.item.ItemBlock
 import net.minecraft.item.ItemStack
 import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement
@@ -38,6 +39,7 @@ import kotlin.math.*
 class Scaffold: Module(){
 
     private val modes = ListValue("Mode", arrayOf("Normal", "Snap", "Telly", "None", "GodBridge", "Legit"), "Normal")
+    private val clicks = ListValue("ClickMode", arrayOf("Legit", "RayTraced", "Normal"), "RayTraced")
     private val ticks = IntegerValue("Ticks", 0, 0, 10) { modes.get() == "Telly" }
     private val delayValue = IntRangeValue("Delay", 0, 0, 0, 10)
     private val sprint = ListValue("Sprint", arrayOf("Normal", "Legit", "VulcanToggle", "Omni", "Off"), "Normal")
@@ -157,7 +159,10 @@ class Scaffold: Module(){
                 mc.gameSettings.keyBindSprint.pressed = true
             }
             "legit" -> {
-                mc.gameSettings.keyBindSprint.pressed = abs(MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw) - MathHelper.wrapAngleTo180_float(RotationUtils.targetRotation!!.yaw)) < 90
+                val player = MathHelper.wrapAngleTo180_float(MovementUtils.getPlayerDirection())
+                val target = MathHelper.wrapAngleTo180_float(RotationUtils.targetRotation?.yaw ?: return)
+
+                mc.gameSettings.keyBindSprint.pressed = if(RotationUtils.active) abs(player - target) > 90 - 22.5 else true
             }
             "omni" -> mc.thePlayer.isSprinting = true
             "vulcantoggle" -> {
@@ -338,19 +343,9 @@ class Scaffold: Module(){
         if (
             mc.thePlayer.inventory.currentItem == InventoryUtils.serverSlot &&
             !BadPacketUtils.bad(false, true, false, false, true) &&
-            ticksOnAir > RandomUtils.nextInt(delayValue.getMinValue(), delayValue.getMaxValue()) &&
-            isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)
+            ticksOnAir > RandomUtils.nextInt(delayValue.getMinValue(), delayValue.getMaxValue())
         ) {
-            when (modes.get().lowercase()){
-                "legit" -> if(mc.thePlayer.posY < (mc.objectMouseOver.blockPos.y + 1.5)){
-                    if(mc.objectMouseOver.sideHit != EnumFacing.UP && mc.objectMouseOver.sideHit != EnumFacing.DOWN){
-                        rightClickMouse()
-                    }
-                } else if(mc.objectMouseOver.sideHit != EnumFacing.DOWN && mc.gameSettings.keyBindJump.isKeyDown){
-                    rightClickMouse()
-                }
-                else -> rightClickMouse()
-            }
+            place()
             ticksOnAir = 0
         }
 
@@ -366,12 +361,37 @@ class Scaffold: Module(){
         }
     }
 
+    private fun place() {
+        when (modes.get().lowercase()){
+            "legit" -> if(mc.thePlayer.posY < (mc.objectMouseOver.blockPos.y + 1.5)){
+                if(mc.objectMouseOver.sideHit != EnumFacing.UP && mc.objectMouseOver.sideHit != EnumFacing.DOWN){
+                    rightClickMouse()
+                }
+            } else if(mc.objectMouseOver.sideHit != EnumFacing.DOWN && mc.gameSettings.keyBindJump.isKeyDown){
+                rightClickMouse()
+            }
+            else -> rightClickMouse()
+        }
+    }
+
+    private fun rightClickMouse(){
+        when(clicks.get().lowercase()){
+            "legit" -> KeyBinding.onTick(mc.gameSettings.keyBindUseItem.keyCode)
+            "normal" -> clickMouse()
+            "raytraced" -> {
+                if(isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)){
+                    clickMouse()
+                }
+            }
+        }
+    }
+
     /***
      * @author Mojang
      *
      * From MCP
      */
-    private fun rightClickMouse(){
+    private fun clickMouse(){
         val itemStack = mc.thePlayer.inventory.getCurrentItem()
         var flag = true
         if (!mc.theWorld.isAirBlock(blockPlace)) {
@@ -555,6 +575,10 @@ class Scaffold: Module(){
      *  @return block relative to the player
      */
     private fun calculateRotations() {
+        /* Telly thingy*/
+        val player = MovementUtils.getDirectionRotation(mc.thePlayer.rotationYaw, 0F, 1F).toFloat()
+        val fixes = MathHelper.wrapAngleTo180_float(player)
+
         /* Falling prediction */
         val c1 = calculateRealY(mc.theWorld, bb, motionX, motionZ, 0.546) <= -0.015625
         val a1 = calculateRealY(mc.theWorld, bb, motionX, motionZ, 1.0)
@@ -587,14 +611,17 @@ class Scaffold: Module(){
                     getRotations()
                 }
             }
-            "telly" -> if (RotationUtils.offGroundTicks >= ticks.get()) {
-                if (!isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)) {
+            "telly" -> {
+                if (RotationUtils.offGroundTicks >= ticks.get()) {
+                    if (!isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)) {
+                        getRotations()
+                    }
+                } else {
                     getRotations()
+                    targetYaw = MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw)
                 }
-            } else {
-                getRotations()
-                targetYaw = MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw)
             }
+
             else -> if (ticksOnAir > 0 && !isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)) {
                 getRotations()
             }
@@ -603,7 +630,7 @@ class Scaffold: Module(){
         /* Setting rotations */
         RotationUtils.setRotations(
             Rotation(targetYaw, targetPitch),
-            0,
+            2,
             RandomUtils.nextFloat(speed.getMinValue(), speed.getMaxValue()),
             if (movementCorrection.get() && !modes.get().equals("none", true)) MovementFixType.FULL
             else MovementFixType.NONE,

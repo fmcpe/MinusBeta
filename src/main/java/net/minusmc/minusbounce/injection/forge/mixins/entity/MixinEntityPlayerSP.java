@@ -42,6 +42,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.List;
+import java.util.Objects;
 
 @Mixin(EntityPlayerSP.class)
 public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer implements IEntityPlayerSP {
@@ -106,7 +107,7 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
      */
     @Overwrite
     protected boolean isCurrentViewEntity() {
-        return (mc.getRenderViewEntity() != null && mc.getRenderViewEntity().equals(this)) || (MinusBounce.moduleManager != null && MinusBounce.moduleManager.getModule(Fly.class).getState());
+        return (mc.getRenderViewEntity() != null && mc.getRenderViewEntity().equals(this)) || (MinusBounce.moduleManager != null && Objects.requireNonNull(MinusBounce.moduleManager.getModule(Fly.class)).getState());
     }
 
     @Shadow
@@ -138,9 +139,19 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
     @Override
     public Rotation getPlayerRotation(){ return new Rotation(rotationYaw, rotationPitch); }
 
+    //Resprint thingy
+    private int reSprint;
+
+    @Override
+    public int getReSprint() { return reSprint; }
+
+    @Override
+    public void setReSprint(int v) { reSprint = v; }
+
+
     /**
-     * @author fmcpe
-     * @reason PreMotionEvent. MCP
+     * @author .
+     * @reason .
      */
     @Overwrite
     public void onUpdateWalkingPlayer() {
@@ -155,6 +166,8 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
         MinusBounce.eventManager.callEvent(event);
 
         final InvMove inventoryMove = MinusBounce.moduleManager.getModule(InvMove.class);
+
+        assert inventoryMove != null;
         final boolean fakeSprint = (inventoryMove.getState() && inventoryMove.isAACAP());
 
         boolean sprinting = this.isSprinting() && !fakeSprint;
@@ -166,6 +179,7 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
             else
                 this.sendQueue.addToSendQueue(new C0BPacketEntityAction((EntityPlayerSP) (Object) this, C0BPacketEntityAction.Action.STOP_SPRINTING));
 
+            this.reSprint = 1;
             this.serverSprintState = sprinting;
         }
 
@@ -308,8 +322,10 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
         this.pushOutOfBlocks(this.posX - (double) this.width * 0.35D, this.getEntityBoundingBox().minY + 0.5D, this.posZ - (double) this.width * 0.35D);
         this.pushOutOfBlocks(this.posX + (double) this.width * 0.35D, this.getEntityBoundingBox().minY + 0.5D, this.posZ - (double) this.width * 0.35D);
         this.pushOutOfBlocks(this.posX + (double) this.width * 0.35D, this.getEntityBoundingBox().minY + 0.5D, this.posZ + (double) this.width * 0.35D);
-
         boolean flag3 = (float) this.getFoodStats().getFoodLevel() > 6.0F || this.capabilities.allowFlying;
+
+        final float forward = this.movementInput.moveForward;
+        if(this.reSprint == 2) this.movementInput.moveForward = 0.0F;
 
         assert noSlow != null;
         assert scaffold != null;
@@ -329,6 +345,11 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
 
         if (this.isSprinting() && (this.movementInput.moveForward < f || this.isCollidedHorizontally || !flag3)) {
             this.setSprinting(false);
+        }
+
+        if(this.reSprint == 2){
+            this.movementInput.moveForward = forward;
+            this.reSprint = 1;
         }
 
         if (this.capabilities.allowFlying) {
@@ -631,7 +652,7 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
                     d13 = 0.0D;
                 }
 
-                if (block1 != null && this.onGround) {
+                if (this.onGround) {
                     block1.onEntityCollidedWithBlock(this.worldObj, blockpos, (Entity) (Object) this);
                 }
 
