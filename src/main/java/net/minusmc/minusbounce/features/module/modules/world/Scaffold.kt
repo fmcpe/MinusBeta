@@ -61,6 +61,7 @@ class Scaffold: Module(){
 
     private val timer = FloatValue("Timer", 1f, 0f, 5f)
     private val safeWalk = BoolValue("SafeWalk", false)
+    private val jumpAutomatically = BoolValue("JumpAutomatically", false) {modes.get().equals("GodBridge", true)}
     private val movementCorrection = BoolValue("MovementCorrection", true)
 
     private val counter = BoolValue("Counter", false)
@@ -104,6 +105,11 @@ class Scaffold: Module(){
     /* Init */
     @EventTarget
     fun onUpdate(event: UpdateEvent) {
+        // jumpAutomatically only godbridge
+         if (MovementUtils.isMoving() && mc.thePlayer.onGround && !mc.thePlayer.isSneaking && !mc.gameSettings.keyBindSneak.isKeyDown && !mc.gameSettings.keyBindJump.isKeyDown &&
+                mc.theWorld.getCollidingBoundingBoxes(mc.thePlayer, mc.thePlayer.entityBoundingBox
+                        .offset(0.0, -0.5, 0.0).expand(-0.001, 0.0, -0.001)).isEmpty())
+            mc.thePlayer.jump()
         // Eagle
         if (!eagleValue.equals("Off") && mc.thePlayer.onGround) {
             var dif = 0.5
