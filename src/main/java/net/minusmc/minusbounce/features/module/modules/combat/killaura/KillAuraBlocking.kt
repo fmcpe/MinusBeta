@@ -1,11 +1,10 @@
 package net.minusmc.minusbounce.features.module.modules.combat.killaura
 
-import net.minusmc.minusbounce.utils.ClassUtils
-import net.minusmc.minusbounce.utils.MinecraftInstance
-import net.minusmc.minusbounce.value.Value
-import net.minusmc.minusbounce.features.module.modules.combat.KillAura
-import net.minusmc.minusbounce.event.*
 import net.minusmc.minusbounce.MinusBounce
+import net.minusmc.minusbounce.event.PacketEvent
+import net.minusmc.minusbounce.event.SlowDownEvent
+import net.minusmc.minusbounce.features.module.modules.combat.KillAura
+import net.minusmc.minusbounce.utils.MinecraftInstance
 
 abstract class KillAuraBlocking(val modeName: String): MinecraftInstance() {
 	protected val killAura: KillAura
@@ -30,4 +29,11 @@ abstract class KillAuraBlocking(val modeName: String): MinecraftInstance() {
 	open fun onPacket(event: PacketEvent) {}
 
 	open fun onDisable() {}
+
+	open fun onSlowDown(event: SlowDownEvent) {
+		mc.thePlayer ?: return
+		mc.theWorld ?: return
+		event.forward = 1.0F
+		event.strafe = 1.0F
+	}
 }

@@ -4,14 +4,14 @@ import net.minecraft.network.play.client.C09PacketHeldItemChange
 import net.minusmc.minusbounce.features.module.modules.combat.killaura.KillAuraBlocking
 
 class Grim: KillAuraBlocking("Grim") {
-    override fun onPreAttack(){
+    override fun onPreAttack() {
         val slot = mc.thePlayer.inventory.currentItem
         mc.netHandler.addToSendQueue(C09PacketHeldItemChange(slot % 8 + 1))
         mc.netHandler.addToSendQueue(C09PacketHeldItemChange(slot % 7 + 2))
         mc.netHandler.addToSendQueue(C09PacketHeldItemChange(slot))
     }
 
-    override fun onPostAttack(){
+    override fun onPostAttack() {
         killAura.startBlocking(true, false)
     }
 }

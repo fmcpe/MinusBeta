@@ -35,15 +35,14 @@ import net.minusmc.minusbounce.utils.item.ItemUtils
 import net.minusmc.minusbounce.utils.misc.RandomUtils
 import net.minusmc.minusbounce.utils.movement.MovementFixType
 import net.minusmc.minusbounce.utils.timer.MSTimer
-import net.minusmc.minusbounce.utils.timer.TimeUtils
 import net.minusmc.minusbounce.value.*
 import org.lwjgl.input.Keyboard
 import org.lwjgl.opengl.GL11
+import java.util.*
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sin
-
 
 @ModuleInfo(name = "KillAura", spacedName = "Kill Aura", description = "Automatically attacks targets around you.", category = ModuleCategory.COMBAT, keyBind = Keyboard.KEY_R)
 class KillAura : Module() {
@@ -120,10 +119,18 @@ class KillAura : Module() {
     private val discoveredEntities = mutableListOf<EntityLivingBase>()
     var target: EntityLivingBase? = null
     var hitable = false
-    
+
+
+    // autoclicker vars
+    private var i: Long = 0
+    private var j: Long = 0
+    private var k: Long = 0
+    private var l: Long = 0
+    private var m = 0.0
+    private var n = false
+
     // Attack delay
-    private val attackTimer = MSTimer()
-    private var attackDelay = 0L
+    private val switchTimer = MSTimer()
     private var clicks = 0
     private var swing = false
     private var attackTickTimes = mutableListOf<Pair<MovingObjectPosition, Int>>()
@@ -134,7 +141,7 @@ class KillAura : Module() {
     override fun onDisable() {
         target = null
         hitable = false
-        attackTimer.reset()
+        switchTimer.reset()
         attackTickTimes.clear()
         clicks = 0
         prevTargetEntities.clear()
@@ -158,10 +165,26 @@ class KillAura : Module() {
 
         updateTarget()
 
-        if(!BadPacketUtils.bad(false, true, true, false, true)) {
-            repeat(clicks) {
-                runAttack(it + 1 == clicks)
-                clicks--
+        if(!BadPacketUtils.bad(
+                false,
+                true,
+                true,
+                false,
+                true)
+            && clicks > 0
+        ) {
+            /* Unblock & Attack */
+            if (blockingStatus && !autoBlockModeValue.get().equals("none", true)) {
+                blockingMode.onPreAttack()
+            }
+
+            runAttack(clicks-- + 1 == clicks)
+
+            /* AutoBlock */
+            if (canBlock && mc.thePlayer.getDistanceToEntityBox(target ?: return) <= autoBlockRangeValue.get()) {
+                if(!autoBlockModeValue.get().equals("none", true)){
+                    blockingMode.onPostAttack()
+                }
             }
         }
     }
@@ -202,16 +225,58 @@ class KillAura : Module() {
 
         target ?: return
 
-        if (attackTimer.hasTimePassed(attackDelay) && target!!.hurtTime <= hurtTimeValue.get()) {
+        if (canAttack() && target!!.hurtTime <= hurtTimeValue.get()) {
             clicks++
-            attackTimer.reset()
-            attackDelay = TimeUtils.randomClickDelay(cps.getMinValue(), cps.getMaxValue())
         }
 
         /* Draw ESP */
         when(espModes.get().lowercase()){
             "jello" -> drawCircle(target!!)
         }
+    }
+
+    fun gd() {
+        val c = RandomUtils.nextInt(cps.getMinValue(), cps.getMaxValue()) + 0.4 * Random().nextDouble()
+        var d = Math.round(1000.0 / c).toInt().toLong()
+        if (System.currentTimeMillis() > this.k) {
+            if (!this.n && Random().nextInt(100) >= 85) {
+                this.n = true
+                this.m = 1.1 + Random().nextDouble() * 0.15
+            } else {
+                this.n = false
+            }
+
+            this.k = System.currentTimeMillis() + 500L + (Random().nextInt(1500).toLong())
+        }
+
+        if (this.n) {
+            d = (d.toDouble() * this.m).toLong()
+        }
+
+        if (System.currentTimeMillis() > this.l) {
+            if (Random().nextInt(100) >= 80) {
+                d += 50L + Random().nextInt(100).toLong()
+            }
+
+            this.l = System.currentTimeMillis() + 500L + (Random().nextInt(1500).toLong())
+        }
+
+        this.j = System.currentTimeMillis() + d
+        this.i = System.currentTimeMillis() + d / 2L - Random().nextInt(10).toLong()
+    }
+
+    private fun canAttack(): Boolean {
+        if (this.j > 0L && this.i > 0L) {
+            if (System.currentTimeMillis() > this.j) {
+                this.gd()
+                return true
+            } else if (System.currentTimeMillis() > this.i) {
+                return false
+            }
+        } else {
+            this.gd()
+        }
+        return false
     }
 
     /**
@@ -337,9 +402,9 @@ class KillAura : Module() {
         }
 
         if (targetModeValue.get().equals("Switch", true)) {
-            if (attackTimer.hasTimePassed(switchDelayValue.get().toLong())) {
+            if (switchTimer.hasTimePassed(switchDelayValue.get().toLong())) {
                 prevTargetEntities.add(target!!.entityId)
-                attackTimer.reset()
+                switchTimer.reset()
             }
         }
     }
@@ -440,22 +505,10 @@ class KillAura : Module() {
                 mc.thePlayer.inventory.currentItem = if (it.component1() != mc.thePlayer.inventory.currentItem) it.component1() else return@let
             }
 
-        /* Unblock & Attack */
-        if (blockingStatus && !autoBlockModeValue.get().equals("none", true)) {
-            blockingMode.onPreAttack()
-        }
-
         when(modes.get().lowercase()){
             "normal" -> clickNormal(entity)
             "legit" -> clickLegit()
             "blatant" -> clickBlatant(entity)
-        }
-
-        /* AutoBlock */
-        if (canBlock && mc.thePlayer.getDistanceToEntityBox(target ?: return) <= autoBlockRangeValue.get()) {
-            if(!autoBlockModeValue.get().equals("none", true)){
-                blockingMode.onPostAttack()
-            }
         }
     }
 
@@ -595,6 +648,11 @@ class KillAura : Module() {
     @EventTarget
     fun onPostMotion(event: PostMotionEvent) {
         blockingMode.onPostMotion()
+    }
+
+    @EventTarget
+    fun onSlowDown(event: SlowDownEvent) {
+        blockingMode.onSlowDown(event)
     }
 
     @EventTarget

@@ -10,4 +10,5 @@ class AfterTickBlocking: KillAuraBlocking("AfterTick") {
     override fun onPostMotion() {
         killAura.startBlocking(true, false)
     }
+
 }

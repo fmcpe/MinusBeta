@@ -4,7 +4,13 @@ import net.minecraft.client.renderer.GlStateManager
 import net.minecraft.entity.EntityLivingBase
 import net.minecraft.network.INetHandler
 import net.minecraft.network.Packet
-import net.minecraft.network.play.server.*
+import net.minecraft.network.handshake.client.C00Handshake
+import net.minecraft.network.login.client.C00PacketLoginStart
+import net.minecraft.network.login.client.C01PacketEncryptionResponse
+import net.minecraft.network.play.client.C01PacketChatMessage
+import net.minecraft.network.play.server.S14PacketEntity
+import net.minecraft.network.play.server.S18PacketEntityTeleport
+import net.minecraft.network.status.client.C00PacketServerQuery
 import net.minecraft.util.AxisAlignedBB
 import net.minusmc.minusbounce.MinusBounce
 import net.minusmc.minusbounce.event.EventTarget
@@ -215,16 +221,9 @@ class BackTrack : Module() {
         }
     }
 
-    private fun blockPacket(packet: Packet<*>): Boolean {
-        return (packet is S14PacketEntity
-                || packet is S19PacketEntityHeadLook
-                || packet is S18PacketEntityTeleport
-                || packet is S0FPacketSpawnMob
-                || packet is S08PacketPlayerPosLook
-                || packet is S03PacketTimeUpdate    
-                || packet is S00PacketKeepAlive
-                || packet is S12PacketEntityVelocity
-                || packet is S27PacketExplosion
-                || packet is S32PacketConfirmTransaction)
+    private fun blockPacket(packet: Packet<*>): Boolean = when(packet) {
+        is C00Handshake, is C00PacketLoginStart, is C00PacketServerQuery,
+        is C01PacketEncryptionResponse, is C01PacketChatMessage -> false
+        else -> true
     }
 }
