@@ -110,6 +110,7 @@ class Scaffold: Module(){
                 mc.theWorld.getCollidingBoundingBoxes(mc.thePlayer, mc.thePlayer.entityBoundingBox
                         .offset(0.0, -0.5, 0.0).expand(-0.001, 0.0, -0.001)).isEmpty())
             mc.thePlayer.jump()
+            mc.rightClickMouse()
         // Eagle
         if (!eagleValue.equals("Off") && mc.thePlayer.onGround) {
             var dif = 0.5
