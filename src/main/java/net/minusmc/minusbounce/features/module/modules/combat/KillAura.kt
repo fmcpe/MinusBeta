@@ -14,6 +14,7 @@ import net.minecraft.entity.item.EntityArmorStand
 import net.minecraft.item.ItemSword
 import net.minecraft.item.ItemTool
 import net.minecraft.network.play.client.*
+import net.minecraft.network.play.server.S2FPacketSetSlot
 import net.minecraft.potion.Potion
 import net.minecraft.util.BlockPos
 import net.minecraft.util.EnumFacing
@@ -35,20 +36,19 @@ import net.minusmc.minusbounce.utils.item.ItemUtils
 import net.minusmc.minusbounce.utils.misc.RandomUtils
 import net.minusmc.minusbounce.utils.movement.MovementFixType
 import net.minusmc.minusbounce.utils.timer.MSTimer
+import net.minusmc.minusbounce.utils.timer.TimeUtils
 import net.minusmc.minusbounce.value.*
 import org.lwjgl.input.Keyboard
 import org.lwjgl.opengl.GL11
 import java.util.*
-import kotlin.math.cos
-import kotlin.math.min
-import kotlin.math.pow
-import kotlin.math.sin
+import kotlin.math.*
+
 
 @ModuleInfo(name = "KillAura", spacedName = "Kill Aura", description = "Automatically attacks targets around you.", category = ModuleCategory.COMBAT, keyBind = Keyboard.KEY_R)
 class KillAura : Module() {
 
     //AutoBlock modes
-    private val blockingModes = ClassUtils.resolvePackage("${this.javaClass.`package`.name}.killaura.blocking", KillAuraBlocking::class.java)
+    private val blockingModes = ClassUtils.resolvePackage("${javaClass.`package`.name}.killaura.blocking", KillAuraBlocking::class.java)
         .map { it.newInstance() as KillAuraBlocking }
         .sortedBy { it.modeName }
 
@@ -59,6 +59,7 @@ class KillAura : Module() {
     private val cps = IntRangeValue("CPS", 5, 8, 1, 20)
     private val hurtTimeValue = IntegerValue("HurtTime", 10, 0, 10)
     private val modes = ListValue("ClickMode", arrayOf("Normal", "Legit", "Blatant"), "Blatant")
+    private val clickMode = ListValue("ClickPattern", arrayOf("Legit", "Normal"))
 
     // Range & throughWalls
     val rangeValue = FloatValue("Range", 3.7f, 1f, 8f, "m")
@@ -92,7 +93,7 @@ class KillAura : Module() {
             if (state) onEnable()
         }
     }
-    private val autoBlockRangeValue = FloatValue("AutoBlock-Range", 5f, 0f, 12f, "m") {
+    val autoBlockRangeValue = FloatValue("AutoBlock-Range", 5f, 0f, 12f, "m") {
         !autoBlockModeValue.get().equals("None", true)
     }
 
@@ -122,14 +123,16 @@ class KillAura : Module() {
 
 
     // autoclicker vars
-    private var i: Long = 0
-    private var j: Long = 0
+    private var nextReleaseClickTime: Long = 0
+    private var nextClickTime: Long = 0
     private var k: Long = 0
     private var l: Long = 0
     private var m = 0.0
     private var n = false
 
     // Attack delay
+    private val attackTimer = MSTimer()
+    private var attackDelay = 0L
     private val switchTimer = MSTimer()
     private var clicks = 0
     private var swing = false
@@ -161,32 +164,25 @@ class KillAura : Module() {
 
     @EventTarget
     fun onUpdate(event: PreUpdateEvent){
-        blockingMode.onPreUpdate()
+        /* Unblock & Attack */
+        if (blockingStatus && canBlock && !autoBlockModeValue.get().equals("none", true)) {
+            blockingMode.onPreAttack()
+        }
 
-        updateTarget()
-
-        if(!BadPacketUtils.bad(
-                false,
-                true,
-                true,
-                false,
-                true)
-            && clicks > 0
-        ) {
-            /* Unblock & Attack */
-            if (blockingStatus && !autoBlockModeValue.get().equals("none", true)) {
-                blockingMode.onPreAttack()
-            }
-
-            runAttack(clicks-- + 1 == clicks)
-
-            /* AutoBlock */
-            if (canBlock && mc.thePlayer.getDistanceToEntityBox(target ?: return) <= autoBlockRangeValue.get()) {
-                if(!autoBlockModeValue.get().equals("none", true)){
-                    blockingMode.onPostAttack()
-                }
+        if(!BadPacketUtils.bad(false, true, true, false, true)) {
+            repeat(clicks) {
+                runAttack(clicks-- == 0)
             }
         }
+
+        /* AutoBlock */
+        if (canBlock && mc.thePlayer.getDistanceToEntityBox(target ?: return) <= autoBlockRangeValue.get()) {
+            if(!autoBlockModeValue.get().equals("none", true)){
+                blockingMode.onPostAttack()
+            }
+        }
+
+        blockingMode.onPreUpdate()
     }
 
     @EventTarget
@@ -225,8 +221,28 @@ class KillAura : Module() {
 
         target ?: return
 
-        if (canAttack() && target!!.hurtTime <= hurtTimeValue.get()) {
-            clicks++
+        if((target?.hurtTime ?: return) <= hurtTimeValue.get()){
+            when(clickMode.get().lowercase()){
+                "legit" -> {
+                    if (this.nextClickTime > 0L && this.nextReleaseClickTime > 0L) {
+                        if (System.currentTimeMillis() > this.nextClickTime) {
+                            clicks++
+                            delay()
+                        } else if (System.currentTimeMillis() > this.nextReleaseClickTime) {
+                            clicks = 0
+                        }
+                    } else {
+                        delay()
+                    }
+                }
+                "normal" -> {
+                    if (attackTimer.hasTimePassed(attackDelay)) {
+                        clicks++
+                        attackTimer.reset()
+                        attackDelay = TimeUtils.randomClickDelay(cps.getMinValue(), cps.getMaxValue())
+                    }
+                }
+            }
         }
 
         /* Draw ESP */
@@ -235,48 +251,40 @@ class KillAura : Module() {
         }
     }
 
-    fun gd() {
-        val c = RandomUtils.nextInt(cps.getMinValue(), cps.getMaxValue()) + 0.4 * Random().nextDouble()
-        var d = Math.round(1000.0 / c).toInt().toLong()
-        if (System.currentTimeMillis() > this.k) {
-            if (!this.n && Random().nextInt(100) >= 85) {
-                this.n = true
-                this.m = 1.1 + Random().nextDouble() * 0.15
+    fun delay() {
+        val random = Random(System.currentTimeMillis())
+        val minCps = cps.getMinValue()
+        val maxCps = cps.getMaxValue()
+
+        val proximityFactor = 0.01
+        val baseC = maxCps - (random.nextDouble() * (maxCps - minCps) * proximityFactor)
+        val noise = (random.nextGaussian() * 0.1) + (0.2 * sin(System.nanoTime() / 1_000_000_000.0))
+        val c = (baseC + noise).coerceIn(minCps.toDouble(), maxCps.toDouble())
+        var d = (1000.0 / c).roundToLong()
+
+        if (System.currentTimeMillis() > k) {
+            if (!n && random.nextInt(100) >= 85) {
+                n = true
+                m = 1.1 + random.nextDouble() * 0.15
             } else {
-                this.n = false
+                n = false
             }
 
-            this.k = System.currentTimeMillis() + 500L + (Random().nextInt(1500).toLong())
+            k = System.currentTimeMillis() + 500L + random.nextInt(1500)
         }
 
-        if (this.n) {
-            d = (d.toDouble() * this.m).toLong()
-        }
+        if (n) d *= m.toLong()
 
-        if (System.currentTimeMillis() > this.l) {
-            if (Random().nextInt(100) >= 80) {
-                d += 50L + Random().nextInt(100).toLong()
+        if (System.currentTimeMillis() > l) {
+            if (random.nextInt(100) >= 80) {
+                d += 50L + random.nextInt(100)
             }
 
-            this.l = System.currentTimeMillis() + 500L + (Random().nextInt(1500).toLong())
+            l = System.currentTimeMillis() + 500L + random.nextInt(1500)
         }
 
-        this.j = System.currentTimeMillis() + d
-        this.i = System.currentTimeMillis() + d / 2L - Random().nextInt(10).toLong()
-    }
-
-    private fun canAttack(): Boolean {
-        if (this.j > 0L && this.i > 0L) {
-            if (System.currentTimeMillis() > this.j) {
-                this.gd()
-                return true
-            } else if (System.currentTimeMillis() > this.i) {
-                return false
-            }
-        } else {
-            this.gd()
-        }
-        return false
+        nextClickTime = System.currentTimeMillis() + d
+        nextReleaseClickTime = System.currentTimeMillis() + d / 2L - random.nextInt(10)
     }
 
     /**
@@ -362,12 +370,13 @@ class KillAura : Module() {
      * runAttack
      * @author fmcpe
      */
-    private fun runAttack(isLastClicks: Boolean) {
+    private fun runAttack(lastClick: Boolean) {
         if(BadPacketUtils.bad(false, true, true, true, true) &&
             (autoBlockModeValue.get().equals("none", true)
                 || autoBlockModeValue.get().equals("reblock", true))){
                 return
             }
+        
         target ?: return
 
         if(hitable){
@@ -395,7 +404,7 @@ class KillAura : Module() {
                     attackTickTimes += (obj to runTimeTicks)
                 }
 
-                if(isLastClicks){
+                if(lastClick) {
                     mc.sendClickBlockToController(false)
                 }
             }
@@ -522,7 +531,7 @@ class KillAura : Module() {
         when (mc.objectMouseOver.typeOfHit) {
             MovingObjectType.ENTITY -> mc.playerController.attackEntity(
                 mc.thePlayer,
-                if(raycastValue.get()) mc.objectMouseOver.entityHit else entity
+                mc.objectMouseOver.entityHit
             )
 
             MovingObjectType.BLOCK -> {
@@ -545,7 +554,9 @@ class KillAura : Module() {
     }
 
     private fun clickLegit() {
-        KeyBinding.onTick(mc.gameSettings.keyBindAttack.keyCode)
+        if(mc.objectMouseOver.entityHit == (target ?: return)){
+            KeyBinding.onTick(mc.gameSettings.keyBindAttack.keyCode)
+        }
     }
 
     private fun clickBlatant(entity: EntityLivingBase){
@@ -647,21 +658,41 @@ class KillAura : Module() {
 
     @EventTarget
     fun onPostMotion(event: PostMotionEvent) {
+        updateTarget()
+
         blockingMode.onPostMotion()
     }
 
     @EventTarget
     fun onSlowDown(event: SlowDownEvent) {
+        mc.thePlayer ?: return
+        mc.theWorld ?: return
+
+        if (canBlock && (mc.thePlayer.isBlocking || blockingStatus)) {
+            event.forward = 1.0F
+            event.strafe = 1.0F
+        }
+
         blockingMode.onSlowDown(event)
     }
 
     @EventTarget
     fun onPacket(event: PacketEvent) {
         val packet = event.packet
+
         if(event.eventType == EventState.SEND){
             when(packet){
                 is C0APacketAnimation -> swing = true
                 is C03PacketPlayer -> swing = false
+            }
+        } else if (canBlock && (mc.thePlayer.isBlocking || blockingStatus)) {
+            if (event.packet is S2FPacketSetSlot) {
+                if (mc.thePlayer.inventory.currentItem == event.packet.func_149173_d() - 36 && mc.currentScreen == null) {
+                    if (event.packet.func_149174_e() == null || (event.packet.func_149174_e().item !== mc.thePlayer.heldItem.item)) {
+                        return
+                    }
+                    event.cancelEvent()
+                }
             }
         }
 

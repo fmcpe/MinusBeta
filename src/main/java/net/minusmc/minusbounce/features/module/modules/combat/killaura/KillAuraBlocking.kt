@@ -30,10 +30,5 @@ abstract class KillAuraBlocking(val modeName: String): MinecraftInstance() {
 
 	open fun onDisable() {}
 
-	open fun onSlowDown(event: SlowDownEvent) {
-		mc.thePlayer ?: return
-		mc.theWorld ?: return
-		event.forward = 1.0F
-		event.strafe = 1.0F
-	}
+	open fun onSlowDown(event: SlowDownEvent) {}
 }

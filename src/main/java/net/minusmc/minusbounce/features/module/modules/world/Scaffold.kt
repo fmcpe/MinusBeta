@@ -1,7 +1,6 @@
 package net.minusmc.minusbounce.features.module.modules.world
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.InternalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import net.minecraft.block.Block
@@ -9,7 +8,6 @@ import net.minecraft.block.BlockAir
 import net.minecraft.client.gui.ScaledResolution
 import net.minecraft.client.multiplayer.WorldClient
 import net.minecraft.client.renderer.GlStateManager
-import net.minecraft.client.settings.KeyBinding
 import net.minecraft.item.ItemBlock
 import net.minecraft.item.ItemStack
 import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement
@@ -25,6 +23,7 @@ import net.minusmc.minusbounce.injection.implementations.IEntityPlayerSP
 import net.minusmc.minusbounce.ui.font.Fonts
 import net.minusmc.minusbounce.utils.*
 import net.minusmc.minusbounce.utils.InventoryUtils.BLOCK_BLACKLIST
+import net.minusmc.minusbounce.utils.MovementUtils.isMoving
 import net.minusmc.minusbounce.utils.block.BlockUtils
 import net.minusmc.minusbounce.utils.block.BlockUtils.rayTrace
 import net.minusmc.minusbounce.utils.block.PlaceInfo
@@ -35,6 +34,7 @@ import net.minusmc.minusbounce.utils.extensions.step
 import net.minusmc.minusbounce.utils.misc.RandomUtils
 import net.minusmc.minusbounce.utils.movement.MovementFixType
 import net.minusmc.minusbounce.utils.render.RenderUtils
+import net.minusmc.minusbounce.utils.timer.MSTimer
 import net.minusmc.minusbounce.value.*
 import org.lwjgl.opengl.GL11
 import java.awt.Color
@@ -44,11 +44,12 @@ import kotlin.math.*
 @ModuleInfo("Scaffold", "Scaffold", "Use huge balls to rolling on mid-air", ModuleCategory.WORLD)
 class Scaffold: Module(){
 
-    private val modes = ListValue("Mode", arrayOf("Normal", "Snap", "Telly", "None", "GodBridge", "Legit"), "Normal")
-    private val clicks = ListValue("ClickMode", arrayOf("Legit", "RayTraced", "Normal"), "RayTraced")
+    private val modes = ListValue("Mode", arrayOf("Normal", "Snap", "Telly", "None", "MoonWalk", "Legit"), "Normal")
+    private val clicks = ListValue("ClickMode", arrayOf("RayTraced", "Normal"), "RayTraced")
     private val searchModeValue = ListValue("AimMode", arrayOf("Area", "Center", "TryRotation"), "Center")
-    private val reset = BoolValue("RotationActivateReset", false) { modes.get() == "Telly" }
-    private val ticks = IntegerValue("Ticks", 0, 0, 10) { modes.get() == "Telly" }
+    private val yawOffset = ListValue("OffsetYaw", arrayOf("0", "45"), "0") {searchModeValue.get() == "TryRotation"}
+    private val reset = BoolValue("RotationActivateReset", false) { modes.get() == "Telly" || modes.get() == "Snap" }
+    private val ticks = IntegerValue("Ticks", 3, 0, 10) { modes.get() == "Telly" }
     private val delayValue = IntRangeValue("Delay", 0, 0, 0, 10)
     private val sprint = ListValue("Sprint", arrayOf("Normal", "Legit", "VulcanToggle", "Omni", "Off"), "Normal")
 
@@ -64,7 +65,8 @@ class Scaffold: Module(){
 
     private val timer = FloatValue("Timer", 1f, 0f, 5f)
     private val safeWalk = BoolValue("SafeWalk", false)
-    private val jumpAutomatically = BoolValue("JumpAutomatically", false) {modes.get().equals("GodBridge", true)}
+    private val adStrafe = BoolValue("ADStrafe", false) {modes.get() != "MoonWalk"}
+    private val jumpAutomatically = BoolValue("JumpAutomatically", false)
     private val movementCorrection = BoolValue("MovementCorrection", true)
 
     private val counter = BoolValue("Counter", false)
@@ -74,6 +76,8 @@ class Scaffold: Module(){
     private var placeInfo: PlaceInfo? = null
     private var blockPlace: BlockPos? = null
     private var rotation: Rotation? = null
+    private var adStrafeDirection: Boolean = false
+    private val adStrafeTimer = MSTimer()
     private var xPos: Double = 0.0
     private var zPos: Double = 0.0
     private var startY = 0.0
@@ -90,6 +94,7 @@ class Scaffold: Module(){
     private var itemStack: ItemStack? = null
 
     override fun onDisable() {
+        mc.gameSettings.keyBindUseItem.pressed = false
         mc.gameSettings.keyBindSneak.pressed = false
         mc.gameSettings.keyBindSprint.pressed = false
         mc.timer.timerSpeed = 1f
@@ -108,12 +113,6 @@ class Scaffold: Module(){
     /* Init */
     @EventTarget
     fun onUpdate(event: UpdateEvent) {
-        // jumpAutomatically only godbridge
-         if (jumpAutomatically.get() && modes.get().equals("GodBridge", true) && MovementUtils.isMoving && mc.thePlayer.onGround && !mc.thePlayer.isSneaking && !mc.gameSettings.keyBindSneak.isKeyDown && !mc.gameSettings.keyBindJump.isKeyDown &&
-                mc.theWorld.getCollidingBoundingBoxes(mc.thePlayer, mc.thePlayer.entityBoundingBox
-                        .offset(0.0, -0.5, 0.0).expand(-0.001, 0.0, -0.001)).isEmpty())
-            mc.thePlayer.jump()
-            rightClickMouse()
         // Eagle
         if (!eagleValue.equals("Off") && mc.thePlayer.onGround) {
             var dif = 0.5
@@ -157,10 +156,6 @@ class Scaffold: Module(){
                 placedBlocksWithoutEagle++
             }
         }
-    }
-    @EventTarget
-    fun onMove(event: MoveEvent) {
-        event.isSafeWalk = safeWalk.get()
     }
 
     @EventTarget(priority = -1)
@@ -323,10 +318,13 @@ class Scaffold: Module(){
     }
 
 
-    @OptIn(InternalCoroutinesApi::class)
     @EventTarget
     fun onTick(event: PreUpdateEvent){
-        if (blockRelativeToPlayer(0, -1, 0) is BlockAir) ticksOnAir++ else ticksOnAir = 0
+        if (blockRelativeToPlayer(0, -1, 0) is BlockAir) {
+            ticksOnAir++
+        } else {
+            ticksOnAir = 0
+        }
 
         /* Player Position Update (Edge Exception + Legit Mode) */
         xPos = mc.thePlayer.posX
@@ -386,7 +384,7 @@ class Scaffold: Module(){
             }
         }
 
-        if (mc.thePlayer.onGround || mc.gameSettings.keyBindJump.isKeyDown && !MovementUtils.isMoving) {
+        if (mc.thePlayer.onGround || mc.gameSettings.keyBindJump.isKeyDown && !isMoving) {
             startY = floor(mc.thePlayer.posY)
         }
 
@@ -397,7 +395,6 @@ class Scaffold: Module(){
 
     private fun rightClickMouse(){
         when(clicks.get().lowercase()){
-            "legit" -> KeyBinding.onTick(mc.gameSettings.keyBindUseItem.keyCode)
             "normal" -> mc.rightClickMouse()
             "raytraced" -> {
                 if(isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)){
@@ -521,6 +518,20 @@ class Scaffold: Module(){
 
     @EventTarget
     fun onStrafe(event: StrafeEvent) {
+        // Boing Boing
+        val bb = mc.thePlayer.entityBoundingBox.offset(0.0, -0.5, 0.0).expand(-0.001, 0.0, -0.001)
+        if (
+            jumpAutomatically.get()
+            && isMoving
+            && mc.thePlayer.onGround
+            && !mc.thePlayer.isSneaking
+            && !mc.gameSettings.keyBindSneak.isKeyDown
+            && !mc.gameSettings.keyBindJump.isKeyDown &&
+            mc.theWorld.getCollidingBoundingBoxes(mc.thePlayer, bb).isEmpty()
+        ){
+            mc.thePlayer.jump()
+        }
+
         if(!movementCorrection.get()){
             MovementUtils.useDiagonalSpeed()
         }
@@ -528,13 +539,35 @@ class Scaffold: Module(){
 
     @EventTarget
     fun onInput(event: MoveInputEvent){
-        if (
-            modes.get().equals("telly", true) &&
-            mc.thePlayer.onGround &&
-            MovementUtils.isMoving &&
-            if(reset.get()) !RotationUtils.active else true
-        ) {
-            event.jump = true
+        val blockSlot = InventoryUtils.findBlockInHotbar() ?: return
+        if (blockSlot != -1) {
+            if (safeWalk.get() && mc.thePlayer.onGround && mc.theWorld.getCollidingBoundingBoxes(
+                    mc.thePlayer, mc.thePlayer.entityBoundingBox.addCoord(
+                        mc.thePlayer.motionX, mc.thePlayer.motionY, mc.thePlayer.motionZ
+                    ).expand(-0.175, 0.0, -0.175)
+                ).isEmpty()
+            ) {
+                event.sneak = true
+            }
+
+            if (
+                modes.get().equals("telly", true) &&
+                mc.thePlayer.onGround &&
+                isMoving &&
+                if(reset.get()) !RotationUtils.active else true
+            ) {
+                event.jump = true
+            }
+
+            if (adStrafe.get() || modes.get() == "MoonWalk") {
+                if (adStrafeTimer.hasTimeElapsed(125.0, true)) {
+                    adStrafeDirection = !adStrafeDirection
+                }
+
+                if (isMoving && !mc.gameSettings.keyBindLeft.isKeyDown && !mc.gameSettings.keyBindRight.isKeyDown) {
+                    event.strafe = if(adStrafeDirection) 1.0F else -1.0F
+                }
+            }
         }
     }
 
@@ -542,8 +575,6 @@ class Scaffold: Module(){
      *  @return block relative to the player
      */
     private fun calculateRotations() {
-        val fixes = MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw)
-
         /* Falling prediction */
         val c1 = calculateRealY(mc.theWorld, bb, motionX, motionZ, 0.546) <= -0.015625
         val a1 = calculateRealY(mc.theWorld, bb, motionX, motionZ, 1.0)
@@ -551,29 +582,38 @@ class Scaffold: Module(){
         val c3 = calculateRealY(mc.theWorld, bb, motionX, motionZ, 1.09, a1) <= -0.015625
 
         when (modes.get().lowercase()) {
-            "godbridge" -> {
-                if (ticksOnAir > 0 && !isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)) {
-                    val d = (mc.thePlayer.rotationYaw / 45).roundToInt()
-                    val y = d * 45
-                    targetYaw = if(d % 2 == 0) y - 135.0F else y - 180.0F
-                    targetPitch = if(d % 2 == 0) 75.5F else 75.6F
-                }
+            "moonwalk" -> {
+                val d = (mc.thePlayer.rotationYaw / 45).roundToInt()
+                val y = d * 45
+                targetYaw = if(d % 2 == 0) y - 135.0F else y - 180.0F
+                targetPitch = if(d % 2 == 0) 75.5F else 75.6F
             }
             "snap" -> {
                 getRotations()
 
                 if (ticksOnAir <= 0 || isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)) {
-                    targetYaw = fixes
+                    if(reset.get()){
+                        RotationUtils.active = false
+                        return
+                    } else {
+                        targetYaw = mc.thePlayer.rotationYaw
+                    }
                 }
             }
-            "legit" -> if (ticksOnAir > 0 && if (!mc.thePlayer.onGround) (mc.thePlayer.motionY > 0) else (c1 && c2 && c3) && !isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)) {
+            "legit" -> {
                 if (
-                    xPos > (blockPlace?.x?.plus(0.288) ?: return) ||
-                    xPos < (blockPlace?.x?.minus(1.288) ?: return) ||
-                    zPos > (blockPlace?.z?.plus(0.288) ?: return) ||
-                    zPos < (blockPlace?.z?.minus(1.288) ?: return)
+                    ticksOnAir > 0
+                    && if (!mc.thePlayer.onGround) (mc.thePlayer.motionY > 0) else (c1 && c2 && c3)
+                    && !isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)
                 ){
-                    getRotations()
+                    if (
+                        xPos > (blockPlace?.x?.plus(0.288) ?: return) ||
+                        xPos < (blockPlace?.x?.minus(1.288) ?: return) ||
+                        zPos > (blockPlace?.z?.plus(0.288) ?: return) ||
+                        zPos < (blockPlace?.z?.minus(1.288) ?: return)
+                    ){
+                        getRotations()
+                    }
                 }
             }
             "telly" -> {
@@ -675,11 +715,15 @@ class Scaffold: Module(){
                 }
 
                 "tryrotation" -> {
-                    val list = floatArrayOf(-135f, -45f, 45f, 135f)
-                    val pitchList = 75.0..80.0 + if (isLookingDiagonally) 1.0 else 0.0
+                    val list = when(yawOffset.get().lowercase()) {
+                        "45" -> floatArrayOf(-135f, -45f, 45f, 135f)
+                        else -> floatArrayOf(-180f, -90f, 0f, 90f, 180f)
+                    }
+
+                    val pitchList = 75.0..80.0 + if (isLookingDiagonally) 2.0 else 0.0
 
                     for (yaw in list) {
-                        for (pitch in pitchList step 0.1) {
+                        for (pitch in pitchList step 0.01) {
                             val rotation = Rotation(yaw, pitch.toFloat())
                             val raytrace = rayTrace(rotation) ?: continue
 
@@ -687,10 +731,18 @@ class Scaffold: Module(){
                                 PlaceRotation(PlaceInfo(raytrace.blockPos, raytrace.sideHit, raytrace.hitVec), rotation)
 
                             if (raytrace.blockPos == neighborBlock && raytrace.sideHit == side.opposite) {
-                                val isInStablePitchRange = if (isLookingDiagonally) {
-                                    pitch >= 75.6
-                                } else {
-                                    pitch in 73.5..75.7
+                                val isInStablePitchRange = when(yawOffset.get().lowercase()){
+                                    "45" -> if (isLookingDiagonally) {
+                                        pitch >= 75.6
+                                    } else {
+                                        pitch in 73.5..75.7
+                                    }
+
+                                    else -> if (isLookingDiagonally) {
+                                        pitch in 80.0..83.0
+                                    } else {
+                                        pitch >= 75.6
+                                    }
                                 }
 
                                 // The module should be looking to aim at (nearly) the upper face of the block. Provides stable bridging most of the time.

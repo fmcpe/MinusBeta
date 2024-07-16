@@ -34,7 +34,12 @@ object MovementUtils : MinecraftInstance(), Listenable {
         get() = getSpeed(mc.thePlayer.motionX, mc.thePlayer.motionZ).toFloat()
 
     val isMoving: Boolean
-        get() = mc.thePlayer != null && (mc.thePlayer.moveForward != 0f || mc.thePlayer.moveStrafing != 0f)
+        get() = (
+            mc.gameSettings.keyBindForward.isKeyDown
+            || mc.gameSettings.keyBindBack.isKeyDown
+            || mc.gameSettings.keyBindRight.isKeyDown
+            || mc.gameSettings.keyBindLeft.isKeyDown
+        )
 
     private fun getSpeed(motionX: Double, motionZ: Double): Double {
         return sqrt(motionX * motionX + motionZ * motionZ)
