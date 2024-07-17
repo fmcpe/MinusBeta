@@ -2,228 +2,181 @@ package net.minusmc.minusbounce.features.module.modules.combat
 
 import net.minecraft.client.renderer.GlStateManager
 import net.minecraft.entity.EntityLivingBase
-import net.minecraft.network.INetHandler
 import net.minecraft.network.Packet
-import net.minecraft.network.handshake.client.C00Handshake
-import net.minecraft.network.login.client.C00PacketLoginStart
-import net.minecraft.network.login.client.C01PacketEncryptionResponse
-import net.minecraft.network.play.client.C01PacketChatMessage
 import net.minecraft.network.play.server.S14PacketEntity
 import net.minecraft.network.play.server.S18PacketEntityTeleport
-import net.minecraft.network.status.client.C00PacketServerQuery
 import net.minecraft.util.AxisAlignedBB
 import net.minusmc.minusbounce.MinusBounce
-import net.minusmc.minusbounce.event.EventTarget
-import net.minusmc.minusbounce.event.GameLoop
-import net.minusmc.minusbounce.event.PacketEvent
-import net.minusmc.minusbounce.event.Render3DEvent
+import net.minusmc.minusbounce.event.*
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
 import net.minusmc.minusbounce.features.module.modules.world.Scaffold
+import net.minusmc.minusbounce.utils.Constants
 import net.minusmc.minusbounce.utils.render.ColorUtils
 import net.minusmc.minusbounce.utils.render.RenderUtils
+import net.minusmc.minusbounce.utils.PacketUtils
 import net.minusmc.minusbounce.utils.timer.MSTimer
-import net.minusmc.minusbounce.value.BoolValue
-import net.minusmc.minusbounce.value.FloatValue
+import net.minusmc.minusbounce.value.*
 import org.lwjgl.opengl.GL11
 
 
 @ModuleInfo("BackTrack", "Back Track", "Let you attack in their previous position", ModuleCategory.COMBAT)
 class BackTrack : Module() {
-    var packets = ArrayList<Packet<*>>()
-    var timer = MSTimer()
-    var delay = FloatValue("Delay", 400F, 0F, 1000F)
-    var hitRange = FloatValue("Range", 3F, 0F, 10F)
-    var esp = BoolValue("ESP", true)
+    private val delay = IntegerValue("Delay", 400, 0, 1000)
+    private val hitRange = FloatValue("Range", 3F, 0F, 10F)
+    private val esp = BoolValue("ESP", true)
+
+    private val packets = mutableListOf<Packet<*>>()
+    private val timer = MSTimer()
 
     override fun onEnable() {
         packets.clear()
     }
     
-    fun onPacket(e: PacketEvent) {
-        val packet = e.packet
-        if (
-            mc.thePlayer == null
-            || mc.theWorld == null
-            || mc.netHandler.networkManager.netHandler == null
-            || MinusBounce.moduleManager.getModule(Scaffold::class.java)?.state == true
-        ) {
+    @EventTarget(priority = 5)
+    fun onPacket(event: PacketEvent) {
+        mc.thePlayer ?: return
+        mc.theWorld ?: return
+        mc.netHandler ?: return
+
+        if (MinusBounce.moduleManager[Scaffold::class.java]!!.state) {
             packets.clear()
             return
         }
 
-        when(packet) {
-            is S14PacketEntity -> {
-                val entity = mc.theWorld.getEntityByID(packet.entityId)
+        val packet = event.packet
 
-                if (entity is EntityLivingBase) {
-                    entity.realPosX += packet.func_149062_c()
-                    entity.realPosY += packet.func_149061_d()
-                    entity.realPosZ += packet.func_149064_e()
+        if (event.state == EventState.RECEIVE) {
+            when (packet) {
+                is S14PacketEntity -> {
+                    val entity = mc.theWorld.getEntityByID(packet.entityId)
+
+                    if (entity is EntityLivingBase) {
+                        entity.realPosX += packet.func_149062_c()
+                        entity.realPosY += packet.func_149061_d()
+                        entity.realPosZ += packet.func_149064_e()
+                    }    
+                }
+
+                is S18PacketEntityTeleport -> {
+                    val entity = mc.theWorld.getEntityByID(packet.entityId)
+
+                    if (entity is EntityLivingBase) {
+                        entity.realPosX = packet.x.toDouble()
+                        entity.realPosY = packet.y.toDouble()
+                        entity.realPosZ = packet.z.toDouble()
+                    }
                 }
             }
 
-            is S18PacketEntityTeleport -> {
-                val entity = mc.theWorld.getEntityByID(packet.entityId)
-
-                if (entity is EntityLivingBase) {
-                    entity.realPosX = packet.x.toDouble()
-                    entity.realPosY = packet.y.toDouble()
-                    entity.realPosZ = packet.z.toDouble()
-                }
+            if (target == null) {
+                flushPackets()
+                return
             }
-        }
 
-        if (entity == null) {
-            resetPackets(mc.netHandler.networkManager.netHandler)
-        } else {
-            addPackets(packet, e)
+            addPacket(event)
         }
     }
 
-    private val entity: EntityLivingBase?
-        get() = MinusBounce.moduleManager.getModule(KillAura::class.java)?.target
+    private val target: EntityLivingBase?
+        get() = MinusBounce.moduleManager[KillAura::class.java]?.target
 
     @EventTarget
-    fun onGameLoop(e: GameLoop?) {
-        if (
-            entity != null &&
-            entity!!.entityBoundingBox != null &&
-            mc.thePlayer != null &&
-            mc.theWorld != null &&
-            entity!!.realPosX != 0.0 &&
-            entity!!.realPosY != 0.0 &&
-            entity!!.realPosZ != 0.0 &&
-            entity!!.width != 0f &&
-            entity!!.height != 0f
-        ) {
-            val realX = entity!!.realPosX / 32
-            val realY = entity!!.realPosY / 32
-            val realZ = entity!!.realPosZ / 32
+    fun onGameLoop(event: GameLoopEvent) {
+        mc.thePlayer ?: return
+        mc.theWorld ?: return
+        val target = this.target ?: return
 
-            if (mc.thePlayer.getDistance(entity!!.posX, entity!!.posY, entity!!.posZ) > 3) {
-                if (mc.thePlayer.getDistance(
-                        entity!!.posX,
-                        entity!!.posY,
-                        entity!!.posZ
-                    ) >= mc.thePlayer.getDistance(
-                        realX,
-                        realY, realZ
-                    )
-                ) {
-                    resetPackets(mc.netHandler.networkManager.netHandler)
-                }
-            }
+        if (target.realPosX == 0.0 || target.realPosY == 0.0 || target.realPosZ == 0.0)
+            return
 
-            if (mc.thePlayer.getDistance(realX, realY, realZ) > hitRange.get()
-                || timer.hasTimeElapsed(delay.get().toDouble(), true)
-            ) {
-                resetPackets(mc.netHandler.networkManager.netHandler)
-            }
+        if (target.width == 0f || target.height == 0f)
+            return
+
+        val realX = target.realPosX / 32
+        val realY = target.realPosY / 32
+        val realZ = target.realPosZ / 32
+
+        val realDistance = mc.thePlayer.getDistance(realX, realY, realZ)
+        val targetDistance = mc.thePlayer.getDistance(target.posX, target.posY, target.posZ)
+
+        if (targetDistance >= realDistance || realDistance > hitRange.get())
+            flushPackets()
+        else if (timer.hasTimePassed(delay.get())) {
+            timer.reset()
+            flushPackets()
         }
     }
 
     @EventTarget
-    fun onRender3D(e: Render3DEvent) {
-        if (
-            entity != null &&
-            entity!!.entityBoundingBox != null &&
-            mc.thePlayer != null &&
-            mc.theWorld != null &&
-            entity!!.realPosX != 0.0 &&
-            entity!!.realPosY != 0.0 &&
-            entity!!.realPosZ != 0.0 &&
-            entity!!.width != 0f &&
-            entity!!.height != 0f &&
-            esp.get()
-        ) {
-            var render = true
-            val realX = entity!!.realPosX / 32
-            val realY = entity!!.realPosY / 32
-            val realZ = entity!!.realPosZ / 32
+    fun onRender3D(event: Render3DEvent) {
+        if (!esp.get())
+            return
 
-            if (mc.thePlayer.getDistance(entity!!.posX, entity!!.posY, entity!!.posZ) >= mc.thePlayer.getDistance(
-                    realX,
-                    realY, realZ
-                )
-            ) {
-                render = false
-            }
+        mc.thePlayer ?: return
+        mc.theWorld ?: return
+        val target = this.target ?: return
 
-            if (mc.thePlayer.getDistance(realX, realY, realZ) > hitRange.get()
-                || timer.hasTimeElapsed(delay.get().toDouble(), false)
-            ) {
-                render = false
-            }
+        if (target.realPosX == 0.0 || target.realPosY == 0.0 || target.realPosZ == 0.0)
+            return
 
-            if (
-                entity != null &&
-                entity != mc.thePlayer &&
-                !entity!!.isInvisible &&
-                entity!!.width != 0f &&
-                entity!!.height != 0f &&
-                render
-            ) {
-                val color = ColorUtils.getColor(210.0F, 0.7F, 0.75F)
-                val x = entity!!.realPosX / 32.0 - mc.renderManager.renderPosX
-                val y = entity!!.realPosY / 32.0 - mc.renderManager.renderPosY
-                val z = entity!!.realPosZ / 32.0 - mc.renderManager.renderPosZ
-                GlStateManager.pushMatrix()
-                RenderUtils.start3D()
-                RenderUtils.color(color)
-                RenderUtils.renderHitbox(
-                    AxisAlignedBB(
-                        x - entity!!.width / 2,
-                        y,
-                        z - entity!!.width / 2,
-                        x + entity!!.width / 2,
-                        y + entity!!.height,
-                        z + entity!!.width / 2
-                    ), GL11.GL_QUADS
-                )
-                RenderUtils.color(color)
-                RenderUtils.renderHitbox(
-                    AxisAlignedBB(
-                        x - entity!!.width / 2,
-                        y,
-                        z - entity!!.width / 2,
-                        x + entity!!.width / 2,
-                        y + entity!!.height,
-                        z + entity!!.width / 2
-                    ), GL11.GL_LINE_LOOP
-                )
-                RenderUtils.stop3D()
-                GlStateManager.popMatrix()
-            }
+        if (target.width == 0f || target.height == 0f)
+            return
+
+        var render = true
+        val realX = target.realPosX / 32
+        val realY = target.realPosY / 32
+        val realZ = target.realPosZ / 32
+
+        val realDistance = mc.thePlayer.getDistance(realX, realY, realZ)
+        val targetDistance = mc.thePlayer.getDistance(target.posX, target.posY, target.posZ)
+
+        if (targetDistance >= realDistance || realDistance > hitRange.get() || timer.hasTimePassed(delay.get()))
+            render = false
+
+        if (target != mc.thePlayer && !target.isInvisible && 
+            target.width != 0f && target.height != 0f && render) {
+
+            val color = ColorUtils.getColor(210.0F, 0.7F, 0.75F)
+            val x = realX / 32.0 - mc.renderManager.renderPosX
+            val y = realY / 32.0 - mc.renderManager.renderPosY
+            val z = realZ / 32.0 - mc.renderManager.renderPosZ
+
+            GlStateManager.pushMatrix()
+            RenderUtils.start3D()
+            RenderUtils.color(color)
+            RenderUtils.renderHitbox(AxisAlignedBB(x - target.width / 2, y, z - target.width / 2, x + target.width / 2, y + target.height, z + target.width / 2), GL11.GL_QUADS)
+            RenderUtils.color(color)
+            RenderUtils.renderHitbox(AxisAlignedBB(x - target.width / 2, y, z - target.width / 2, x + target.width / 2, y + target.height, z + target.width / 2), GL11.GL_LINE_LOOP)
+            RenderUtils.stop3D()
+            GlStateManager.popMatrix()
         }
+
+        
     }
 
-    private fun resetPackets(netHandler: INetHandler) {
-        if (packets.size > 0) {
-            synchronized(packets) {
-                while (packets.size != 0) {
-                    try {
-                        (packets[0] as Packet<INetHandler>).processPacket(netHandler)
-                    } catch (_: Exception) { }
-                    packets.remove(packets[0])
-                }
-            }
-        }
-    }
+    private fun flushPackets() {
+        if (packets.isEmpty())
+            return
 
-    private fun addPackets(packet: Packet<*>, event: PacketEvent) {
         synchronized(packets) {
-            if (this.blockPacket(packet)) {
-                packets.add(packet)
-                event.cancelEvent()
+            while (packets.size > 0) {
+                val packet = packets.removeFirst()
+                PacketUtils.processPacket(packet)
             }
         }
     }
 
-    private fun blockPacket(packet: Packet<*>): Boolean = when(packet) {
-        is C00Handshake, is C00PacketLoginStart, is C00PacketServerQuery,
-        is C01PacketEncryptionResponse, is C01PacketChatMessage -> false
-        else -> true
+    private fun addPacket(event: PacketEvent) {
+        synchronized(packets) {
+            val packet = event.packet
+
+            if (packet::class.java !in Constants.clientOtherPacketClasses) {
+                packets.add(packet)
+                event.isCancelled = true
+                event.stopRunEvent = true
+            }
+        }
     }
 }
