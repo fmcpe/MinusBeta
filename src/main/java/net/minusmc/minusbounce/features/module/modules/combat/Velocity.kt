@@ -104,7 +104,7 @@ class Velocity : Module() {
         mode.onAttack(event)
     }
 
-    fun onGameLoop(event: GameLoop){
+    fun onGameLoop(event: GameLoopEvent){
         mode.gameLoop()
     }
     @EventTarget

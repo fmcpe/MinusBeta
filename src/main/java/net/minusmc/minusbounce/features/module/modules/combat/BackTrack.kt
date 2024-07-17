@@ -25,10 +25,10 @@ import org.lwjgl.opengl.GL11
 class BackTrack : Module() {
     private val delay = IntegerValue("Delay", 400, 0, 1000)
     private val hitRange = FloatValue("Range", 3F, 0F, 10F)
-    private val esp = BoolValue("ESP", true)
+    val esp = BoolValue("ESP", true)
 
-    private val packets = mutableListOf<Packet<*>>()
-    private val timer = MSTimer()
+    val packets = mutableListOf<Packet<*>>()
+    val timer = MSTimer()
 
     override fun onEnable() {
         packets.clear()
@@ -47,39 +47,40 @@ class BackTrack : Module() {
 
         val packet = event.packet
 
-        if (event.state == EventState.RECEIVE) {
-            when (packet) {
-                is S14PacketEntity -> {
-                    val entity = mc.theWorld.getEntityByID(packet.entityId)
+        if (packet::class.java !in Constants.serverPacketClasses)
+            return
 
-                    if (entity is EntityLivingBase) {
-                        entity.realPosX += packet.func_149062_c()
-                        entity.realPosY += packet.func_149061_d()
-                        entity.realPosZ += packet.func_149064_e()
-                    }    
-                }
+        when (packet) {
+            is S14PacketEntity -> {
+                val entity = mc.theWorld.getEntityByID(packet.entityId)
 
-                is S18PacketEntityTeleport -> {
-                    val entity = mc.theWorld.getEntityByID(packet.entityId)
-
-                    if (entity is EntityLivingBase) {
-                        entity.realPosX = packet.x.toDouble()
-                        entity.realPosY = packet.y.toDouble()
-                        entity.realPosZ = packet.z.toDouble()
-                    }
-                }
+                if (entity is EntityLivingBase) {
+                    entity.realPosX += packet.func_149062_c()
+                    entity.realPosY += packet.func_149061_d()
+                    entity.realPosZ += packet.func_149064_e()
+                }    
             }
 
-            if (target == null) {
-                flushPackets()
-                return
-            }
+            is S18PacketEntityTeleport -> {
+                val entity = mc.theWorld.getEntityByID(packet.entityId)
 
-            addPacket(event)
+                if (entity is EntityLivingBase) {
+                    entity.realPosX = packet.x.toDouble()
+                    entity.realPosY = packet.y.toDouble()
+                    entity.realPosZ = packet.z.toDouble()
+                }
+            }
         }
+
+        if (target == null) {
+            flushPackets()
+            return
+        }
+
+        addPacket(event)
     }
 
-    private val target: EntityLivingBase?
+    val target: EntityLivingBase?
         get() = MinusBounce.moduleManager[KillAura::class.java]?.target
 
     @EventTarget
@@ -135,13 +136,11 @@ class BackTrack : Module() {
         if (targetDistance >= realDistance || realDistance > hitRange.get() || timer.hasTimePassed(delay.get()))
             render = false
 
-        if (target != mc.thePlayer && !target.isInvisible && 
-            target.width != 0f && target.height != 0f && render) {
-
+        if (target != mc.thePlayer && !target.isInvisible && render) {
             val color = ColorUtils.getColor(210.0F, 0.7F, 0.75F)
-            val x = realX / 32.0 - mc.renderManager.renderPosX
-            val y = realY / 32.0 - mc.renderManager.renderPosY
-            val z = realZ / 32.0 - mc.renderManager.renderPosZ
+            val x = realX - mc.renderManager.renderPosX
+            val y = realY - mc.renderManager.renderPosY
+            val z = realZ - mc.renderManager.renderPosZ
 
             GlStateManager.pushMatrix()
             RenderUtils.start3D()
@@ -152,8 +151,6 @@ class BackTrack : Module() {
             RenderUtils.stop3D()
             GlStateManager.popMatrix()
         }
-
-        
     }
 
     private fun flushPackets() {
@@ -172,9 +169,9 @@ class BackTrack : Module() {
         synchronized(packets) {
             val packet = event.packet
 
-            if (packet::class.java !in Constants.clientOtherPacketClasses) {
+            if (packet::class.java !in Constants.serverOtherPacketClasses) {
                 packets.add(packet)
-                event.isCancelled = true
+                event.cancelEvent()
                 event.stopRunEvent = true
             }
         }

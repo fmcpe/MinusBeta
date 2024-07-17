@@ -41,7 +41,7 @@ class BlockBBEvent(blockPos: BlockPos, val block: Block, var boundingBox: AxisAl
 }
 
 class TimeDelay: Event()
-class GameLoop: Event()
+class GameLoopEvent: Event()
 
 /**
  * Called when player clicks a block

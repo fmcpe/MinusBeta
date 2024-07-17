@@ -342,7 +342,7 @@ public abstract class MixinMinecraft {
             {
                 while (this.running)
                 {
-                    MinusBounce.eventManager.callEvent(new GameLoop());
+                    MinusBounce.eventManager.callEvent(new GameLoopEvent());
                     if (!this.hasCrashed || this.crashReporter == null)
                     {
                         try
