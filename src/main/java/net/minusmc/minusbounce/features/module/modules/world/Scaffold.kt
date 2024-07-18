@@ -359,30 +359,26 @@ class Scaffold: Module(){
         if (startY - 1 != floor(targetBlock?.y?.toDouble() ?: return) && sameY) {
             return
         }
-
-        runBlocking(context = Dispatchers.Default) {
-            launch {
-                try {
-                    while (mc.thePlayer.inventory.currentItem == InventoryUtils.serverSlot &&
-                        !BadPacketUtils.bad(false, true, false, false, true) &&
-                        ticksOnAir > RandomUtils.nextInt(delayValue.getMinValue(), delayValue.getMaxValue()) &&
-                        isObjectMouseOverBlock(placeInfo?.enumFacing!!, blockPlace!!, currentRotation)
-                    ){
-                        when (modes.get().lowercase()){
-                            "legit" -> if(mc.thePlayer.posY < (mc.objectMouseOver.blockPos.y + 1.5)){
-                                if(mc.objectMouseOver.sideHit != EnumFacing.UP && mc.objectMouseOver.sideHit != EnumFacing.DOWN){
-                                    rightClickMouse()
-                                }
-                            } else if(mc.objectMouseOver.sideHit != EnumFacing.DOWN && mc.gameSettings.keyBindJump.isKeyDown){
-                                rightClickMouse()
-                            }
-                            else -> rightClickMouse()
+        //...
+        try {
+            if (mc.thePlayer.inventory.currentItem == InventoryUtils.serverSlot &&
+                    !BadPacketUtils.bad(false, true, false, false, true) &&
+                    ticksOnAir > RandomUtils.nextInt(delayValue.getMinValue(), delayValue.getMaxValue()) &&
+                    isObjectMouseOverBlock(placeInfo?.enumFacing!!, blockPlace!!, currentRotation)
+               ){
+                when (modes.get().lowercase()){
+                    "legit" -> if(mc.thePlayer.posY < (mc.objectMouseOver.blockPos.y + 1.5)){
+                        if(mc.objectMouseOver.sideHit != EnumFacing.UP && mc.objectMouseOver.sideHit != EnumFacing.DOWN){
+                            rightClickMouse()
                         }
-                        ticksOnAir = 0
+                    } else if(mc.objectMouseOver.sideHit != EnumFacing.DOWN && mc.gameSettings.keyBindJump.isKeyDown){
+                        rightClickMouse()
                     }
-                } catch (_: Exception) {}
+                    else -> rightClickMouse()
+                }
+                ticksOnAir = 0
             }
-        }
+        } catch (_: Exception) {}
 
         if (mc.thePlayer.onGround || mc.gameSettings.keyBindJump.isKeyDown && !isMoving) {
             startY = floor(mc.thePlayer.posY)
