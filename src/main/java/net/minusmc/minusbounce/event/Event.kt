@@ -5,7 +5,9 @@
  */
 package net.minusmc.minusbounce.event
 
-open class Event
+open class Event {
+    var stopRunEvent: Boolean = false
+}
 
 open class CancellableEvent : Event() {
 

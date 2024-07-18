@@ -64,6 +64,14 @@ object PacketUtils : MinecraftInstance(), Listenable {
         }
     }
 
+    fun processPacket(packet: Packet<*>) {
+        val netManager = mc.netHandler?.networkManager ?: return
+
+        try {
+            (packet as Packet<INetHandler>).processPacket(netManager.netHandler)
+        } catch (_: Exception) {}
+    }
+
     @EventTarget
     fun onWorld(event: WorldEvent) {
         packetList.clear()
