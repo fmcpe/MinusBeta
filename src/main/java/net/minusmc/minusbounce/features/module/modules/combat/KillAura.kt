@@ -59,11 +59,11 @@ class KillAura : Module() {
     private val cps = IntRangeValue("CPS", 5, 8, 1, 20)
     private val hurtTimeValue = IntegerValue("HurtTime", 10, 0, 10)
     private val modes = ListValue("ClickMode", arrayOf("Normal", "Legit", "Blatant"), "Blatant")
-    private val clickMode = ListValue("ClickPattern", arrayOf("Legit", "Normal"))
+    private val clickMode = ListValue("ClickPattern", arrayOf("Legit", "Normal", "NormalNoise", "Blatant"), "Blatant")
 
     // Range & throughWalls
     val rangeValue = FloatValue("Range", 3.7f, 1f, 8f, "m")
-    val throughWallsValue = BoolValue("ThroughWalls", true)
+    private val throughWallsValue = BoolValue("ThroughWalls", true)
 
     // Rotations & TurnSpeed
     private val rotations = ListValue("RotationMode", arrayOf("Vanilla", "BackTrack", "Grim", "Intave", "None"), "BackTrack")
@@ -74,7 +74,7 @@ class KillAura : Module() {
     //Target / Modes
     private val priorityValue = ListValue("Priority", arrayOf("Health", "Distance", "HurtResistance", "HurtTime", "Armor"), "Distance")
     val targetModeValue = ListValue("TargetMode", arrayOf("Single", "Switch"), "Switch")
-    val switchDelayValue = IntegerValue("SwitchDelay", 1000, 1, 2000, "ms") {
+    private val switchDelayValue = IntegerValue("SwitchDelay", 1000, 1, 2000, "ms") {
         targetModeValue.get().equals("switch", true)
     }
 
@@ -93,7 +93,7 @@ class KillAura : Module() {
             if (state) onEnable()
         }
     }
-    val autoBlockRangeValue = FloatValue("AutoBlock-Range", 5f, 0f, 12f, "m") {
+    private val autoBlockRangeValue = FloatValue("AutoBlock-Range", 5f, 0f, 12f, "m") {
         !autoBlockModeValue.get().equals("None", true)
     }
 
@@ -123,12 +123,13 @@ class KillAura : Module() {
 
 
     // autoclicker vars
-    private var nextReleaseClickTime: Long = 0
     private var nextClickTime: Long = 0
+    private val random = Random(System.currentTimeMillis())
     private var k: Long = 0
     private var l: Long = 0
     private var m = 0.0
     private var n = false
+    var hitTicks = 0
 
     // Attack delay
     private val attackTimer = MSTimer()
@@ -170,8 +171,18 @@ class KillAura : Module() {
         }
 
         if(!BadPacketUtils.bad(false, true, true, false, true)) {
-            repeat(clicks) {
-                runAttack(clicks-- == 0)
+            when(clickMode.get().lowercase()) {
+                "normal", "normalnoise" -> {
+                    if (this.nextClickTime > 0L) {
+                        if (System.currentTimeMillis() > this.nextClickTime) {
+                            runAttack(false)
+                            delay()
+                        }
+                    } else {
+                        delay()
+                    }
+                }
+                else -> if(clicks >= 0) runAttack(clicks-- == 0)
             }
         }
 
@@ -224,18 +235,20 @@ class KillAura : Module() {
         if((target?.hurtTime ?: return) <= hurtTimeValue.get()){
             when(clickMode.get().lowercase()){
                 "legit" -> {
-                    if (this.nextClickTime > 0L && this.nextReleaseClickTime > 0L) {
-                        if (System.currentTimeMillis() > this.nextClickTime) {
+                    if (attackTimer.hasTimePassed(attackDelay)) {
+                        attackTimer.reset()
+
+                        val e = ClickingEvent()
+                        MinusBounce.eventManager.callEvent(e)
+                        if(e.isCancelled) {
+                            attackDelay += 50L
+                        } else {
                             clicks++
-                            delay()
-                        } else if (System.currentTimeMillis() > this.nextReleaseClickTime) {
-                            clicks = 0
+                            attackDelay = TimeUtils.randomClickDelay(cps.getMinValue(), cps.getMaxValue())
                         }
-                    } else {
-                        delay()
                     }
                 }
-                "normal" -> {
+                "blatant" -> {
                     if (attackTimer.hasTimePassed(attackDelay)) {
                         clicks++
                         attackTimer.reset()
@@ -251,15 +264,18 @@ class KillAura : Module() {
         }
     }
 
-    fun delay() {
-        val random = Random(System.currentTimeMillis())
+    private fun delay() {
         val minCps = cps.getMinValue()
         val maxCps = cps.getMaxValue()
 
-        val proximityFactor = 0.01
-        val baseC = maxCps - (random.nextDouble() * (maxCps - minCps) * proximityFactor)
-        val noise = (random.nextGaussian() * 0.1) + (0.2 * sin(System.nanoTime() / 1_000_000_000.0))
-        val c = (baseC + noise).coerceIn(minCps.toDouble(), maxCps.toDouble())
+        var c = 1000 / TimeUtils.randomClickDelay(minCps, maxCps) + 0.4 * random.nextDouble()
+        if(clickMode.get().equals("normalnoise", true)){
+            val proximityFactor = random.nextDouble() + 0.01
+            val baseC = maxCps - (random.nextDouble() * (maxCps - minCps) * proximityFactor)
+            val noise = (random.nextGaussian() * 0.1) + (0.2 * sin(System.nanoTime() / 1_000_000_000.0))
+            c = (baseC + noise).coerceIn(minCps.toDouble(), maxCps.toDouble())
+        }
+
         var d = (1000.0 / c).roundToLong()
 
         if (System.currentTimeMillis() > k) {
@@ -284,7 +300,6 @@ class KillAura : Module() {
         }
 
         nextClickTime = System.currentTimeMillis() + d
-        nextReleaseClickTime = System.currentTimeMillis() + d / 2L - random.nextInt(10)
     }
 
     /**
@@ -519,6 +534,8 @@ class KillAura : Module() {
             "legit" -> clickLegit()
             "blatant" -> clickBlatant(entity)
         }
+
+        this.hitTicks = 0
     }
 
     private fun clickNormal(entity: EntityLivingBase){
@@ -647,6 +664,8 @@ class KillAura : Module() {
 
     @EventTarget
     fun onPreMotion(event: PreMotionEvent) {
+        this.hitTicks++
+
         if(target == null || mc.thePlayer.isDead || MinusBounce.moduleManager.getModule(Scaffold::class.java)?.state ?: return){
             stopBlocking(false)
             blockingStatus = false

@@ -351,7 +351,7 @@ class Scaffold: Module(){
         calculateRotations()
 
         if (sameYValue.get().equals("AutoJump", true)) {
-            if(mc.thePlayer.onGround && (MovementUtils.isMoving || mc.gameSettings.keyBindJump.isPressed)){
+            if(mc.thePlayer.onGround && (isMoving || mc.gameSettings.keyBindJump.isPressed)){
                 mc.thePlayer.jump()
             }
         }
@@ -720,15 +720,16 @@ class Scaffold: Module(){
                         else -> floatArrayOf(-180f, -90f, 0f, 90f, 180f)
                     }
 
-                    val pitchList = 75.0..80.0 + if (isLookingDiagonally) 2.0 else 0.0
-
+                    val pitchList = when(yawOffset.get().lowercase()) {
+                        "45" -> 75.0..80.0 + if (isLookingDiagonally) 1.0 else 0.0
+                        else -> 75.0..85.0 + if (isLookingDiagonally) 2.0 else 0.0
+                    }
                     for (yaw in list) {
-                        for (pitch in pitchList step 0.01) {
+                        for (pitch in pitchList step 0.1) {
                             val rotation = Rotation(yaw, pitch.toFloat())
                             val raytrace = rayTrace(rotation) ?: continue
 
-                            val currentPlaceRotation =
-                                PlaceRotation(PlaceInfo(raytrace.blockPos, raytrace.sideHit, raytrace.hitVec), rotation)
+                            val currentPlaceRotation = PlaceRotation(PlaceInfo(raytrace.blockPos, raytrace.sideHit, raytrace.hitVec), rotation)
 
                             if (raytrace.blockPos == neighborBlock && raytrace.sideHit == side.opposite) {
                                 val isInStablePitchRange = when(yawOffset.get().lowercase()){
@@ -739,9 +740,9 @@ class Scaffold: Module(){
                                     }
 
                                     else -> if (isLookingDiagonally) {
-                                        pitch in 80.0..83.0
+                                        pitch >= 80.0
                                     } else {
-                                        pitch >= 75.6
+                                        pitch in 75.0..80.0
                                     }
                                 }
 
@@ -754,16 +755,18 @@ class Scaffold: Module(){
                                             considerablePlaceRotation.rotation,
                                             currentRotation
                                         )
-                                    )
+                                    ) {
                                         considerablePlaceRotation = currentPlaceRotation
+                                    }
                                 }
 
                                 if (placeRotation == null || RotationUtils.getRotationDifference(
                                         currentPlaceRotation.rotation,
                                         currentRotation
                                     ) < RotationUtils.getRotationDifference(placeRotation.rotation, currentRotation)
-                                )
+                                ) {
                                     placeRotation = currentPlaceRotation
+                                }
                             }
                         }
                     }

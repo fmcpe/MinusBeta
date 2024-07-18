@@ -17,7 +17,7 @@ import net.minusmc.minusbounce.value.FloatValue
 import net.minusmc.minusbounce.value.IntegerValue
 
 @ModuleInfo(name = "TickBase", description = "Tick Base", category = ModuleCategory.COMBAT)
-open class TickBase : Module() {
+class TickBase : Module() {
     private var counter = -1
     var freezing = false
 

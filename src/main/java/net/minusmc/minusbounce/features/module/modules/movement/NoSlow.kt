@@ -57,6 +57,8 @@ class NoSlow : Module() {
     private var lastMotionY = 0.0
     private var lastMotionZ = 0.0
 
+    var lastUsingItem = false
+
     override fun onInitialize() {
         modes.map { mode -> mode.values.forEach { value -> value.name = "${mode.modeName}-${value.name}" } }
     }
@@ -68,6 +70,7 @@ class NoSlow : Module() {
     override fun onDisable() {
         pendingFlagApplyPacket = false
         BlinkUtils.setBlinkState(off = true)
+        lastUsingItem = false
         mode.onDisable()
     }
 
@@ -101,11 +104,18 @@ class NoSlow : Module() {
         mc.thePlayer ?: return
         mc.theWorld ?: return
 
+        if(!mc.thePlayer.isUsingItem) {
+            lastUsingItem = false
+            return
+        }
+
         if (MovementUtils.isMoving){
             if (isBlocking || isEating || isBowing) {
                 mode.onPreMotion(event)
             }
         }
+
+        lastUsingItem = true
     }
 
     @EventTarget
@@ -135,6 +145,11 @@ class NoSlow : Module() {
 
     private val isBowing: Boolean
         get() = mc.thePlayer.isUsingItem && mc.thePlayer.heldItem.item is ItemBow
+
+    val heldItem: ItemStack?
+        get() = if(mc.thePlayer.inventory.currentItem in 0..8) {
+                    mc.thePlayer.inventory.mainInventory[mc.thePlayer.inventory.currentItem]
+        } else null
 
     val isSlowing: Boolean
         get() = isBlocking || isEating || isBowing

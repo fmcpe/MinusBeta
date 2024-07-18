@@ -5,10 +5,7 @@
  */
 package net.minusmc.minusbounce.features.module.modules.movement
 
-import net.minusmc.minusbounce.event.EventTarget
-import net.minusmc.minusbounce.event.JumpEvent
-import net.minusmc.minusbounce.event.TickEvent
-import net.minusmc.minusbounce.event.UpdateEvent
+import net.minusmc.minusbounce.event.*
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
@@ -53,6 +50,11 @@ class NoWeb : Module() {
     @EventTarget
     fun onTick(event: TickEvent){
         mode.onTick()
+    }
+
+    @EventTarget(priority = -10)
+    fun onInput(event: MoveInputEvent){
+        mode.onInput(event)
     }
 
     override fun onDisable() {

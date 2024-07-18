@@ -4,6 +4,8 @@ import net.minusmc.minusbounce.features.module.modules.combat.killaura.KillAuraB
 
 class ReBlock: KillAuraBlocking("ReBlock") {
     override fun onPostAttack(){
-        killAura.startBlocking(false, false)
+        if (killAura.hitTicks == 1 || !blockingStatus) {
+            killAura.startBlocking(false, false)
+        }
     }
 }
