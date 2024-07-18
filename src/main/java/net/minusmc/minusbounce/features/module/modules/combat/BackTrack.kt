@@ -84,7 +84,7 @@ class BackTrack : Module() {
         get() = MinusBounce.moduleManager[KillAura::class.java]?.target
 
     @EventTarget
-    fun onGameLoop(event: GameLoopEvent) {
+    fun onGameLoop(event: GameLoop) {
         mc.thePlayer ?: return
         mc.theWorld ?: return
         val target = this.target ?: return
