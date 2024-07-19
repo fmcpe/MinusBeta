@@ -5,7 +5,7 @@ import net.minusmc.minusbounce.features.module.modules.combat.killaura.KillAuraB
 class VanillaBlocking: KillAuraBlocking("Vanilla") {
     override fun onPostAttack(){
         if (killAura.hitTicks != 0) {
-            killAura.startBlocking(false, false)
+            killAura.startBlocking(false, true)
         }
     }
 }

@@ -3,22 +3,29 @@ package net.minusmc.minusbounce.features.module.modules.combat
 import net.minecraft.client.renderer.GlStateManager
 import net.minecraft.entity.EntityLivingBase
 import net.minecraft.network.Packet
-import net.minecraft.network.play.server.S14PacketEntity
-import net.minecraft.network.play.server.S18PacketEntityTeleport
+import net.minecraft.network.play.client.C0FPacketConfirmTransaction
+import net.minecraft.network.play.server.*
 import net.minecraft.util.AxisAlignedBB
+import net.minecraft.util.Vec3
 import net.minusmc.minusbounce.MinusBounce
-import net.minusmc.minusbounce.event.*
+import net.minusmc.minusbounce.event.EventTarget
+import net.minusmc.minusbounce.event.GameLoop
+import net.minusmc.minusbounce.event.PacketEvent
+import net.minusmc.minusbounce.event.Render3DEvent
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
 import net.minusmc.minusbounce.features.module.modules.world.Scaffold
 import net.minusmc.minusbounce.utils.Constants
+import net.minusmc.minusbounce.utils.PacketUtils
 import net.minusmc.minusbounce.utils.render.ColorUtils
 import net.minusmc.minusbounce.utils.render.RenderUtils
-import net.minusmc.minusbounce.utils.PacketUtils
 import net.minusmc.minusbounce.utils.timer.MSTimer
-import net.minusmc.minusbounce.value.*
+import net.minusmc.minusbounce.value.BoolValue
+import net.minusmc.minusbounce.value.FloatValue
+import net.minusmc.minusbounce.value.IntegerValue
 import org.lwjgl.opengl.GL11
+import kotlin.math.abs
 
 
 @ModuleInfo("BackTrack", "Back Track", "Let you attack in their previous position", ModuleCategory.COMBAT)
@@ -29,6 +36,7 @@ class BackTrack : Module() {
 
     val packets = mutableListOf<Packet<*>>()
     val timer = MSTimer()
+    var lastVelocity: Vec3? = null
 
     override fun onEnable() {
         packets.clear()
@@ -68,6 +76,33 @@ class BackTrack : Module() {
                     entity.realPosX = packet.x.toDouble()
                     entity.realPosY = packet.y.toDouble()
                     entity.realPosZ = packet.z.toDouble()
+                }
+            }
+
+            is S12PacketEntityVelocity -> {
+                if (packet.entityID == mc.thePlayer.entityId) {
+                    if (packets.isNotEmpty()) {
+                        event.cancelEvent()
+                        lastVelocity = Vec3(
+                            packet.getMotionX() / 8000.0,
+                            packet.getMotionY() / 8000.0,
+                            packet.getMotionZ() / 8000.0
+                        )
+                    }
+                }
+            }
+
+            is S08PacketPlayerPosLook, is S40PacketDisconnect -> {
+                flushPackets()
+                return
+            }
+
+            is S13PacketDestroyEntities -> {
+                for (id in packet.entityIDs){
+                    if(id == (target?.entityId ?: id)){
+                        flushPackets()
+                        return
+                    }
                 }
             }
         }
@@ -153,22 +188,76 @@ class BackTrack : Module() {
         }
     }
 
-    private fun flushPackets() {
-        if (packets.isEmpty())
-            return
+    fun flushPackets() {
+        if (lastVelocity != null) {
+            mc.thePlayer.motionX = lastVelocity!!.xCoord
+            mc.thePlayer.motionY = lastVelocity!!.yCoord
+            mc.thePlayer.motionZ = lastVelocity!!.zCoord
+            lastVelocity = null
+        }
 
-        synchronized(packets) {
-            while (packets.size > 0) {
-                val packet = packets.removeFirst()
-                PacketUtils.processPacket(packet)
+        if (packets.isNotEmpty()) {
+            synchronized(packets) {
+                while (packets.size > 0) {
+                    when (val packet = packets.removeFirst()) {
+                        is S14PacketEntity -> handleEntityMovement(packet)
+                        is S18PacketEntityTeleport -> handleEntityTeleport(packet)
+                        is S32PacketConfirmTransaction -> handleConfirmTransaction(packet)
+                        is S00PacketKeepAlive -> mc.netHandler.handleKeepAlive(packet)
+                        else -> PacketUtils.processPacket(packet)
+                    }
+                }
             }
         }
     }
 
-    private fun addPacket(event: PacketEvent) {
-        synchronized(packets) {
-            val packet = event.packet
+    private fun handleEntityMovement(packetIn: S14PacketEntity) {
+        packetIn.getEntity(mc.netHandler.clientWorldController)?.apply {
+            serverPosX += packetIn.posX
+            serverPosY += packetIn.posY
+            serverPosZ += packetIn.posZ
+            val d0 = serverPosX / 32.0
+            val d1 = serverPosY / 32.0
+            val d2 = serverPosZ / 32.0
+            val f = if (packetIn.func_149060_h()) (packetIn.yaw * 360) / 256.0f else rotationYaw
+            val f1 = if (packetIn.func_149060_h()) (packetIn.pitch * 360) / 256.0f else rotationPitch
+            setPositionAndRotation2(d0, d1, d2, f, f1, 3, false)
+            onGround = packetIn.onGround
+        }
+    }
 
+    fun handleEntityTeleport(packetIn: S18PacketEntityTeleport) {
+        mc.netHandler.clientWorldController.getEntityByID(packetIn.entityId)?.apply {
+            serverPosX = packetIn.x
+            serverPosY = packetIn.y
+            serverPosZ = packetIn.z
+            val d0 = serverPosX / 32.0
+            val d1 = serverPosY / 32.0
+            val d2 = serverPosZ / 32.0
+            val f = (packetIn.yaw * 360) / 256.0f
+            val f1 = (packetIn.pitch * 360) / 256.0f
+
+            val isCloseEnough = abs(posX - d0) < 0.03125 && abs(posY - d1) < 0.015625 && abs(posZ - d2) < 0.03125
+
+            setPositionAndRotation2(if (isCloseEnough) posX else d0, d1, d2, f, f1, 3, true)
+            onGround = packetIn.onGround
+        }
+    }
+
+    fun handleConfirmTransaction(packetIn: S32PacketConfirmTransaction) {
+        when (packetIn.windowId) {
+            0 -> mc.thePlayer.inventoryContainer
+            mc.thePlayer.openContainer.windowId -> mc.thePlayer.openContainer
+            else -> null
+        }?.takeIf { !packetIn.func_148888_e() }?.let {
+            mc.netHandler.addToSendQueue(C0FPacketConfirmTransaction(packetIn.windowId, packetIn.actionNumber, true))
+        }
+    }
+
+    private fun addPacket(event: PacketEvent) {
+        val packet = event.packet
+
+        synchronized(packets) {
             if (packet::class.java !in Constants.serverOtherPacketClasses) {
                 packets.add(packet)
                 event.cancelEvent()

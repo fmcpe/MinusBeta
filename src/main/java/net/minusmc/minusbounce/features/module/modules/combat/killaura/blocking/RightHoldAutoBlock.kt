@@ -1,12 +1,13 @@
 package net.minusmc.minusbounce.features.module.modules.combat.killaura.blocking
 
 import net.minusmc.minusbounce.features.module.modules.combat.killaura.KillAuraBlocking
-import net.minusmc.minusbounce.utils.extensions.getDistanceToEntityBox
 
-class RightHoldBlocking: KillAuraBlocking("RightHold") {
+class RightHoldBlocking: KillAuraBlocking("Legit") {
     override fun onPreUpdate() {
-        val target = killAura.target ?: return
-        mc.gameSettings.keyBindUseItem.pressed = killAura.canBlock && mc.thePlayer.getDistanceToEntityBox(target) < killAura.rangeValue.get()
+        if(!killAura.blockingStatus){
+            mc.gameSettings.keyBindUseItem.pressed = true
+            blockingStatus = true
+        }
     }
 
     override fun onDisable() {

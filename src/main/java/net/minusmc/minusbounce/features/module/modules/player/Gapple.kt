@@ -91,10 +91,15 @@ class Gapple : Module() {
             if (abAmount > 0)
                 return
         }
+        var gappleInHotbar: Int? = null
+        try {
+            gappleInHotbar = InventoryUtils.findItem(36, 45, Items.golden_apple) ?: return
+        } catch (_: Exception) {}
 
-        val gappleInHotbar = InventoryUtils.findItem(36, 45, Items.golden_apple) ?: return
         if (gappleInHotbar != -1) {
-            mc.netHandler.addToSendQueue(C09PacketHeldItemChange(gappleInHotbar - 36))
+            if (gappleInHotbar != null) {
+                mc.netHandler.addToSendQueue(C09PacketHeldItemChange(gappleInHotbar - 36))
+            }
             mc.netHandler.addToSendQueue(C08PacketPlayerBlockPlacement(mc.thePlayer.heldItem))
             repeat(35) {
                 if (grim.get()) 

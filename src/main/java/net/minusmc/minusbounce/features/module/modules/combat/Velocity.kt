@@ -94,7 +94,7 @@ class Velocity : Module() {
         mode.onStrafe(event)
     }
 
-    @EventTarget(priority = -999)
+    @EventTarget
     fun onInput(event: MoveInputEvent) {
         mode.onInput(event)
     }

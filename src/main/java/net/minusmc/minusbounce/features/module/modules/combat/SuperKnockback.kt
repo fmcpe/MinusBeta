@@ -14,6 +14,7 @@ import net.minusmc.minusbounce.event.UpdateEvent
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
+import net.minusmc.minusbounce.utils.MovementUtils
 import net.minusmc.minusbounce.utils.timer.MSTimer
 import net.minusmc.minusbounce.value.IntegerValue
 import net.minusmc.minusbounce.value.ListValue
@@ -33,7 +34,7 @@ class SuperKnockback : Module() {
     fun onAttack(event: AttackEvent) {
         if (event.targetEntity is EntityLivingBase) {
             val backtrack = MinusBounce.moduleManager.getModule(BackTrack::class.java) ?: return
-            if (event.targetEntity.hurtTime >= hurtTimeValue.get() || !timer.hasTimePassed(delay.get().toLong()) || (backtrack.state && backtrack.packets.isNotEmpty()))
+            if (event.targetEntity.hurtTime >= hurtTimeValue.get() || !timer.hasTimePassed(delay.get().toLong()) || (backtrack.state && backtrack.packets.isNotEmpty()) || !MovementUtils.isMoving || !mc.thePlayer.onGround)
                 return
 
             when (modeValue.get().lowercase()) {

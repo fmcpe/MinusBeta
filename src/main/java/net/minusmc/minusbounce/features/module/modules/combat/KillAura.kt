@@ -173,8 +173,8 @@ class KillAura : Module() {
         if(!BadPacketUtils.bad(false, true, true, false, true)) {
             when(clickMode.get().lowercase()) {
                 "normal", "normalnoise" -> {
-                    if (this.nextClickTime > 0L) {
-                        if (System.currentTimeMillis() > this.nextClickTime) {
+                    if (nextClickTime > 0L) {
+                        if (System.currentTimeMillis() > nextClickTime) {
                             runAttack(false)
                             delay()
                         }
@@ -535,7 +535,7 @@ class KillAura : Module() {
             "blatant" -> clickBlatant(entity)
         }
 
-        this.hitTicks = 0
+        hitTicks = 0
     }
 
     private fun clickNormal(entity: EntityLivingBase){
@@ -637,7 +637,11 @@ class KillAura : Module() {
     fun startBlocking(check: Boolean, interact: Boolean) {
         if(!blockingStatus || !check){
             if(interact && target != null && mc.objectMouseOver.entityHit == target){
-                KeyBinding.onTick(mc.gameSettings.keyBindUseItem.keyCode)
+                mc.playerController.isPlayerRightClickingOnEntity(
+                    mc.thePlayer,
+                    mc.objectMouseOver.entityHit,
+                    mc.objectMouseOver
+                )
             }
 
             mc.netHandler.addToSendQueue(C08PacketPlayerBlockPlacement(mc.thePlayer.inventory.getCurrentItem() ?: return))
@@ -664,7 +668,7 @@ class KillAura : Module() {
 
     @EventTarget
     fun onPreMotion(event: PreMotionEvent) {
-        this.hitTicks++
+        hitTicks++
 
         if(target == null || mc.thePlayer.isDead || MinusBounce.moduleManager.getModule(Scaffold::class.java)?.state ?: return){
             stopBlocking(false)
@@ -687,10 +691,10 @@ class KillAura : Module() {
         mc.thePlayer ?: return
         mc.theWorld ?: return
 
-        if (canBlock && (mc.thePlayer.isBlocking || blockingStatus)) {
-            event.forward = 1.0F
-            event.strafe = 1.0F
-        }
+//        if (canBlock && (mc.thePlayer.isBlocking || blockingStatus)) {
+//            event.forward = 1.0F
+//            event.strafe = 1.0F
+//        }
 
         blockingMode.onSlowDown(event)
     }

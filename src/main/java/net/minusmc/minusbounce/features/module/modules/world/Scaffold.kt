@@ -44,7 +44,7 @@ class Scaffold: Module(){
     private val modes = ListValue("Mode", arrayOf("Normal", "Snap", "Telly", "None", "MoonWalk", "Legit"), "Normal")
     private val clicks = ListValue("ClickMode", arrayOf("RayTraced", "Normal"), "RayTraced")
     private val searchModeValue = ListValue("AimMode", arrayOf("Area", "Center", "TryRotation"), "Center")
-    private val yawOffset = ListValue("OffsetYaw", arrayOf("0", "45"), "0") {searchModeValue.get() == "TryRotation"}
+    private val yawOffset = ListValue("OffsetYaw", arrayOf("Dynamic", "Side"), "Side") {searchModeValue.get() == "TryRotation"}
     private val reset = BoolValue("RotationActivateReset", false) { modes.get() == "Telly" || modes.get() == "Snap" }
     private val ticks = IntegerValue("Ticks", 3, 0, 10) { modes.get() == "Telly" }
     private val delayValue = IntRangeValue("Delay", 0, 0, 0, 10)
@@ -709,13 +709,13 @@ class Scaffold: Module(){
 
                 "tryrotation" -> {
                     val list = when(yawOffset.get().lowercase()) {
-                        "45" -> floatArrayOf(-135f, -45f, 45f, 135f)
-                        else -> floatArrayOf(-180f, -90f, 0f, 90f, 180f)
+                        "side" -> floatArrayOf(-135f, -45f, 45f, 135f)
+                        else -> floatArrayOf(-180f, -135f, -90f, 0f, 90f, 135f, 180f)
                     }
 
                     val pitchList = when(yawOffset.get().lowercase()) {
-                        "45" -> 75.0..80.0 + if (isLookingDiagonally) 1.0 else 0.0
-                        else -> 75.0..85.0 + if (isLookingDiagonally) 2.0 else 0.0
+                        "side" -> 75.0..80.0 + if (isLookingDiagonally) 1.0 else 0.0
+                        else -> 30.0..90.0
                     }
                     for (yaw in list) {
                         for (pitch in pitchList step 0.1) {
@@ -725,19 +725,11 @@ class Scaffold: Module(){
                             val currentPlaceRotation = PlaceRotation(PlaceInfo(raytrace.blockPos, raytrace.sideHit, raytrace.hitVec), rotation)
 
                             if (raytrace.blockPos == neighborBlock && raytrace.sideHit == side.opposite) {
-                                val isInStablePitchRange = when(yawOffset.get().lowercase()){
-                                    "45" -> if (isLookingDiagonally) {
+                                val isInStablePitchRange = if (isLookingDiagonally) {
                                         pitch >= 75.6
                                     } else {
                                         pitch in 73.5..75.7
                                     }
-
-                                    else -> if (isLookingDiagonally) {
-                                        pitch >= 80.0
-                                    } else {
-                                        pitch in 75.0..80.0
-                                    }
-                                }
 
                                 // The module should be looking to aim at (nearly) the upper face of the block. Provides stable bridging most of the time.
                                 if (isInStablePitchRange) {
