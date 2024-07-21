@@ -100,7 +100,7 @@ class Scaffold: Module(){
 
     override fun onEnable() {
         targetYaw = mc.thePlayer.rotationYaw - 180
-        targetPitch = 90f
+        targetPitch = 80.34F
 
         startY = floor(mc.thePlayer.posY)
         targetBlock = null
@@ -317,12 +317,6 @@ class Scaffold: Module(){
 
     @EventTarget
     fun onTick(event: PreUpdateEvent){
-        if (blockRelativeToPlayer(0, -1, 0) is BlockAir) {
-            ticksOnAir++
-        } else {
-            ticksOnAir = 0
-        }
-
         /* Player Position Update (Edge Exception + Legit Mode) */
         xPos = mc.thePlayer.posX
         zPos = mc.thePlayer.posZ
@@ -330,6 +324,13 @@ class Scaffold: Module(){
         if(buildForward()) {
             xPos += mc.thePlayer.posX - mc.thePlayer.lastReportedPosX
             zPos += mc.thePlayer.posZ - mc.thePlayer.lastReportedPosZ
+        }
+
+        val b = BlockPos(xPos, mc.thePlayer.posY - 1, zPos)
+        if (mc.theWorld.getChunkFromBlockCoords(b).getBlock(b) is BlockAir) {
+            ticksOnAir++
+        } else {
+            ticksOnAir = 0
         }
 
         val blockSlot = InventoryUtils.findBlockInHotbar() ?: return
@@ -614,7 +615,7 @@ class Scaffold: Module(){
                     if (!isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)) {
                         getRotations()
                     }
-                } else {
+                } else if(isMoving){
                     if(reset.get()){
                         RotationUtils.active = false
                         return
@@ -633,7 +634,7 @@ class Scaffold: Module(){
         /* Setting rotations */
         RotationUtils.setRotations(
             Rotation(targetYaw, targetPitch),
-            2,
+            0,
             RandomUtils.nextFloat(speed.getMinValue(), speed.getMaxValue()),
             if (movementCorrection.get() && !modes.get().equals("none", true)) MovementFixType.FULL
             else MovementFixType.NONE,
