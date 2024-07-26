@@ -172,7 +172,7 @@ class BackTrack : Module() {
             render = false
 
         if (target != mc.thePlayer && !target.isInvisible && render) {
-            val color = ColorUtils.getColor(210.0F, 0.7F, 0.75F)
+            val color = ColorUtils.getColor(119, 130, 190)
             val x = realX - mc.renderManager.renderPosX
             val y = realY - mc.renderManager.renderPosY
             val z = realZ - mc.renderManager.renderPosZ
