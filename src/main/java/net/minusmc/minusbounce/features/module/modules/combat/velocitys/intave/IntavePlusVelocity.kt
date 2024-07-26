@@ -2,7 +2,7 @@ package net.minusmc.minusbounce.features.module.modules.combat.velocitys.intave
 
 import net.minecraft.network.play.server.S12PacketEntityVelocity
 import net.minusmc.minusbounce.event.AttackEvent
-import net.minusmc.minusbounce.event.KnockbackEvent
+import net.minusmc.minusbounce.event.KnockBackEvent
 import net.minusmc.minusbounce.event.MoveInputEvent
 import net.minusmc.minusbounce.event.PacketEvent
 import net.minusmc.minusbounce.event.EntityDamageEvent
@@ -54,14 +54,14 @@ class IntavePlusVelocity : VelocityMode("IntavePlus") {
         }
     }
 
-    override fun onMoveInput(event: MoveInputEvent) {
+    override fun onInput(event: MoveInputEvent) {
         if (mc.thePlayer.hurtTime > 0 && isRaytracedToEntity) {
             event.forward = 1.0F
             event.strafe = 0.0F
         }
     }
 
-    override fun onKnockback(event: KnockbackEvent) {
+    override fun onKnockBack(event: KnockBackEvent) {
         if (mc.thePlayer.hurtTime <= 0)
             event.isCancelled = true
 
