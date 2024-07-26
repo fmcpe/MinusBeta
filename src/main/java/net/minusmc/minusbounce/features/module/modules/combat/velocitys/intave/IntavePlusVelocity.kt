@@ -13,7 +13,7 @@ import net.minusmc.minusbounce.value.BoolValue
 import net.minecraft.util.MovingObjectPosition
 
 
-class IntaveVelocity : VelocityMode("IntavePlus") {
+class IntavePlusVelocity : VelocityMode("IntavePlus") {
     private val targetRange = FloatValue("TargetRange", 3f, 0f, 5f)
     private val hurtTime = BoolValue("KeepSprintOnlyHurtTime", false)
     private var blockVelocity = false
