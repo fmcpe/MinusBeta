@@ -8,10 +8,7 @@ import net.minecraft.network.play.server.*
 import net.minecraft.util.AxisAlignedBB
 import net.minecraft.util.Vec3
 import net.minusmc.minusbounce.MinusBounce
-import net.minusmc.minusbounce.event.EventTarget
-import net.minusmc.minusbounce.event.GameLoop
-import net.minusmc.minusbounce.event.PacketEvent
-import net.minusmc.minusbounce.event.Render3DEvent
+import net.minusmc.minusbounce.event.*
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
@@ -137,12 +134,17 @@ class BackTrack : Module() {
         val realDistance = mc.thePlayer.getDistance(realX, realY, realZ)
         val targetDistance = mc.thePlayer.getDistance(target.posX, target.posY, target.posZ)
 
-        if (targetDistance >= realDistance || realDistance > hitRange.get())
+        if (targetDistance >= realDistance || realDistance > hitRange.get() || mc.thePlayer.hurtTime > 3)
             flushPackets()
         else if (timer.hasTimePassed(delay.get())) {
             timer.reset()
             flushPackets()
         }
+    }
+
+    @EventTarget
+    fun onWorld(event: WorldEvent){
+        flushPackets()
     }
 
     @EventTarget
@@ -168,7 +170,7 @@ class BackTrack : Module() {
         val realDistance = mc.thePlayer.getDistance(realX, realY, realZ)
         val targetDistance = mc.thePlayer.getDistance(target.posX, target.posY, target.posZ)
 
-        if (targetDistance >= realDistance || realDistance > hitRange.get() || timer.hasTimePassed(delay.get()))
+        if (targetDistance >= realDistance || realDistance > hitRange.get() || timer.hasTimePassed(delay.get()) || mc.thePlayer.hurtTime > 3)
             render = false
 
         if (target != mc.thePlayer && !target.isInvisible && render) {

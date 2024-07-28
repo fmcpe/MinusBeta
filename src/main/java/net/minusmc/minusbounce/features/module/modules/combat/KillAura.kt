@@ -66,10 +66,8 @@ class KillAura : Module() {
     private val throughWallsValue = BoolValue("ThroughWalls", true)
 
     // Rotations & TurnSpeed
-    private val rotations = ListValue("RotationMode", arrayOf("Vanilla", "BackTrack", "Grim", "Intave", "None"), "BackTrack")
-    private val turnSpeed = FloatRangeValue("TurnSpeed", 180f, 180f, 0f, 180f, "°") {
-        !rotations.get().equals("None", true)
-    }
+    private val rotations = ListValue("RotationMode", arrayOf("Vanilla", "BackTrack", "Grim", "Intave"), "BackTrack")
+    private val turnSpeed = FloatRangeValue("TurnSpeed", 180f, 180f, 0f, 180f, "°")
 
     //Target / Modes
     private val priorityValue = ListValue("Priority", arrayOf("Health", "Distance", "HurtResistance", "HurtTime", "Armor"), "Distance")
@@ -81,7 +79,7 @@ class KillAura : Module() {
     // Bypass
     private val swingValue = ListValue("Swing", arrayOf("Normal", "Packet", "None"), "Normal")
     private val intaveRandomAmount = FloatValue("Random", 4f, 0.25f, 10f) { rotations.get().equals("Intave", true) }
-    private val Hitable = BoolValue("Hitable", false) { !rotations.get().equals("none", true) && !throughWallsValue.get()}
+    private val Hitable = BoolValue("Hitable", false) {!throughWallsValue.get()}
 
     // AutoBlock & Interact
     val autoBlockModeValue: ListValue = object : ListValue("AutoBlock", blockingModes.map { it.modeName }.toTypedArray(), "None") {
@@ -99,7 +97,6 @@ class KillAura : Module() {
 
     // Raycast & Rotation
     private val raycastValue = BoolValue("RayCast", true)
-    private val silentRotationValue = BoolValue("SilentRotation", true) { !rotations.get().equals("none", true) }
     private val movementCorrection = ListValue("MovementFix", arrayOf("None", "Normal", "Full"), "Full")
 
     // Predict
@@ -471,34 +468,29 @@ class KillAura : Module() {
 
             val reach = min(rangeValue.get().toDouble(), mc.thePlayer.getDistanceToEntityBox(it)) + 1
 
-            /* Update Rotation */
-            if (!rotations.get().equals("none", true)) {
+            /* Do RayCast */
+            val (yaw, pitch) = getTargetRotation(it)
 
-                /* Do RayCast */
-                val (yaw, pitch) = getTargetRotation(it)
+            val rayTrace = RaycastUtils.raycastEntity(reach, yaw, pitch, object: RaycastUtils.IEntityFilter {
+                override fun canRaycast(entity: Entity?): Boolean {
+                    return entity is EntityLivingBase && entity !is EntityArmorStand && isSelected(entity, true)
+                }
+            })
 
-                val rayTrace = RaycastUtils.raycastEntity(reach, yaw, pitch, object: RaycastUtils.IEntityFilter {
-                    override fun canRaycast(entity: Entity?): Boolean {
-                        return entity is EntityLivingBase && entity !is EntityArmorStand && isSelected(entity, true)
-                    }
-                })
+            /* Update Target */
+            target = if (raycastValue.get() && turnSpeed.getMaxValue() > 0.0F && (rayTrace ?: it) == it) (rayTrace ?: it) as EntityLivingBase else it
 
-                /* Update Target */
-                target = if (raycastValue.get() && turnSpeed.getMaxValue() > 0.0F && (rayTrace ?: it) == it) (rayTrace ?: it) as EntityLivingBase else it
-
-                RotationUtils.setRotations(
-                    /* Why the f I have done this :( */
-                    rotation = getTargetRotation(target ?: return@forEach),
-                    keepLength = 0,
-                    speed = RandomUtils.nextFloat(turnSpeed.getMinValue(), turnSpeed.getMaxValue()),
-                    fixType = when (movementCorrection.get().lowercase()) {
-                        "normal" -> MovementFixType.NORMAL
-                        "full" -> MovementFixType.FULL
-                        else -> MovementFixType.NONE
-                    },
-                    silent = silentRotationValue.get()
-                )
-            }
+            RotationUtils.setRotations(
+                /* Why the f I have done this :( */
+                getTargetRotation(target ?: return@forEach),
+                0,
+                RandomUtils.nextFloat(turnSpeed.getMinValue(), turnSpeed.getMaxValue()),
+                when (movementCorrection.get().lowercase()) {
+                    "normal" -> MovementFixType.NORMAL
+                    "full" -> MovementFixType.FULL
+                    else -> MovementFixType.NONE
+                },
+            )
 
             /* Update Hitable && Reach bypass */
             if (!rotations.get().equals("none", true) && turnSpeed.getMaxValue() > 0.0F && Hitable.get() && mc.objectMouseOver != null) {

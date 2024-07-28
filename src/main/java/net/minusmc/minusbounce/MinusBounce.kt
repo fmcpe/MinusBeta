@@ -88,6 +88,7 @@ object MinusBounce {
         eventManager.registerListener(combatManager)
         eventManager.registerListener(sessionManager)
         eventManager.registerListener(ClickHandle)
+        
 
         commandManager = CommandManager()
         Fonts.loadFonts()
