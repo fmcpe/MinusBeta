@@ -23,6 +23,7 @@ import net.minusmc.minusbounce.value.FloatValue
 import net.minusmc.minusbounce.value.IntegerValue
 import org.lwjgl.opengl.GL11
 import kotlin.math.abs
+import java.awt.Color
 
 
 @ModuleInfo("BackTrack", "Back Track", "Let you attack in their previous position", ModuleCategory.COMBAT)
@@ -174,7 +175,7 @@ class BackTrack : Module() {
             render = false
 
         if (target != mc.thePlayer && !target.isInvisible && render) {
-            val color = ColorUtils.getColor(210.0F, 0.7F, 0.75F)
+            val color = Color(119, 130, 190).rgb
             val x = realX - mc.renderManager.renderPosX
             val y = realY - mc.renderManager.renderPosY
             val z = realZ - mc.renderManager.renderPosZ

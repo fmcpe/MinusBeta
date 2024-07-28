@@ -17,7 +17,6 @@ open class CancellableEvent : Event() {
      * @return state of cancel
      */
     var isCancelled: Boolean = false
-        private set
 
     /**
      * Allows you to cancel a event
