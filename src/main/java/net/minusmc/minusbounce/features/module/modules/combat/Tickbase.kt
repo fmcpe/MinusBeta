@@ -31,17 +31,17 @@ class TickBase : Module() {
 
     fun getExtraTicks(): Int {
         MinusBounce.moduleManager[KillAura::class.java]?.let{
-            val target = it.target ?: return@let
-
-            if(it.state && mc.thePlayer.getDistanceToEntityBox(target) < range.get().toDouble()) return@let
             if(counter-- > 0) return -1 else freezing = false
 
-            if(it.state && mc.thePlayer.getDistanceToEntityBox(target) == range.get().toDouble()) {
-                counter = ticks.get()
-                return counter
+            if(it.state && (it.target == null || mc.thePlayer.getDistanceToEntityBox(it.target ?: return@let) > range.get())) {
+                it.updateTarget()
+
+                if(it.target != null){
+                    counter = ticks.get()
+                    return counter
+                }
             }
         }
-
         return 0
     }
 

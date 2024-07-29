@@ -43,7 +43,6 @@ class BlockBBEvent(blockPos: BlockPos, val block: Block, var boundingBox: AxisAl
 class TimeDelay: Event()
 class GameLoop: Event()
 class ClickingEvent: CancellableEvent()
-class CameraEvent(var roll: Float, var yaw: Float, var pitch: Float): Event()
 
 /**
  * Called when player clicks a block

@@ -24,7 +24,10 @@ import net.minusmc.minusbounce.utils.MovementUtils.isMoving
 import net.minusmc.minusbounce.utils.block.BlockUtils
 import net.minusmc.minusbounce.utils.block.BlockUtils.rayTrace
 import net.minusmc.minusbounce.utils.block.PlaceInfo
-import net.minusmc.minusbounce.utils.extensions.*
+import net.minusmc.minusbounce.utils.extensions.eyes
+import net.minusmc.minusbounce.utils.extensions.iterator
+import net.minusmc.minusbounce.utils.extensions.plus
+import net.minusmc.minusbounce.utils.extensions.step
 import net.minusmc.minusbounce.utils.misc.RandomUtils
 import net.minusmc.minusbounce.utils.movement.MovementFixType
 import net.minusmc.minusbounce.utils.render.RenderUtils
@@ -38,7 +41,7 @@ import kotlin.math.*
 @ModuleInfo("Scaffold", "Scaffold", "Use huge balls to rolling on mid-air", ModuleCategory.WORLD)
 class Scaffold: Module(){
 
-    private val modes = ListValue("Mode", arrayOf("Normal", "Snap", "Telly", "MoonWalk", "Legit"), "Normal")
+    private val modes = ListValue("Mode", arrayOf("Normal", "Snap", "Telly", "None", "MoonWalk", "Legit"), "Normal")
     private val clicks = ListValue("ClickMode", arrayOf("RayTraced", "Normal"), "RayTraced")
     private val searchModeValue = ListValue("AimMode", arrayOf("Area", "Center", "TryRotation"), "Center")
     private val yawOffset = ListValue("OffsetYaw", arrayOf("Dynamic", "Side"), "Side") {searchModeValue.get() == "TryRotation"}
@@ -358,7 +361,8 @@ class Scaffold: Module(){
         try {
             if (mc.thePlayer.inventory.currentItem == InventoryUtils.serverSlot &&
                     !BadPacketUtils.bad(false, true, false, false, true) &&
-                    ticksOnAir > RandomUtils.nextInt(delayValue.getMinValue(), delayValue.getMaxValue())
+                    ticksOnAir > RandomUtils.nextInt(delayValue.getMinValue(), delayValue.getMaxValue()) &&
+                    isObjectMouseOverBlock(placeInfo?.enumFacing!!, blockPlace!!, currentRotation)
                ){
                 when (modes.get().lowercase()){
                     "legit" -> if(mc.thePlayer.posY < (mc.objectMouseOver.blockPos.y + 1.5)){
@@ -387,16 +391,8 @@ class Scaffold: Module(){
         when(clicks.get().lowercase()){
             "normal" -> mc.rightClickMouse()
             "raytraced" -> {
-                val (yaw, pitch) = Rotation(targetYaw, targetPitch)
-                val eyes = mc.thePlayer.getPositionEyes(mc.timer.renderPartialTicks)
-                val range = if (mc.playerController.currentGameType.isCreative) 5.0 else 4.5
-                val vec = eyes + (mc.thePlayer.getVectorForRotation(pitch, yaw) * range)
-                val ray = mc.theWorld.rayTraceBlocks(eyes, vec, false, false, true)
-
-                if(ray.blockPos == blockPlace && ray.sideHit == placeInfo!!.enumFacing){
-                    if(mc.playerController.onPlayerRightClick(mc.thePlayer, mc.theWorld, mc.thePlayer.inventory.getCurrentItem(), ray.blockPos, ray.sideHit, ray.hitVec)){
-                        mc.thePlayer.swingItem()
-                    }
+                if(isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)){
+                    mc.rightClickMouse()
                 }
             }
         }
@@ -640,7 +636,10 @@ class Scaffold: Module(){
             Rotation(targetYaw, targetPitch),
             0,
             RandomUtils.nextFloat(speed.getMinValue(), speed.getMaxValue()),
-            if (movementCorrection.get()) MovementFixType.FULL else MovementFixType.NONE
+            if (movementCorrection.get() && !modes.get().equals("none", true)) MovementFixType.FULL
+            else MovementFixType.NONE,
+            true,
+            !modes.get().equals("none", true)
         )
     }
 

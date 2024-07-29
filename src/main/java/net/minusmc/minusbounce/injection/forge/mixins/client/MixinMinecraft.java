@@ -498,17 +498,21 @@ public abstract class MixinMinecraft {
 
                         if(extraTicks == -1) {
                             skip = true;
-                        } else if(extraTicks > 0) {
-                            for(int t = 0; t < extraTicks; t++) {
-                                this.runTick();
-                            }
+                        } else {
+                            if(extraTicks > 0) {
+                                for(int aa = 0; aa < extraTicks; aa++) {
+                                    this.runTick();
+                                }
 
-                            tickBase.setFreezing(true);
+                                tickBase.setFreezing(true);
+                            }
                         }
                     }
                 }
 
-                if(!skip) this.runTick();
+                if(!skip) {
+                    this.runTick();
+                }
             } else {
                 this.runTick();
             }
