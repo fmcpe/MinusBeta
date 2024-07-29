@@ -24,10 +24,7 @@ import net.minusmc.minusbounce.utils.MovementUtils.isMoving
 import net.minusmc.minusbounce.utils.block.BlockUtils
 import net.minusmc.minusbounce.utils.block.BlockUtils.rayTrace
 import net.minusmc.minusbounce.utils.block.PlaceInfo
-import net.minusmc.minusbounce.utils.extensions.eyes
-import net.minusmc.minusbounce.utils.extensions.iterator
-import net.minusmc.minusbounce.utils.extensions.plus
-import net.minusmc.minusbounce.utils.extensions.step
+import net.minusmc.minusbounce.utils.extensions.*
 import net.minusmc.minusbounce.utils.misc.RandomUtils
 import net.minusmc.minusbounce.utils.movement.MovementFixType
 import net.minusmc.minusbounce.utils.render.RenderUtils
@@ -391,8 +388,22 @@ class Scaffold: Module(){
         when(clicks.get().lowercase()){
             "normal" -> mc.rightClickMouse()
             "raytraced" -> {
-                if(isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)){
-                    mc.rightClickMouse()
+                val (yaw, pitch) = RotationUtils.targetRotation ?: return
+                val eyes = mc.thePlayer.getPositionEyes(mc.timer.renderPartialTicks)
+                val range = if (mc.playerController.currentGameType.isCreative) 5.0 else 4.5
+                val look = mc.thePlayer.getVectorForRotation(pitch, yaw)
+                val vec = eyes + (look * range)
+                val obj = mc.theWorld.rayTraceBlocks(eyes, vec, false, false, true)
+
+                if(isObjectMouseOverBlock(
+                    placeInfo?.enumFacing ?: return,
+                blockPlace ?: return,
+                    obj = obj
+                    )
+                ){
+                    if (mc.playerController.onPlayerRightClick(mc.thePlayer, mc.theWorld, mc.thePlayer.inventory.getCurrentItem(), obj.blockPos, obj.sideHit, obj.hitVec)){
+                        mc.thePlayer.swingItem()
+                    }
                 }
             }
         }

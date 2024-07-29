@@ -24,11 +24,7 @@ object RotationUtils : MinecraftInstance(), Listenable {
     private var keepLength = 0
 
     @JvmField
-    var currentRotation: Rotation? = null
-
-    @JvmField
     var targetRotation: Rotation? = null
-    var serverRotation = Rotation(0f, 0f)
 
     @JvmField
     var offGroundTicks: Int = 0
@@ -55,7 +51,6 @@ object RotationUtils : MinecraftInstance(), Listenable {
             targetRotation = limitAngleChange(lastRotations ?: return, rotations ?: return , rotationSpeed - Math.random().toFloat())
         }
 
-        mc.entityRenderer.getMouseOver(1.0F)
         smoothed = true
     }
 

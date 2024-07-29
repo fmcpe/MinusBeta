@@ -13,7 +13,6 @@ import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.util.*
 import net.minusmc.minusbounce.utils.extensions.eyes
 import java.util.*
-import kotlin.collections.ArrayList
 
 object RaycastUtils : MinecraftInstance() {
     /**
@@ -21,7 +20,7 @@ object RaycastUtils : MinecraftInstance() {
      */
 
     fun runWithModifiedRaycastResult(range: Float, wallRange: Float, action: (MovingObjectPosition) -> Unit) {
-        val rotation = RotationUtils.currentRotation ?: RotationUtils.serverRotation
+        val rotation = RotationUtils.targetRotation ?: serverRotation
         runWithModifiedRaycastResult(rotation, range.toDouble(), wallRange.toDouble(), action)
     }
 

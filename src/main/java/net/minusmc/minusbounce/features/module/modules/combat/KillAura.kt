@@ -571,7 +571,7 @@ class KillAura : Module() {
     }
 
     private fun clickLegit() {
-        if(mc.objectMouseOver.entityHit == (target ?: return)){
+        if(mc.objectMouseOver.entityHit == (target ?: return) && mc.playerController.curBlockDamageMP == 0F){
             KeyBinding.onTick(mc.gameSettings.keyBindAttack.keyCode)
         }
     }
@@ -691,10 +691,10 @@ class KillAura : Module() {
         mc.thePlayer ?: return
         mc.theWorld ?: return
 
-//        if (canBlock && (mc.thePlayer.isBlocking || blockingStatus)) {
-//            event.forward = 1.0F
-//            event.strafe = 1.0F
-//        }
+        if (canBlock && blockingStatus) {
+            event.forward = 1.0F
+            event.strafe = 1.0F
+        }
 
         blockingMode.onSlowDown(event)
     }
