@@ -5,9 +5,10 @@
  */
 package net.minusmc.minusbounce.ui.client.hud.designer
 
+import net.minecraft.client.gui.GuiScreen
 import net.minusmc.minusbounce.MinusBounce
 import net.minusmc.minusbounce.ui.client.hud.element.Element
-import net.minecraft.client.gui.GuiScreen
+import net.minusmc.minusbounce.utils.ClientUtils
 import org.lwjgl.input.Keyboard
 import org.lwjgl.input.Mouse
 import kotlin.math.min

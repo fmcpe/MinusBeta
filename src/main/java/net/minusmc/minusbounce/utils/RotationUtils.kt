@@ -51,6 +51,7 @@ object RotationUtils : MinecraftInstance(), Listenable {
             targetRotation = limitAngleChange(lastRotations ?: return, rotations ?: return , rotationSpeed - Math.random().toFloat())
         }
 
+        mc.entityRenderer.getMouseOver(1F)
         smoothed = true
     }
 

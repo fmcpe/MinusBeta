@@ -30,10 +30,7 @@ class ToggleCommand : Command("toggle", arrayOf("t")) {
                     chatSyntax("toggle <module> [on/off]")
                     return
                 }
-            } else {
-                if (module.onlyEnable) module.onEnable()
-                else module.toggle()
-            }
+            } else module.toggle()
 
             chat("${if (module.state) "Enabled" else "Disabled"} module §8${module.name}§3.")
             return

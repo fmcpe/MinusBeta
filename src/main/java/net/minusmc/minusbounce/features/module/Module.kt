@@ -38,7 +38,6 @@ open class Module : MinecraftInstance(), Listenable {
             if (!MinusBounce.isStarting)
                 MinusBounce.fileManager.saveConfig(MinusBounce.fileManager.modulesConfig)
         }
-    private val canEnable: Boolean
     val onlyEnable: Boolean
     private val forceNoSound: Boolean
 
@@ -55,7 +54,6 @@ open class Module : MinecraftInstance(), Listenable {
         category = moduleInfo.category
         keyBind = moduleInfo.keyBind
         array = moduleInfo.array
-        canEnable = moduleInfo.canEnable
         onlyEnable = moduleInfo.onlyEnable
         forceNoSound = moduleInfo.forceNoSound
     }
@@ -63,7 +61,7 @@ open class Module : MinecraftInstance(), Listenable {
     // Current state of module
     var state = false
         set(value) {
-            if (field == value || !canEnable) return
+            if (field == value) return
 
             // Call toggle
             onToggle(value)
@@ -82,9 +80,7 @@ open class Module : MinecraftInstance(), Listenable {
             // Call on enabled or disabled
             if (value) {
                 onEnable()
-
-                if (!onlyEnable)
-                    field = true
+                field = !onlyEnable
             } else {
                 onDisable()
                 field = false

@@ -24,11 +24,15 @@ import net.minusmc.minusbounce.utils.MovementUtils.isMoving
 import net.minusmc.minusbounce.utils.block.BlockUtils
 import net.minusmc.minusbounce.utils.block.BlockUtils.rayTrace
 import net.minusmc.minusbounce.utils.block.PlaceInfo
-import net.minusmc.minusbounce.utils.extensions.*
+import net.minusmc.minusbounce.utils.extensions.eyes
+import net.minusmc.minusbounce.utils.extensions.iterator
+import net.minusmc.minusbounce.utils.extensions.plus
+import net.minusmc.minusbounce.utils.extensions.step
 import net.minusmc.minusbounce.utils.misc.RandomUtils
 import net.minusmc.minusbounce.utils.movement.MovementFixType
 import net.minusmc.minusbounce.utils.render.RenderUtils
 import net.minusmc.minusbounce.utils.timer.MSTimer
+import net.minusmc.minusbounce.utils.timer.TimeUtils
 import net.minusmc.minusbounce.value.*
 import org.lwjgl.opengl.GL11
 import java.awt.Color
@@ -37,9 +41,9 @@ import kotlin.math.*
 
 @ModuleInfo("Scaffold", "Scaffold", "Use huge balls to rolling on mid-air", ModuleCategory.WORLD)
 class Scaffold: Module(){
-
+    private val cps = IntRangeValue("CPS", 5, 8, 0, 20)
     private val modes = ListValue("Mode", arrayOf("Normal", "Snap", "Telly", "None", "MoonWalk", "Legit"), "Normal")
-    private val clicks = ListValue("ClickMode", arrayOf("RayTraced", "Normal"), "RayTraced")
+    private val clickMode = ListValue("ClickMode", arrayOf("RayTraced", "Normal"), "RayTraced")
     private val searchModeValue = ListValue("AimMode", arrayOf("Area", "Center", "TryRotation"), "Center")
     private val yawOffset = ListValue("OffsetYaw", arrayOf("Dynamic", "Side"), "Side") {searchModeValue.get() == "TryRotation"}
     private val reset = BoolValue("RotationActivateReset", false) { modes.get() == "Telly" || modes.get() == "Snap" }
@@ -66,6 +70,9 @@ class Scaffold: Module(){
     private val counter = BoolValue("Counter", false)
 
     /* Values */
+    private val clickTimer = MSTimer()
+    private var clicks = 0
+    private var clickDelay = 0L
     private var targetBlock: BlockPos? = null
     private var placeInfo: PlaceInfo? = null
     private var blockPlace: BlockPos? = null
@@ -358,18 +365,23 @@ class Scaffold: Module(){
         try {
             if (mc.thePlayer.inventory.currentItem == InventoryUtils.serverSlot &&
                     !BadPacketUtils.bad(false, true, false, false, true) &&
-                    ticksOnAir > RandomUtils.nextInt(delayValue.getMinValue(), delayValue.getMaxValue()) &&
-                    isObjectMouseOverBlock(placeInfo?.enumFacing!!, blockPlace!!, currentRotation)
+                    ticksOnAir > RandomUtils.nextInt(delayValue.getMinValue(), delayValue.getMaxValue())
                ){
-                when (modes.get().lowercase()){
-                    "legit" -> if(mc.thePlayer.posY < (mc.objectMouseOver.blockPos.y + 1.5)){
-                        if(mc.objectMouseOver.sideHit != EnumFacing.UP && mc.objectMouseOver.sideHit != EnumFacing.DOWN){
-                            rightClickMouse()
+                repeat(clicks){
+                    clicks--
+                    if(isObjectMouseOverBlock(placeInfo?.enumFacing ?: return,blockPlace ?: return)) {
+                        when (modes.get().lowercase()) {
+                            "legit" -> if (mc.thePlayer.posY < (mc.objectMouseOver.blockPos.y + 1.5)) {
+                                if (mc.objectMouseOver.sideHit != EnumFacing.UP && mc.objectMouseOver.sideHit != EnumFacing.DOWN) {
+                                    rightClickMouse()
+                                }
+                            } else if (mc.objectMouseOver.sideHit != EnumFacing.DOWN && mc.gameSettings.keyBindJump.isKeyDown) {
+                                rightClickMouse()
+                            }
+
+                            else -> rightClickMouse()
                         }
-                    } else if(mc.objectMouseOver.sideHit != EnumFacing.DOWN && mc.gameSettings.keyBindJump.isKeyDown){
-                        rightClickMouse()
                     }
-                    else -> rightClickMouse()
                 }
                 ticksOnAir = 0
             }
@@ -385,22 +397,12 @@ class Scaffold: Module(){
     }
 
     private fun rightClickMouse(){
-        when(clicks.get().lowercase()){
+        when(clickMode.get().lowercase()){
             "normal" -> mc.rightClickMouse()
             "raytraced" -> {
-                val (yaw, pitch) = RotationUtils.targetRotation ?: return
-                val eyes = mc.thePlayer.getPositionEyes(mc.timer.renderPartialTicks)
-                val range = if (mc.playerController.currentGameType.isCreative) 5.0 else 4.5
-                val look = mc.thePlayer.getVectorForRotation(pitch, yaw)
-                val vec = eyes + (look * range)
-                val obj = mc.theWorld.rayTraceBlocks(eyes, vec, false, false, true)
+                val obj = mc.thePlayer.rayTrace(5.0, mc.timer.renderPartialTicks)
 
-                if(isObjectMouseOverBlock(
-                    placeInfo?.enumFacing ?: return,
-                blockPlace ?: return,
-                    obj = obj
-                    )
-                ){
+                if(isObjectMouseOverBlock(placeInfo?.enumFacing ?: return,blockPlace ?: return, obj = obj)){
                     if (mc.playerController.onPlayerRightClick(mc.thePlayer, mc.theWorld, mc.thePlayer.inventory.getCurrentItem(), obj.blockPos, obj.sideHit, obj.hitVec)){
                         mc.thePlayer.swingItem()
                     }
@@ -596,7 +598,7 @@ class Scaffold: Module(){
             "snap" -> {
                 getRotations()
 
-                if (ticksOnAir <= 0 || isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)) {
+                if (ticksOnAir <= 0 || isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return, currentRotation)) {
                     if(reset.get()){
                         RotationUtils.active = false
                         return
@@ -609,7 +611,7 @@ class Scaffold: Module(){
                 if (
                     ticksOnAir > 0
                     && if (!mc.thePlayer.onGround) (mc.thePlayer.motionY > 0) else (c1 && c2 && c3)
-                    && !isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)
+                    && !isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return, currentRotation)
                 ){
                     if (
                         xPos > (blockPlace?.x?.plus(0.288) ?: return) ||
@@ -623,7 +625,7 @@ class Scaffold: Module(){
             }
             "telly" -> {
                 if (RotationUtils.offGroundTicks >= ticks.get()) {
-                    if (!isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)) {
+                    if (!isObjectMouseOverBlock( placeInfo?.enumFacing ?: return, blockPlace ?: return, currentRotation)) {
                         getRotations()
                     }
                 } else if(isMoving){
@@ -637,7 +639,7 @@ class Scaffold: Module(){
                 }
             }
 
-            else -> if (ticksOnAir > 0 && !isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)) {
+            else -> if (ticksOnAir > 0 && !isObjectMouseOverBlock( placeInfo?.enumFacing ?: return, blockPlace ?: return, currentRotation)) {
                 getRotations()
             }
         }
@@ -666,10 +668,10 @@ class Scaffold: Module(){
         facing: EnumFacing,
         block: BlockPos,
         rotation: Rotation? = currentRotation,
-        obj: MovingObjectPosition? = rayTrace(rotation) ?: mc.objectMouseOver,
+        obj: MovingObjectPosition? = rayTrace(rotation) ?: mc.thePlayer.rayTrace(5.0, 1.0F),
     ): Boolean{
         if (obj != null) {
-            return obj.blockPos == block && obj.sideHit == facing
+            return obj.sideHit == facing && obj.blockPos == block
         }
 
         return false
@@ -814,6 +816,18 @@ class Scaffold: Module(){
             EnumFacing.Axis.Y -> Vec3(x, pos.yCoord + side.directionVec.y.coerceAtLeast(0), z)
             EnumFacing.Axis.X -> Vec3(pos.xCoord + side.directionVec.x.coerceAtLeast(0), y, z)
             EnumFacing.Axis.Z -> Vec3(x, y, pos.zCoord + side.directionVec.z.coerceAtLeast(0))
+        }
+    }
+
+    /**
+     *  CPS Counter
+     */
+    @EventTarget
+    fun onRender(event: Render3DEvent){
+        if(clickTimer.hasTimePassed(clickDelay)){
+            clicks++
+            clickTimer.reset()
+            clickDelay = TimeUtils.randomClickDelay(cps.getMinValue(), cps.getMaxValue())
         }
     }
 
