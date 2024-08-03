@@ -165,6 +165,9 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
         );
         MinusBounce.eventManager.callEvent(event);
 
+        if (event.isCancelled())
+            return;
+
         final InvMove inventoryMove = MinusBounce.moduleManager.getModule(InvMove.class);
 
         assert inventoryMove != null;
