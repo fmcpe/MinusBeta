@@ -108,7 +108,7 @@ class KeyEvent(val key: Int) : Event()
 /**
  * Called before motion
  */
-class PreMotionEvent(var x: Double, var y: Double, var z: Double, var yaw: Float, var pitch: Float, var onGround: Boolean): Event()
+class PreMotionEvent(var x: Double, var y: Double, var z: Double, var yaw: Float, var pitch: Float, var onGround: Boolean): CancellableEvent()
 
 /**
  * Called after motion
