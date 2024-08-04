@@ -23,6 +23,7 @@ import net.minusmc.minusbounce.ui.font.Fonts
 import net.minusmc.minusbounce.utils.*
 import net.minusmc.minusbounce.utils.click.ClickHandle
 import net.minusmc.minusbounce.utils.misc.sound.TipSoundManager
+import net.minusmc.minusbounce.utils.timing.WaitTickUtils
 
 object MinusBounce {
 
@@ -81,6 +82,7 @@ object MinusBounce {
         eventManager.registerListener(InventoryUtils)
         eventManager.registerListener(InventoryHelper)
         eventManager.registerListener(PacketUtils)
+        eventManager.registerListener(WaitTickUtils)
         eventManager.registerListener(SessionUtils())
         eventManager.registerListener(MacroManager)
         eventManager.registerListener(BadPacketUtils)

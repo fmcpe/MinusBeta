@@ -30,7 +30,6 @@ import net.minusmc.minusbounce.features.module.modules.combat.KillAura;
 import net.minusmc.minusbounce.features.module.modules.movement.Fly;
 import net.minusmc.minusbounce.features.module.modules.movement.InvMove;
 import net.minusmc.minusbounce.features.module.modules.movement.NoSlow;
-import net.minusmc.minusbounce.features.module.modules.world.Scaffold;
 import net.minusmc.minusbounce.injection.implementations.IEntityPlayerSP;
 import net.minusmc.minusbounce.utils.Rotation;
 import org.spongepowered.asm.mixin.Final;
@@ -39,6 +38,7 @@ import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.List;
@@ -253,8 +253,6 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
     public void onLivingUpdate() {
         MinusBounce.eventManager.callEvent(new UpdateEvent());
 
-        final Scaffold scaffold = MinusBounce.moduleManager.getModule(Scaffold.class);
-
         if (this.sprintingTicksLeft > 0) {
             --this.sprintingTicksLeft;
 
@@ -331,7 +329,6 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
         if(this.reSprint == 2) this.movementInput.moveForward = 0.0F;
 
         assert noSlow != null;
-        assert scaffold != null;
         if (this.onGround && !flag1 && !flag2 && this.movementInput.moveForward >= f && !this.isSprinting() && flag3 && !this.isUsingItem() && !this.isPotionActive(Potion.blindness)) {
             if (this.sprintToggleTimer <= 0 && !this.mc.gameSettings.keyBindSprint.isKeyDown()) {
                 this.sprintToggleTimer = 7;
@@ -733,5 +730,20 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
 
             MinusBounce.eventManager.callEvent(new PostMotionEvent());
         }
+    }
+
+    @Inject(method = "onUpdate", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/entity/AbstractClientPlayer;onUpdate()V", shift = At.Shift.BEFORE, ordinal = 0), cancellable = true)
+    private void preTickEvent(CallbackInfo ci) {
+        final PrePlayerTickEvent tickEvent = new PrePlayerTickEvent();
+        MinusBounce.eventManager.callEvent(tickEvent);
+
+        if (tickEvent.isCancelled()) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(method = "onUpdate", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/entity/AbstractClientPlayer;onUpdate()V", shift = At.Shift.AFTER, ordinal = 0))
+    private void postTickEvent(CallbackInfo ci) {
+        MinusBounce.eventManager.callEvent(new PostPlayerTickEvent());
     }
 }

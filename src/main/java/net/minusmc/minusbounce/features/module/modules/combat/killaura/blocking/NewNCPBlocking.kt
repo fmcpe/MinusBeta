@@ -4,7 +4,7 @@ import net.minecraft.network.play.client.C09PacketHeldItemChange
 import net.minusmc.minusbounce.features.module.modules.combat.killaura.KillAuraBlocking
 
 class NewNCPBlocking: KillAuraBlocking("NewNCP") {
-    override fun onPreAttack(){
+    override fun onPreAttack() {
         if(blockingStatus){
             val slot = mc.thePlayer.inventory.currentItem
             mc.netHandler.addToSendQueue(C09PacketHeldItemChange(slot % 8 + 1))

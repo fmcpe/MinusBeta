@@ -3,12 +3,14 @@ package net.minusmc.minusbounce.utils
 import net.minecraft.block.BlockIce
 import net.minecraft.block.BlockPackedIce
 import net.minecraft.block.BlockSlime
+import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.item.ItemBlock
 import net.minecraft.item.ItemEnderPearl
 import net.minecraft.item.ItemPotion
 import net.minecraft.item.ItemStack
 import net.minecraft.util.BlockPos
 import net.minusmc.minusbounce.utils.MinecraftInstance.Companion.mc
+
 
 object PlayerUtils {
 	fun getSlimeSlot(): Int {
@@ -75,4 +77,16 @@ object PlayerUtils {
             }
             return false
         }
+
+    fun predictPosition(entity: EntityPlayer, predictTicks: Int): DoubleArray {
+        val diffX = entity.prevPosX - entity.posX
+        val diffZ = entity.prevPosZ - entity.posZ
+        var posX = entity.posX
+        var posZ = entity.posZ
+        for (i in 0..predictTicks) {
+            posX -= diffX * i
+            posZ -= diffZ * i
+        }
+        return doubleArrayOf(posX, posZ)
+    }
 }

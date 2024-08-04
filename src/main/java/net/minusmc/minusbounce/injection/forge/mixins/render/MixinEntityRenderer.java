@@ -5,17 +5,8 @@
  */
 package net.minusmc.minusbounce.injection.forge.mixins.render;
 
-import net.minusmc.minusbounce.MinusBounce;
-import com.google.common.base.Predicates;
 import com.google.common.base.Predicate;
-import net.minusmc.minusbounce.event.Render3DEvent;
-import net.minusmc.minusbounce.utils.*;
-import net.minusmc.minusbounce.features.module.modules.combat.KillAura;
-import net.minusmc.minusbounce.features.module.modules.player.Reach;
-import net.minusmc.minusbounce.features.module.modules.client.Animations;
-import net.minusmc.minusbounce.features.module.modules.render.CameraClip;
-import net.minusmc.minusbounce.features.module.modules.client.NoHurtCam;
-import net.minusmc.minusbounce.features.module.modules.render.TargetMark;
+import com.google.common.base.Predicates;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
@@ -27,6 +18,13 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.item.EntityItemFrame;
 import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.util.*;
+import net.minusmc.minusbounce.MinusBounce;
+import net.minusmc.minusbounce.event.Render3DEvent;
+import net.minusmc.minusbounce.features.module.modules.client.NoHurtCam;
+import net.minusmc.minusbounce.features.module.modules.combat.KillAura;
+import net.minusmc.minusbounce.features.module.modules.player.Reach;
+import net.minusmc.minusbounce.features.module.modules.render.CameraClip;
+import net.minusmc.minusbounce.features.module.modules.render.TargetMark;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;

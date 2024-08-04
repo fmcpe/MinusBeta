@@ -6,13 +6,16 @@
 package net.minusmc.minusbounce.injection.forge.mixins.network;
 
 import io.netty.channel.ChannelHandlerContext;
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.Packet;
+import net.minecraft.network.play.client.C03PacketPlayer;
+import net.minecraft.util.Vec3;
 import net.minusmc.minusbounce.MinusBounce;
 import net.minusmc.minusbounce.event.EventState;
 import net.minusmc.minusbounce.event.PacketEvent;
 import net.minusmc.minusbounce.features.module.modules.client.HUD;
-import net.minusmc.minusbounce.features.module.modules.combat.BackTrack;
+import net.minusmc.minusbounce.utils.MinecraftInstance;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -37,8 +40,14 @@ public class MixinNetworkManager {
         final PacketEvent event = new PacketEvent(packet, EventState.SEND);
         MinusBounce.eventManager.callEvent(event);
 
-        if(event.isCancelled())
-            callback.cancel();
+        if(event.isCancelled()) callback.cancel();
+
+        if ((packet instanceof C03PacketPlayer.C04PacketPlayerPosition || packet instanceof C03PacketPlayer.C05PacketPlayerLook || packet instanceof C03PacketPlayer.C06PacketPlayerPosLook) && Minecraft.getMinecraft().theWorld != null && Minecraft.getMinecraft().thePlayer != null) {
+            final C03PacketPlayer c03 = (C03PacketPlayer)packet;
+            if (!(packet instanceof C03PacketPlayer.C05PacketPlayerLook)) {
+                MinecraftInstance.Companion.setServerPosition(new Vec3(c03.getPositionX(), c03.getPositionY(), c03.getPositionZ()));
+            }
+        }
     }
 
     /**

@@ -30,6 +30,7 @@ import net.minusmc.minusbounce.features.module.modules.combat.killaura.KillAuraB
 import net.minusmc.minusbounce.features.module.modules.world.Scaffold
 import net.minusmc.minusbounce.utils.*
 import net.minusmc.minusbounce.utils.EntityUtils.isSelected
+import net.minusmc.minusbounce.utils.block.BlockUtils.rayTrace
 import net.minusmc.minusbounce.utils.extensions.getDistanceToEntityBox
 import net.minusmc.minusbounce.utils.extensions.getNearestPointBB
 import net.minusmc.minusbounce.utils.item.ItemUtils
@@ -66,7 +67,7 @@ class KillAura : Module() {
     private val throughWallsValue = BoolValue("ThroughWalls", true)
 
     // Rotations & TurnSpeed
-    private val rotations = ListValue("RotationMode", arrayOf("Vanilla", "BackTrack", "Grim", "Intave", "None"), "BackTrack")
+    private val rotations = ListValue("RotationMode", arrayOf("Vanilla", "BackTrack", "Grim", "Intave", "Best", "None"), "BackTrack")
     private val turnSpeed = FloatRangeValue("TurnSpeed", 180f, 180f, 0f, 180f, "°") {
         !rotations.get().equals("None", true)
     }
@@ -82,6 +83,8 @@ class KillAura : Module() {
     private val swingValue = ListValue("Swing", arrayOf("Normal", "Packet", "None"), "Normal")
     private val intaveRandomAmount = FloatValue("Random", 4f, 0.25f, 10f) { rotations.get().equals("Intave", true) }
     private val Hitable = BoolValue("Hitable", false) { !rotations.get().equals("none", true) && !throughWallsValue.get()}
+    private val attackBlock = BoolValue("AttackBlock", true)
+    private val noslow = BoolValue("NoSlow", true)
 
     // AutoBlock & Interact
     val autoBlockModeValue: ListValue = object : ListValue("AutoBlock", blockingModes.map { it.modeName }.toTypedArray(), "None") {
@@ -129,7 +132,6 @@ class KillAura : Module() {
     private var l: Long = 0
     private var m = 0.0
     private var n = false
-    var hitTicks = 0
 
     // Attack delay
     private val attackTimer = MSTimer()
@@ -187,7 +189,7 @@ class KillAura : Module() {
         }
 
         /* AutoBlock */
-        if (canBlock && mc.thePlayer.getDistanceToEntityBox(target ?: return) <= autoBlockRangeValue.get()) {
+        if ((!attackBlock.get() || BadPacketUtils.bad(false, true, false, false, false)) && canBlock && mc.thePlayer.getDistanceToEntityBox(target ?: return) <= autoBlockRangeValue.get()) {
             if(!autoBlockModeValue.get().equals("none", true)){
                 blockingMode.onPostAttack()
             }
@@ -534,8 +536,6 @@ class KillAura : Module() {
             "legit" -> clickLegit()
             "blatant" -> clickBlatant(entity)
         }
-
-        hitTicks = 0
     }
 
     private fun clickNormal(entity: EntityLivingBase){
@@ -623,6 +623,7 @@ class KillAura : Module() {
         return when (rotations.get().lowercase()) {
             /* Old BackTrack Rotation Function is getting vecRotation and DO NOTHING with it. then calculate from vec (input) */
             "backtrack" -> RotationUtils.toRotation(RotationUtils.getCenter(entity.entityBoundingBox))
+            "best" -> RotationUtils.toRotation(RotationUtils.getBestHitVec(entity))
             "grim" -> RotationUtils.toRotation(getNearestPointBB(mc.thePlayer.getPositionEyes(1F), boundingBox))
             "intave" -> {
                 Rotation(
@@ -636,12 +637,17 @@ class KillAura : Module() {
 
     fun startBlocking(check: Boolean, interact: Boolean) {
         if(!blockingStatus || !check){
-            if(interact && target != null && mc.objectMouseOver.entityHit == target){
-                mc.playerController.isPlayerRightClickingOnEntity(
-                    mc.thePlayer,
-                    mc.objectMouseOver.entityHit,
-                    mc.objectMouseOver
-                )
+            val obj = rayTrace(serverRotation, 3.0) ?: return
+            if(interact && target != null && obj.entityHit == target){
+                if (!mc.playerController.isPlayerRightClickingOnEntity(
+                        mc.thePlayer,
+                        obj.entityHit,
+                        obj
+                    )
+                ) mc.playerController.interactWithEntitySendPacket(
+                        mc.thePlayer,
+                        obj.entityHit
+                    )
             }
 
             mc.netHandler.addToSendQueue(C08PacketPlayerBlockPlacement(mc.thePlayer.inventory.getCurrentItem() ?: return))
@@ -668,8 +674,6 @@ class KillAura : Module() {
 
     @EventTarget
     fun onPreMotion(event: PreMotionEvent) {
-        hitTicks++
-
         if(target == null || mc.thePlayer.isDead || MinusBounce.moduleManager.getModule(Scaffold::class.java)?.state ?: return){
             stopBlocking(false)
             blockingStatus = false
@@ -691,7 +695,7 @@ class KillAura : Module() {
         mc.thePlayer ?: return
         mc.theWorld ?: return
 
-        if (canBlock && blockingStatus) {
+        if (canBlock && blockingStatus && noslow.get()) {
             event.forward = 1.0F
             event.strafe = 1.0F
         }

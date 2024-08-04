@@ -6,7 +6,6 @@ import net.minecraft.client.gui.ScaledResolution
 import net.minecraft.client.multiplayer.WorldClient
 import net.minecraft.client.renderer.GlStateManager
 import net.minecraft.item.ItemBlock
-import net.minecraft.item.ItemStack
 import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement
 import net.minecraft.network.play.client.C0BPacketEntityAction
 import net.minecraft.network.play.server.S2FPacketSetSlot
@@ -24,10 +23,7 @@ import net.minusmc.minusbounce.utils.MovementUtils.isMoving
 import net.minusmc.minusbounce.utils.block.BlockUtils
 import net.minusmc.minusbounce.utils.block.BlockUtils.rayTrace
 import net.minusmc.minusbounce.utils.block.PlaceInfo
-import net.minusmc.minusbounce.utils.extensions.eyes
-import net.minusmc.minusbounce.utils.extensions.iterator
-import net.minusmc.minusbounce.utils.extensions.plus
-import net.minusmc.minusbounce.utils.extensions.step
+import net.minusmc.minusbounce.utils.extensions.*
 import net.minusmc.minusbounce.utils.misc.RandomUtils
 import net.minusmc.minusbounce.utils.movement.MovementFixType
 import net.minusmc.minusbounce.utils.render.RenderUtils
@@ -41,9 +37,10 @@ import kotlin.math.*
 
 @ModuleInfo("Scaffold", "Scaffold", "Use huge balls to rolling on mid-air", ModuleCategory.WORLD)
 class Scaffold: Module(){
-    private val cps = IntRangeValue("CPS", 5, 8, 0, 20)
-    private val modes = ListValue("Mode", arrayOf("Normal", "Snap", "Telly", "None", "MoonWalk", "Legit"), "Normal")
-    private val clickMode = ListValue("ClickMode", arrayOf("RayTraced", "Normal"), "RayTraced")
+    private val placeMethod = ListValue("PlaceMethod", arrayOf("Normal", "ClickPerSeconds"))
+    private val cps = IntRangeValue("CPS", 5, 8, 0, 20) {placeMethod.get() == "ClickPerSeconds"}
+    private val modes = ListValue("Mode", arrayOf("Normal", "Snap", "Telly", "None", "StaticGod", "Legit"), "Normal")
+    private val clickMode = ListValue("ClickMode", arrayOf("RayTraced", "Legit", "Normal"), "RayTraced")
     private val searchModeValue = ListValue("AimMode", arrayOf("Area", "Center", "TryRotation"), "Center")
     private val yawOffset = ListValue("OffsetYaw", arrayOf("Dynamic", "Side"), "Side") {searchModeValue.get() == "TryRotation"}
     private val reset = BoolValue("RotationActivateReset", false) { modes.get() == "Telly" || modes.get() == "Snap" }
@@ -63,7 +60,8 @@ class Scaffold: Module(){
 
     private val timer = FloatValue("Timer", 1f, 0f, 5f)
     private val safeWalk = BoolValue("SafeWalk", false)
-    private val adStrafe = BoolValue("ADStrafe", false) {modes.get() != "MoonWalk"}
+    private val predict = BoolValue("Predict", false)
+    private val adStrafe = ListValue("ADStrafe", arrayOf("Always", "Edge", "None"))
     private val jumpAutomatically = BoolValue("JumpAutomatically", false)
     private val movementCorrection = BoolValue("MovementCorrection", true)
 
@@ -77,6 +75,7 @@ class Scaffold: Module(){
     private var placeInfo: PlaceInfo? = null
     private var blockPlace: BlockPos? = null
     private var rotation: Rotation? = null
+    private var directionalChange: Int = 0
     private var adStrafeDirection: Boolean = false
     private val adStrafeTimer = MSTimer()
     private var xPos: Double = 0.0
@@ -92,7 +91,6 @@ class Scaffold: Module(){
 
     private var placedBlocksWithoutEagle = 0
     private var eagleSneaking = false
-    private var itemStack: ItemStack? = null
 
     override fun onDisable() {
         mc.gameSettings.keyBindUseItem.pressed = false
@@ -105,6 +103,7 @@ class Scaffold: Module(){
     override fun onEnable() {
         targetYaw = mc.thePlayer.rotationYaw - 180
         targetPitch = 80.34F
+        blockPlace = BlockPos(mc.thePlayer).offset(EnumFacing.DOWN)
 
         startY = floor(mc.thePlayer.posY)
         targetBlock = null
@@ -318,20 +317,9 @@ class Scaffold: Module(){
         }
     }
 
-
     @EventTarget
-    fun onTick(event: PreUpdateEvent){
-        /* Player Position Update (Edge Exception + Legit Mode) */
-        xPos = mc.thePlayer.posX
-        zPos = mc.thePlayer.posZ
-
-        if(buildForward()) {
-            xPos += mc.thePlayer.posX - mc.thePlayer.lastReportedPosX
-            zPos += mc.thePlayer.posZ - mc.thePlayer.lastReportedPosZ
-        }
-
-        val b = BlockPos(xPos, mc.thePlayer.posY - 1, zPos)
-        if (mc.theWorld.getChunkFromBlockCoords(b).getBlock(b) is BlockAir) {
+    fun onClick(e: ClickEvent){
+        if (doesNotContainBlock(1) && (!sameY || (doesNotContainBlock(2) && doesNotContainBlock(3) && doesNotContainBlock(4)))) {
             ticksOnAir++
         } else {
             ticksOnAir = 0
@@ -340,7 +328,6 @@ class Scaffold: Module(){
         val blockSlot = InventoryUtils.findBlockInHotbar() ?: return
         if (blockSlot != -1) {
             mc.thePlayer.inventory.currentItem = blockSlot - 36
-            itemStack = mc.thePlayer.inventoryContainer.getSlot(blockSlot).stack
         }
 
         search(this.getPlacePossibility() ?: return)?.let {
@@ -361,31 +348,18 @@ class Scaffold: Module(){
         if (startY - 1 != floor(targetBlock?.y?.toDouble() ?: return) && sameY) {
             return
         }
-        //...
-        try {
-            if (mc.thePlayer.inventory.currentItem == InventoryUtils.serverSlot &&
-                    !BadPacketUtils.bad(false, true, false, false, true) &&
-                    ticksOnAir > RandomUtils.nextInt(delayValue.getMinValue(), delayValue.getMaxValue())
-               ){
-                repeat(clicks){
-                    clicks--
-                    if(isObjectMouseOverBlock(placeInfo?.enumFacing ?: return,blockPlace ?: return)) {
-                        when (modes.get().lowercase()) {
-                            "legit" -> if (mc.thePlayer.posY < (mc.objectMouseOver.blockPos.y + 1.5)) {
-                                if (mc.objectMouseOver.sideHit != EnumFacing.UP && mc.objectMouseOver.sideHit != EnumFacing.DOWN) {
-                                    rightClickMouse()
-                                }
-                            } else if (mc.objectMouseOver.sideHit != EnumFacing.DOWN && mc.gameSettings.keyBindJump.isKeyDown) {
-                                rightClickMouse()
-                            }
 
-                            else -> rightClickMouse()
-                        }
-                    }
-                }
-                ticksOnAir = 0
+        if (mc.thePlayer.inventory.currentItem == InventoryUtils.serverSlot &&
+            !BadPacketUtils.bad(false, true, false, false, true) &&
+            ticksOnAir > RandomUtils.nextInt(delayValue.getMinValue(), delayValue.getMaxValue()) &&
+            isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)
+        ){
+            when(placeMethod.get().lowercase()){
+                "normal" -> click()
+                else -> repeat(clicks){ click(); clicks-- }
             }
-        } catch (_: Exception) {}
+            ticksOnAir = 0
+        }
 
         if (mc.thePlayer.onGround || mc.gameSettings.keyBindJump.isKeyDown && !isMoving) {
             startY = floor(mc.thePlayer.posY)
@@ -394,9 +368,16 @@ class Scaffold: Module(){
         if(mc.thePlayer.posY < startY){
             startY = mc.thePlayer.posY
         }
+
+        /* Cancel the event */
+        e.cancelEvent()
     }
 
-    private fun rightClickMouse(){
+    private fun doesNotContainBlock(down: Int): Boolean {
+        return blockRelativeToPlayer(0, -down, 0).isReplaceable(mc.theWorld, BlockPos(mc.thePlayer).down())
+    }
+
+    fun click() {
         when(clickMode.get().lowercase()){
             "normal" -> mc.rightClickMouse()
             "raytraced" -> {
@@ -407,6 +388,13 @@ class Scaffold: Module(){
                         mc.thePlayer.swingItem()
                     }
                 }
+            }
+            "legit" -> if (mc.thePlayer.posY < (mc.objectMouseOver.blockPos.y + 1.5)) {
+                if (mc.objectMouseOver.sideHit != EnumFacing.UP && mc.objectMouseOver.sideHit != EnumFacing.DOWN) {
+                    mc.rightClickMouse()
+                }
+            } else if (mc.objectMouseOver.sideHit != EnumFacing.DOWN && mc.gameSettings.keyBindJump.isKeyDown) {
+                mc.rightClickMouse()
             }
         }
     }
@@ -566,13 +554,44 @@ class Scaffold: Module(){
                 event.jump = true
             }
 
-            if (adStrafe.get() || modes.get() == "MoonWalk") {
-                if (adStrafeTimer.hasTimeElapsed(125.0, true)) {
-                    adStrafeDirection = !adStrafeDirection
-                }
+            if(modes.get().equals("staticgod", true)){
+                val spacing = 0.15
 
-                if (isMoving && !mc.gameSettings.keyBindLeft.isKeyDown && !mc.gameSettings.keyBindRight.isKeyDown) {
-                    event.strafe = if(adStrafeDirection) 1.0F else -1.0F
+                val x = abs(mc.thePlayer.posX % 1) > 1 - spacing || abs(mc.thePlayer.posX % 1) < spacing
+                val z = abs(mc.thePlayer.posZ % 1) > 1 - spacing || abs(mc.thePlayer.posZ % 1) < spacing
+                event.strafe = if((x && z) || event.strafe == 1.0F) -1.0F else event.strafe
+                event.sneak = directionalChange <= 10
+            }
+
+            when (adStrafe.get().lowercase()) {
+                "always" -> {
+                    if (adStrafeTimer.hasTimeElapsed(125.0, true)) {
+                        adStrafeDirection = !adStrafeDirection
+                    }
+
+                    if (isMoving && !mc.gameSettings.keyBindLeft.isKeyDown && !mc.gameSettings.keyBindRight.isKeyDown) {
+                        event.strafe = if(adStrafeDirection) 1.0F else -1.0F
+                    }
+                }
+                "edge" -> {
+                    val b = BlockPos(mc.thePlayer.posX, mc.thePlayer.posY - 0.5, mc.thePlayer.posZ)
+                    if(b.getBlock() is BlockAir &&
+                        mc.currentScreen == null &&
+                        !mc.gameSettings.keyBindJump.isKeyDown &&
+                        event.forward != 0.0F
+                    ){
+                        when (
+                            EnumFacing.getHorizontal(
+                                MathHelper.floor_double(
+                                    (targetYaw * 4.0f / 360.0f).toDouble() + 0.5) and 3
+                            )
+                        ){
+                            EnumFacing.EAST -> event.strafe = if(b.z + 0.5 > mc.thePlayer.posZ) 1.0f else -1.0f
+                            EnumFacing.WEST -> event.strafe = if(b.z + 0.5 < mc.thePlayer.posZ) 1.0f else -1.0f
+                            EnumFacing.SOUTH -> event.strafe = if(b.x + 0.5 < mc.thePlayer.posX) 1.0f else -1.0f
+                            else -> event.strafe = if(b.x + 0.5 > mc.thePlayer.posX) 1.0f else -1.0f
+                        }
+                    }
                 }
             }
         }
@@ -588,17 +607,32 @@ class Scaffold: Module(){
         val c2 = a1 <= -0.015625
         val c3 = calculateRealY(mc.theWorld, bb, motionX, motionZ, 1.09, a1) <= -0.015625
 
+        if (predict.get() && if (!mc.thePlayer.onGround) mc.thePlayer.motionY <= 0 else !(c1 && c2 && c3)){
+            setRotation()
+            return
+        }
+
         when (modes.get().lowercase()) {
-            "moonwalk" -> {
-                val d = (mc.thePlayer.rotationYaw / 45).roundToInt()
-                val y = d * 45
-                targetYaw = if(d % 2 == 0) y - 135.0F else y - 180.0F
-                targetPitch = if(d % 2 == 0) 75.5F else 75.6F
+            "staticgod" -> {
+                if(mc.thePlayer.inventory.currentItem == InventoryUtils.serverSlot &&
+                    !BadPacketUtils.bad(false, true, false, false, true) &&
+                    ticksOnAir > RandomUtils.nextInt(delayValue.getMinValue(), delayValue.getMaxValue()) &&
+                    isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)
+                ){
+                    click()
+                }
+                targetYaw = (mc.thePlayer.rotationYaw - mc.thePlayer.rotationYaw % 90) - 180 + 45 * if(mc.thePlayer.rotationYaw > 0) 1 else -1
+                targetPitch = 76.4F
+
+                directionalChange++
+                if(abs(MathHelper.wrapAngleTo180_float(targetYaw - serverRotation.yaw)) > 10){
+                    directionalChange = (Math.random() * 4).toInt()
+                }
             }
             "snap" -> {
                 getRotations()
 
-                if (ticksOnAir <= 0 || isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return, currentRotation)) {
+                if (ticksOnAir <= 0 || isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)) {
                     if(reset.get()){
                         RotationUtils.active = false
                         return
@@ -608,16 +642,25 @@ class Scaffold: Module(){
                 }
             }
             "legit" -> {
+                /* Player Position Update (Edge Exception + Legit Mode) */
+                xPos = mc.thePlayer.posX
+                zPos = mc.thePlayer.posZ
+
+                if(buildForward()) {
+                    xPos += mc.thePlayer.posX - mc.thePlayer.lastReportedPosX
+                    zPos += mc.thePlayer.posZ - mc.thePlayer.lastReportedPosZ
+                }
+
                 if (
                     ticksOnAir > 0
-                    && if (!mc.thePlayer.onGround) (mc.thePlayer.motionY > 0) else (c1 && c2 && c3)
-                    && !isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return, currentRotation)
+                    && !isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)
                 ){
+                    val blockPlace = blockPlace ?: return
                     if (
-                        xPos > (blockPlace?.x?.plus(0.288) ?: return) ||
-                        xPos < (blockPlace?.x?.minus(1.288) ?: return) ||
-                        zPos > (blockPlace?.z?.plus(0.288) ?: return) ||
-                        zPos < (blockPlace?.z?.minus(1.288) ?: return)
+                        xPos > (blockPlace.x - 0.288) ||
+                        xPos < (blockPlace.x - 1.288) ||
+                        zPos > (blockPlace.z - 0.288) ||
+                        zPos < (blockPlace.z - 1.288)
                     ){
                         getRotations()
                     }
@@ -625,7 +668,7 @@ class Scaffold: Module(){
             }
             "telly" -> {
                 if (RotationUtils.offGroundTicks >= ticks.get()) {
-                    if (!isObjectMouseOverBlock( placeInfo?.enumFacing ?: return, blockPlace ?: return, currentRotation)) {
+                    if (!isObjectMouseOverBlock( placeInfo?.enumFacing ?: return, blockPlace ?: return)) {
                         getRotations()
                     }
                 } else if(isMoving){
@@ -639,12 +682,16 @@ class Scaffold: Module(){
                 }
             }
 
-            else -> if (ticksOnAir > 0 && !isObjectMouseOverBlock( placeInfo?.enumFacing ?: return, blockPlace ?: return, currentRotation)) {
+            else -> if (BlockPos(mc.thePlayer).getBlock() is BlockAir && !isObjectMouseOverBlock( placeInfo?.enumFacing ?: return, blockPlace ?: return, currentRotation)) {
                 getRotations()
             }
         }
 
-        /* Setting rotations */
+        setRotation()
+    }
+
+    /* Setting rotations */
+    private fun setRotation(){
         RotationUtils.setRotations(
             Rotation(targetYaw, targetPitch),
             0,
@@ -677,7 +724,7 @@ class Scaffold: Module(){
         return false
     }
 
-    private fun buildForward(realYaw: Float = MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw)): Boolean {
+    private fun buildForward(realYaw: Float = MathHelper.wrapAngleTo180_float(targetYaw)): Boolean {
         return (realYaw in -77.5..77.5) && (realYaw in -102.5..102.5 || realYaw in -12.5..12.5 || realYaw < -167.5 || realYaw > 167.5)
     }
 
@@ -729,7 +776,7 @@ class Scaffold: Module(){
 
                     val pitchList = when(yawOffset.get().lowercase()) {
                         "side" -> 75.0..80.0 + if (isLookingDiagonally) 1.0 else 0.0
-                        else -> 30.0..90.0
+                        else -> max(targetPitch - 20.0, -90.0)..min(targetPitch + 20.0, 90.0)
                     }
                     for (yaw in list) {
                         for (pitch in pitchList step 0.1) {
@@ -888,7 +935,7 @@ class Scaffold: Module(){
         get() {
             // Round the rotation to the nearest multiple of 45 degrees so that way we check if the player faces diagonally
             val yaw = round(abs(MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw)).roundToInt() / 45f) * 45f
-            return (yaw == 45f || yaw == 135f) && MovementUtils.isMoving
+            return (yaw == 45f || yaw == 135f) && isMoving
         }
 
     /**

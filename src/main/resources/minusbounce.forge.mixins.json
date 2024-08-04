@@ -78,6 +78,7 @@
     "render.MixinEntityRenderer",
     "render.MixinFontRenderer",
     "render.MixinInventoryEffectRenderer",
+    "render.MixinLayerArmorBase",
     "render.MixinLayerArrow",
     "render.MixinLayerCreeperCharge",
     "render.MixinLayerHeldItem",

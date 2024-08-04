@@ -76,6 +76,18 @@ object RenderUtils : MinecraftInstance() {
         glEndList()
     }
 
+    fun drawText(text: String?, color: Int) {
+        val scaledResolution = ScaledResolution(mc)
+
+        mc.fontRendererObj.drawString(
+            text,
+            (scaledResolution.scaledWidth / 2 - mc.fontRendererObj.getStringWidth(text) / 2).toFloat(),
+            (scaledResolution.scaledHeight / 2 + 15).toFloat(),
+            color,
+            false
+        )
+    }
+
     fun renderParticles(particles: List<Particle>) {
         glEnable(GL_BLEND)
         glDisable(GL_TEXTURE_2D)
@@ -149,6 +161,75 @@ object RenderUtils : MinecraftInstance() {
             glVertex2d(x + x2, y + y2)
         }
         glEnd()
+    }
+
+    fun drawBoundingBox(abb: AxisAlignedBB, r: Float, g: Float, b: Float) {
+        drawBoundingBox(abb, r, g, b, 0.25f)
+    }
+
+    fun drawBoundingBox(abb: AxisAlignedBB, r: Float, g: Float, b: Float, a: Float) {
+        val ts = Tessellator.getInstance()
+        val vb = ts.worldRenderer
+        vb.begin(7, DefaultVertexFormats.POSITION_COLOR)
+        vb.pos(abb.minX, abb.minY, abb.minZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.minX, abb.maxY, abb.minZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.maxX, abb.minY, abb.minZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.maxX, abb.maxY, abb.minZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.maxX, abb.minY, abb.maxZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.maxX, abb.maxY, abb.maxZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.minX, abb.minY, abb.maxZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.minX, abb.maxY, abb.maxZ).color(r, g, b, a).endVertex()
+        ts.draw()
+        vb.begin(7, DefaultVertexFormats.POSITION_COLOR)
+        vb.pos(abb.maxX, abb.maxY, abb.minZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.maxX, abb.minY, abb.minZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.minX, abb.maxY, abb.minZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.minX, abb.minY, abb.minZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.minX, abb.maxY, abb.maxZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.minX, abb.minY, abb.maxZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.maxX, abb.maxY, abb.maxZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.maxX, abb.minY, abb.maxZ).color(r, g, b, a).endVertex()
+        ts.draw()
+        vb.begin(7, DefaultVertexFormats.POSITION_COLOR)
+        vb.pos(abb.minX, abb.maxY, abb.minZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.maxX, abb.maxY, abb.minZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.maxX, abb.maxY, abb.maxZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.minX, abb.maxY, abb.maxZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.minX, abb.maxY, abb.minZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.minX, abb.maxY, abb.maxZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.maxX, abb.maxY, abb.maxZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.maxX, abb.maxY, abb.minZ).color(r, g, b, a).endVertex()
+        ts.draw()
+        vb.begin(7, DefaultVertexFormats.POSITION_COLOR)
+        vb.pos(abb.minX, abb.minY, abb.minZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.maxX, abb.minY, abb.minZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.maxX, abb.minY, abb.maxZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.minX, abb.minY, abb.maxZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.minX, abb.minY, abb.minZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.minX, abb.minY, abb.maxZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.maxX, abb.minY, abb.maxZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.maxX, abb.minY, abb.minZ).color(r, g, b, a).endVertex()
+        ts.draw()
+        vb.begin(7, DefaultVertexFormats.POSITION_COLOR)
+        vb.pos(abb.minX, abb.minY, abb.minZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.minX, abb.maxY, abb.minZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.minX, abb.minY, abb.maxZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.minX, abb.maxY, abb.maxZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.maxX, abb.minY, abb.maxZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.maxX, abb.maxY, abb.maxZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.maxX, abb.minY, abb.minZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.maxX, abb.maxY, abb.minZ).color(r, g, b, a).endVertex()
+        ts.draw()
+        vb.begin(7, DefaultVertexFormats.POSITION_COLOR)
+        vb.pos(abb.minX, abb.maxY, abb.maxZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.minX, abb.minY, abb.maxZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.minX, abb.maxY, abb.minZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.minX, abb.minY, abb.minZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.maxX, abb.maxY, abb.minZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.maxX, abb.minY, abb.minZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.maxX, abb.maxY, abb.maxZ).color(r, g, b, a).endVertex()
+        vb.pos(abb.maxX, abb.minY, abb.maxZ).color(r, g, b, a).endVertex()
+        ts.draw()
     }
 
     private fun quickPolygonCircle(x: Float, y: Float, xRadius: Float, yRadius: Float, start: Int, end: Int) {
@@ -781,7 +862,7 @@ object RenderUtils : MinecraftInstance() {
         }
         glColor(color.red, color.green, color.blue, if (outline) 26 else 35)
         drawFilledBox(axisAlignedBB)
-        GlStateManager.resetColor()
+        resetColor()
         glDepthMask(true)
         resetCaps()
     }

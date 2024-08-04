@@ -22,7 +22,6 @@ import net.minusmc.minusbounce.event.LookEvent;
 import net.minusmc.minusbounce.features.module.modules.client.Animations;
 import net.minusmc.minusbounce.features.module.modules.movement.NoJumpDelay;
 import net.minusmc.minusbounce.features.module.modules.render.AntiBlind;
-import net.minusmc.minusbounce.features.module.modules.world.Scaffold;
 import net.minusmc.minusbounce.injection.implementations.IEntityLivingBase;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -170,8 +169,7 @@ public abstract class MixinEntityLivingBase extends MixinEntity implements IEnti
     @Inject(method = "onLivingUpdate", at = @At("HEAD"))
     private void headLiving(CallbackInfo callbackInfo) {
         if (
-            Objects.requireNonNull(MinusBounce.moduleManager.getModule(NoJumpDelay.class)).getState() ||
-            Objects.requireNonNull(MinusBounce.moduleManager.getModule(Scaffold.class)).getState()
+            Objects.requireNonNull(MinusBounce.moduleManager.getModule(NoJumpDelay.class)).getState()
         ) {
             jumpTicks = 0;
         }

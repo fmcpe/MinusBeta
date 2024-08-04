@@ -21,6 +21,7 @@ open class MinecraftInstance {
         val mc: Minecraft = Minecraft.getMinecraft()
 
         var runTimeTicks = 0
+        var serverPosition = Vec3(0.0, 0.0, 0.0)
         var AABBOffGroundticks = 0
         val serverRotation: Rotation
             get() = (mc.thePlayer as IEntityPlayerSP).serverRotation

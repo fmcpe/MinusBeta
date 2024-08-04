@@ -22,7 +22,7 @@ import net.minusmc.minusbounce.value.ListValue
 @ModuleInfo(name = "SuperKnockback", spacedName = "Super Knockback", description = "Increases knockback dealt to other entities.", category = ModuleCategory.COMBAT)
 class SuperKnockback : Module() {
     private val hurtTimeValue = IntegerValue("HurtTime", 10, 0, 10)
-    private val modeValue = ListValue("Mode", arrayOf("ExtraPacket", "LegitFast", "Silent", "Packet"), "ExtraPacket")
+    private val modeValue = ListValue("Mode", arrayOf("ExtraPacket", "Legit", "Silent", "Packet"), "ExtraPacket")
     private val delay = IntegerValue("Delay", 0, 0, 500, "ms")
     var forward: Float = 0.0F
 
@@ -48,7 +48,7 @@ class SuperKnockback : Module() {
                     mc.thePlayer.serverSprintState = true
                 }
                 "silent" -> ticks = 1
-                "legitfast" -> mc.thePlayer.reSprint = 2
+                "legit" -> mc.thePlayer.reSprint = 2
                 "packet" -> {
                     if(mc.thePlayer.isSprinting)
                         mc.thePlayer.isSprinting = true

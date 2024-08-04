@@ -43,16 +43,13 @@ import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.util.*;
 import net.minecraft.world.EnumDifficulty;
 import net.minecraftforge.client.MinecraftForgeClient;
-import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minusmc.minusbounce.MinusBounce;
 import net.minusmc.minusbounce.event.*;
 import net.minusmc.minusbounce.features.module.modules.combat.AutoClicker;
 import net.minusmc.minusbounce.features.module.modules.combat.KillAura;
-import net.minusmc.minusbounce.features.module.modules.combat.TickBase;
 import net.minusmc.minusbounce.features.module.modules.exploit.MultiActions;
 import net.minusmc.minusbounce.features.module.modules.misc.Patcher;
 import net.minusmc.minusbounce.features.module.modules.world.FastPlace;
-import net.minusmc.minusbounce.features.module.modules.world.Scaffold;
 import net.minusmc.minusbounce.injection.forge.mixins.accessors.MinecraftForgeClientAccessor;
 import net.minusmc.minusbounce.ui.client.GuiMainMenu;
 import net.minusmc.minusbounce.utils.CPSCounter;
@@ -486,36 +483,7 @@ public abstract class MixinMinecraft {
 
         for (int j = 0; j < this.timer.elapsedTicks; ++j)
         {
-            if(Minecraft.getMinecraft().thePlayer != null) {
-                boolean skip = false;
-
-                if(j == 0) {
-                    TickBase tickBase = MinusBounce.moduleManager.getModule(TickBase.class);
-
-                    assert tickBase != null;
-                    if(tickBase.getState()) {
-                        int extraTicks = tickBase.getExtraTicks();
-
-                        if(extraTicks == -1) {
-                            skip = true;
-                        } else {
-                            if(extraTicks > 0) {
-                                for(int aa = 0; aa < extraTicks; aa++) {
-                                    this.runTick();
-                                }
-
-                                tickBase.setFreezing(true);
-                            }
-                        }
-                    }
-                }
-
-                if(!skip) {
-                    this.runTick();
-                }
-            } else {
-                this.runTick();
-            }
+            this.runTick();
         }
 
         for (int j = 0; j < this.minusBounce$fakeTimer.elapsedTicks; ++j){
@@ -544,10 +512,11 @@ public abstract class MixinMinecraft {
 
         if (!this.skipRenderWorld)
         {
+            MinusBounce.eventManager.callEvent(new StartRenderTickEvent());
             this.mcProfiler.endStartSection("gameRenderer");
             this.entityRenderer.updateCameraAndRender(this.timer.renderPartialTicks, i);
             this.mcProfiler.endSection();
-            FMLCommonHandler.instance().onRenderTickEnd(this.timer.renderPartialTicks);
+            MinusBounce.eventManager.callEvent(new EndRenderTickEvent());
         }
 
         this.mcProfiler.endSection();
@@ -1199,14 +1168,11 @@ public abstract class MixinMinecraft {
     @Inject(method = "rightClickMouse", at = @At(value = "FIELD", target = "Lnet/minecraft/client/Minecraft;rightClickDelayTimer:I", shift = At.Shift.AFTER))
     private void rightClickMouse(final CallbackInfo callbackInfo) {
         CPSCounter.INSTANCE.registerClick(CPSCounter.MouseButton.RIGHT);
-
         final FastPlace fastPlace = MinusBounce.moduleManager.getModule(FastPlace.class);
-        final Scaffold scaffold = MinusBounce.moduleManager.getModule(Scaffold.class);
 
         assert fastPlace != null;
-        assert scaffold != null;
-        if (fastPlace.getState() || scaffold.getState()) {
-            rightClickDelayTimer = scaffold.getState() ? fastPlace.getSpeedValue().get() : 0;
+        if (fastPlace.getState()) {
+            rightClickDelayTimer = fastPlace.getSpeedValue().get();
         }
     }
 

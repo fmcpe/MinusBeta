@@ -7,7 +7,7 @@ import net.minusmc.minusbounce.utils.timer.MSTimer
 class VulcanBlocking: KillAuraBlocking("Vulcan") {
     private val blockTimer = MSTimer()
 
-    override fun onPreAttack() {
+    override fun onPreUpdate() {
         if (blockTimer.hasTimePassed(50)) {
             mc.netHandler.addToSendQueue(C08PacketPlayerBlockPlacement(mc.thePlayer.inventory.getCurrentItem()))
             blockTimer.reset()
