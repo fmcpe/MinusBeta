@@ -13,7 +13,12 @@ class PluginManager: Listenable {
 	}
 
 	fun registerPlugins() {
-		ClassUtils.resolvePlugins().forEach(this::registerPlugin)
+		for (className in ClassUtils.mainClassPlugins) {
+			val clazz = Class.forName(className)
+
+			if (Plugin::class.java.isAssignableFrom(clazz))
+				registerPlugin(clazz as Class<out Plugin>)
+		}
 	}
 
 	fun initPlugins() {
