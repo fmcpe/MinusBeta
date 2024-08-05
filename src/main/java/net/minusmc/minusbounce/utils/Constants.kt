@@ -1,14 +1,18 @@
 package net.minusmc.minusbounce.utils
 
-import net.minecraft.network.handshake.client.*
-import net.minecraft.network.login.client.*
-import net.minecraft.network.login.server.*
+import net.minecraft.network.handshake.client.C00Handshake
+import net.minecraft.network.login.client.C00PacketLoginStart
+import net.minecraft.network.login.client.C01PacketEncryptionResponse
+import net.minecraft.network.login.server.S00PacketDisconnect
+import net.minecraft.network.login.server.S01PacketEncryptionRequest
+import net.minecraft.network.login.server.S02PacketLoginSuccess
+import net.minecraft.network.login.server.S03PacketEnableCompression
 import net.minecraft.network.play.client.*
-import net.minecraft.network.play.client.C03PacketPlayer.*
 import net.minecraft.network.play.server.*
-import net.minecraft.network.play.server.S14PacketEntity.*
-import net.minecraft.network.status.client.*
-import net.minecraft.network.status.server.*
+import net.minecraft.network.status.client.C00PacketServerQuery
+import net.minecraft.network.status.client.C01PacketPing
+import net.minecraft.network.status.server.S00PacketServerInfo
+import net.minecraft.network.status.server.S01PacketPong
 
 object Constants {
 
@@ -31,10 +35,9 @@ object Constants {
 		S00PacketKeepAlive::class.java, S01PacketJoinGame::class.java, 
 		S02PacketChat::class.java, S03PacketTimeUpdate::class.java, 
 		S04PacketEntityEquipment::class.java, S05PacketSpawnPosition::class.java, 
-		S06PacketUpdateHealth::class.java, S07PacketRespawn::class.java, 
+		S07PacketRespawn::class.java, S0DPacketCollectItem::class.java,
 		S08PacketPlayerPosLook::class.java, S09PacketHeldItemChange::class.java, 
-		S0APacketUseBed::class.java, S0BPacketAnimation::class.java, 
-		S0CPacketSpawnPlayer::class.java, S0DPacketCollectItem::class.java, 
+		S0APacketUseBed::class.java, S0BPacketAnimation::class.java,
 		S0EPacketSpawnObject::class.java, S0FPacketSpawnMob::class.java, 
 		S10PacketSpawnPainting::class.java, S11PacketSpawnExperienceOrb::class.java, 
 		S12PacketEntityVelocity::class.java, S13PacketDestroyEntities::class.java, 
@@ -48,7 +51,7 @@ object Constants {
 		S22PacketMultiBlockChange::class.java, S23PacketBlockChange::class.java, 
 		S24PacketBlockAction::class.java, S25PacketBlockBreakAnim::class.java, 
 		S26PacketMapChunkBulk::class.java, S27PacketExplosion::class.java, 
-		S28PacketEffect::class.java, S29PacketSoundEffect::class.java, 
+		S28PacketEffect::class.java, S3FPacketCustomPayload::class.java,
 		S2APacketParticles::class.java, S2BPacketChangeGameState::class.java, 
 		S2CPacketSpawnGlobalEntity::class.java, S2DPacketOpenWindow::class.java, 
 		S2EPacketCloseWindow::class.java, S2FPacketSetSlot::class.java, 
@@ -58,8 +61,7 @@ object Constants {
 		S36PacketSignEditorOpen::class.java, S37PacketStatistics::class.java, 
 		S38PacketPlayerListItem::class.java, S39PacketPlayerAbilities::class.java, 
 		S3APacketTabComplete::class.java, S3BPacketScoreboardObjective::class.java, 
-		S3CPacketUpdateScore::class.java, S3DPacketDisplayScoreboard::class.java, 
-		S3EPacketTeams::class.java, S3FPacketCustomPayload::class.java, 
+		S3CPacketUpdateScore::class.java, S3DPacketDisplayScoreboard::class.java,
 		S40PacketDisconnect::class.java, S41PacketServerDifficulty::class.java, 
 		S42PacketCombatEvent::class.java, S43PacketCamera::class.java, 
 		S44PacketWorldBorder::class.java, S45PacketTitle::class.java, 
@@ -77,6 +79,7 @@ object Constants {
 		S00PacketDisconnect::class.java, S01PacketEncryptionRequest::class.java, 
 		S02PacketLoginSuccess::class.java, S03PacketEnableCompression::class.java, 
 		S00PacketServerInfo::class.java, S01PacketPong::class.java,
+		S06PacketUpdateHealth::class.java, S29PacketSoundEffect::class.java,
+		S3EPacketTeams::class.java, S0CPacketSpawnPlayer::class.java,
 	)
-
 }

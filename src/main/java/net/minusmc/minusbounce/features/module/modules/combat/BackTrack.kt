@@ -28,17 +28,40 @@ import java.awt.Color
 
 @ModuleInfo("BackTrack", "Back Track", "Let you attack in their previous position", ModuleCategory.COMBAT)
 class BackTrack : Module() {
-    private val delay = IntegerValue("Delay", 400, 0, 5000)
+    private val delay = IntegerValue("Delay", 400, 0, 10000)
     private val hitRange = FloatValue("Range", 3F, 0F, 10F)
-    val esp = BoolValue("ESP", true)
+    private val velocity = BoolValue("Velocity", true)
+    private val explosion = BoolValue("Explosion", true)
+    private val time = BoolValue("TimeUpdate", true)
+    private val keepAlive = BoolValue("KeepAlive", true)
+    private val esp = BoolValue("ESP", true)
 
     val packets = mutableListOf<Packet<*>>()
     val timer = MSTimer()
 
     override fun onEnable() {
+        mc.thePlayer ?: return
+        mc.theWorld ?: return
+
+        for (e in mc.theWorld.loadedEntityList){
+            if(e is EntityLivingBase){
+                e.realPosX = e.serverPosX.toDouble()
+                e.realPosY = e.serverPosY.toDouble()
+                e.realPosZ = e.serverPosZ.toDouble()
+            }
+        }
+
         packets.clear()
     }
-    
+
+    override fun onDisable() {
+        if(packets.size > 0){
+            flushPackets()
+        }
+
+        packets.clear()
+    }
+
     @EventTarget(priority = 5)
     fun onPacket(event: PacketEvent) {
         mc.thePlayer ?: return
@@ -151,7 +174,6 @@ class BackTrack : Module() {
 
         val realDistance = mc.thePlayer.getDistance(realX, realY, realZ)
         val targetDistance = mc.thePlayer.getDistance(target.posX, target.posY, target.posZ)
-
         if (targetDistance >= realDistance || realDistance > hitRange.get() || timer.hasTimePassed(delay.get()))
             render = false
 
@@ -172,7 +194,7 @@ class BackTrack : Module() {
         }
     }
 
-    fun flushPackets() {
+    private fun flushPackets() {
         if (packets.isNotEmpty()) {
             synchronized(packets) {
                 while (packets.size > 0) {
@@ -198,9 +220,18 @@ class BackTrack : Module() {
 
     private fun addPacket(event: PacketEvent) {
         val packet = event.packet
+        var freeze = true
+
+        when (packet) {
+            is S19PacketEntityStatus -> freeze = packet.logicOpcode != 2.toByte() || mc.theWorld.getEntityByID(packet.entityId) !is EntityLivingBase
+            is S03PacketTimeUpdate -> freeze = !time.get()
+            is S00PacketKeepAlive -> freeze = !keepAlive.get()
+            is S12PacketEntityVelocity -> freeze = !velocity.get()
+            is S27PacketExplosion -> freeze = !explosion.get()
+        }
 
         synchronized(packets) {
-            if (packet::class.java !in Constants.serverOtherPacketClasses) {
+            if (packet::class.java !in Constants.serverOtherPacketClasses && freeze) {
                 packets.add(packet)
                 event.cancelEvent()
                 event.stopRunEvent = true

@@ -5,7 +5,6 @@
  */
 package net.minusmc.minusbounce.features.module.modules.combat
 
-import net.minecraft.block.material.Material
 import net.minecraft.client.settings.KeyBinding
 import net.minecraft.enchantment.Enchantment
 import net.minecraft.entity.Entity
@@ -84,6 +83,7 @@ class KillAura : Module() {
     private val intaveRandomAmount = FloatValue("Random", 4f, 0.25f, 10f) { rotations.get().equals("Intave", true) }
     private val Hitable = BoolValue("Hitable", false) { !rotations.get().equals("none", true) && !throughWallsValue.get()}
     private val attackBlock = BoolValue("AttackBlock", true)
+    private val interact = BoolValue("Interact", true)
     private val noslow = BoolValue("NoSlow", true)
 
     // AutoBlock & Interact
@@ -532,41 +532,9 @@ class KillAura : Module() {
             }
 
         when(modes.get().lowercase()){
-            "normal" -> clickNormal(entity)
+            "normal" -> mc.clickMouse()
             "legit" -> clickLegit()
             "blatant" -> clickBlatant(entity)
-        }
-    }
-
-    private fun clickNormal(entity: EntityLivingBase){
-        /* Swing*/
-        when (swingValue.get().lowercase()) {
-            "normal" -> mc.thePlayer.swingItem()
-            "packet" -> mc.netHandler.addToSendQueue(C0APacketAnimation())
-        }
-
-        when (mc.objectMouseOver.typeOfHit) {
-            MovingObjectType.ENTITY -> mc.playerController.attackEntity(
-                mc.thePlayer,
-                mc.objectMouseOver.entityHit
-            )
-
-            MovingObjectType.BLOCK -> {
-                if (mc.theWorld.getBlockState(mc.objectMouseOver.blockPos).block.material !== Material.air) {
-                    mc.playerController.clickBlock(mc.objectMouseOver.blockPos, mc.objectMouseOver.sideHit)
-                }
-                if (mc.playerController.isNotCreative) {
-                    mc.leftClickCounter = 10
-                }
-            }
-
-            MovingObjectType.MISS -> if (mc.playerController.isNotCreative) {
-                mc.leftClickCounter = 10
-            }
-
-            else -> if (mc.playerController.isNotCreative) {
-                mc.leftClickCounter = 10
-            }
         }
     }
 
@@ -638,7 +606,7 @@ class KillAura : Module() {
     fun startBlocking(check: Boolean, interact: Boolean) {
         if(!blockingStatus || !check){
             val obj = rayTrace(serverRotation, 3.0) ?: return
-            if(interact && target != null && obj.entityHit == target){
+            if(interact && target != null && obj.entityHit == target && this.interact.get()){
                 if (!mc.playerController.isPlayerRightClickingOnEntity(
                         mc.thePlayer,
                         obj.entityHit,
