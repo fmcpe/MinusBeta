@@ -94,7 +94,7 @@ class Velocity : Module() {
         mode.onStrafe(event)
     }
 
-    @EventTarget
+    @EventTarget(priority = -10)
     fun onInput(event: MoveInputEvent) {
         mode.onInput(event)
     }
@@ -110,6 +110,11 @@ class Velocity : Module() {
     @EventTarget
     fun onKnockBack(event: KnockBackEvent) {
         mode.onKnockBack(event)
+    }
+
+    @EventTarget
+    fun onRender(e: Render3DEvent){
+        mode.onRender(e)
     }
 
     override val tag: String

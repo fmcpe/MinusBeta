@@ -1,14 +1,27 @@
 package net.minusmc.minusbounce.utils
 
+import net.minecraft.block.BlockAir
 import net.minecraft.block.BlockIce
 import net.minecraft.block.BlockPackedIce
 import net.minecraft.block.BlockSlime
+import net.minecraft.client.Minecraft
+import net.minecraft.client.entity.EntityPlayerSP
+import net.minecraft.client.multiplayer.WorldClient
+import net.minecraft.enchantment.EnchantmentHelper
+import net.minecraft.entity.Entity
+import net.minecraft.entity.EntityLivingBase
+import net.minecraft.entity.EnumCreatureAttribute
+import net.minecraft.entity.SharedMonsterAttributes
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.item.ItemBlock
 import net.minecraft.item.ItemEnderPearl
 import net.minecraft.item.ItemPotion
 import net.minecraft.item.ItemStack
-import net.minecraft.util.BlockPos
+import net.minecraft.potion.Potion
+import net.minecraft.util.*
+import net.minusmc.minusbounce.MinusBounce
+import net.minusmc.minusbounce.event.KnockBackEvent
+import net.minusmc.minusbounce.features.module.modules.movement.Sprint
 import net.minusmc.minusbounce.utils.MinecraftInstance.Companion.mc
 
 
@@ -89,4 +102,233 @@ object PlayerUtils {
         }
         return doubleArrayOf(posX, posZ)
     }
+
+
+    fun getPredictedPos(isHitting: Boolean, targetEntity: Entity, forward: Float, strafe: Float, yaw: Float): Vec3 {
+        var strafe = strafe * 0.98f
+        var forward = forward * 0.98f
+        var f4 = 0.91f
+        var motionX = mc.thePlayer.motionX
+        var motionZ = mc.thePlayer.motionZ
+        var motionY = mc.thePlayer.motionY
+        var isSprinting = mc.thePlayer.isSprinting
+
+        if (isHitting) {
+            val attackDamage = mc.thePlayer.getEntityAttribute(SharedMonsterAttributes.attackDamage).attributeValue.toFloat()
+            val enchantmentDamage = if (targetEntity is EntityLivingBase) {
+                EnchantmentHelper.getModifierForCreature(mc.thePlayer.heldItem, targetEntity.creatureAttribute)
+            } else {
+                EnchantmentHelper.getModifierForCreature(mc.thePlayer.heldItem, EnumCreatureAttribute.UNDEFINED)
+            }
+
+            if (attackDamage > 0.0f || enchantmentDamage > 0.0f) {
+                var knockbackModifier = EnchantmentHelper.getKnockbackModifier(mc.thePlayer)
+                if (mc.thePlayer.isSprinting) knockbackModifier++
+
+                val attacked = targetEntity.attackEntityFrom(DamageSource.causePlayerDamage(mc.thePlayer), attackDamage)
+                if (attacked) {
+                    if (knockbackModifier > 0) {
+                        val event = KnockBackEvent(0.6, false, 1, 0, false, false)
+                        MinusBounce.eventManager.callEvent(event)
+
+                        if(!event.isCancelled){
+                            motionX *= event.motion
+                            motionZ *= event.motion
+                            isSprinting = false
+                        }
+                    }
+                }
+            }
+        }
+
+        if (mc.thePlayer.isJumping && mc.thePlayer.onGround && mc.thePlayer.jumpTicks == 0) {
+            motionY = 0.42
+            if (mc.thePlayer.isPotionActive(Potion.jump)) {
+                motionY += (mc.thePlayer.getActivePotionEffect(Potion.jump).amplifier + 1) * 0.1f
+            }
+            if (isSprinting) {
+                val yawRadians = yaw * 0.017453292f
+                motionX -= MathHelper.sin(yawRadians) * 0.2f
+                motionZ += MathHelper.cos(yawRadians) * 0.2f
+            }
+        }
+
+        if (mc.thePlayer.onGround) {
+            f4 = mc.thePlayer.worldObj.getBlockState(BlockPos(MathHelper.floor_double(mc.thePlayer.posX), MathHelper.floor_double(mc.thePlayer.entityBoundingBox.minY) - 1, MathHelper.floor_double(mc.thePlayer.posZ)))
+                .block.slipperiness * 0.91f
+        }
+
+        val friction = if (mc.thePlayer.onGround) {
+            var moveSpeed = mc.thePlayer.aiMoveSpeed * (0.16277136f / (f4 * f4 * f4))
+            if (mc.thePlayer == Minecraft.getMinecraft().thePlayer &&
+                MinusBounce.moduleManager.getModule(Sprint::class.java)?.state == true
+            ) {
+                moveSpeed = 0.12999998f
+            }
+            moveSpeed
+        } else {
+            mc.thePlayer.jumpMovementFactor
+        }
+
+        val magnitude = strafe * strafe + forward * forward
+        if (magnitude >= 1.0E-4f) {
+            val normalized = MathHelper.sqrt_float(magnitude).coerceAtLeast(1.0f)
+            val scale = friction / normalized
+            strafe *= scale
+            forward *= scale
+            val yawRadians = yaw * Math.PI.toFloat() / 180.0f
+            motionX += strafe * MathHelper.cos(yawRadians) - forward * MathHelper.sin(yawRadians)
+            motionZ += forward * MathHelper.cos(yawRadians) + strafe * MathHelper.sin(yawRadians)
+        }
+
+        motionY *= 0.9800000190734863
+        motionX *= f4
+        motionZ *= f4
+
+        return Vec3(motionX, motionY, motionZ)
+    }
+
+    fun getPredictedPos(
+        forward: Float,
+        strafe: Float,
+        motionX: Double,
+        motionY: Double,
+        motionZ: Double,
+        posX: Double,
+        posY: Double,
+        posZ: Double,
+        isJumping: Boolean,
+        yaw: Float,
+    ): Position {
+        var strafe = strafe * 0.98f
+        var forward = forward * 0.98f
+        var motionX = motionX
+        var motionY = motionY
+        var motionZ = motionZ
+        var f4 = 0.91f
+        val isSprinting = mc.thePlayer.isSprinting
+
+        if (isJumping && mc.thePlayer.onGround && mc.thePlayer.jumpTicks == 0) {
+            motionY = 0.42
+            if (mc.thePlayer.isPotionActive(Potion.jump)) {
+                motionY += (mc.thePlayer.getActivePotionEffect(Potion.jump).amplifier + 1) * 0.1f
+            }
+            if (isSprinting) {
+                val yawRadians = yaw * 0.017453292f
+                motionX -= MathHelper.sin(yawRadians) * 0.2f
+                motionZ += MathHelper.cos(yawRadians) * 0.2f
+            }
+        }
+
+        if (mc.thePlayer.onGround) {
+            f4 = mc.thePlayer.worldObj.getBlockState(BlockPos(
+                MathHelper.floor_double(posX),
+                MathHelper.floor_double(posY) - 1,
+                MathHelper.floor_double(posZ)
+            )).block.slipperiness * 0.91f
+        }
+
+        val f6 = 0.16277136f / (f4 * f4 * f4)
+        val friction = if (mc.thePlayer.onGround) {
+            var moveSpeed = mc.thePlayer.aiMoveSpeed * f6
+            if (mc.thePlayer == Minecraft.getMinecraft().thePlayer &&
+                MinusBounce.moduleManager.getModule(Sprint::class.java)?.state == true
+            ) {
+                moveSpeed = 0.12999998f
+            }
+            moveSpeed
+        } else {
+            mc.thePlayer.jumpMovementFactor
+        }
+
+        var f7 = strafe * strafe + forward * forward
+        if (f7 >= 1.0E-4f) {
+            f7 = MathHelper.sqrt_float(f7)
+            if (f7 < 1.0f) f7 = 1.0f
+            f7 = friction / f7
+            strafe *= f7
+            forward *= f7
+            val yawRadians = yaw * Math.PI.toFloat() / 180.0f
+            val f8 = MathHelper.sin(yawRadians)
+            val f9 = MathHelper.cos(yawRadians)
+            motionX += strafe * f9 - forward * f8
+            motionZ += forward * f9 + strafe * f8
+        }
+
+        var newPosX = posX + motionX
+        var newPosY = posY + motionY
+        var newPosZ = posZ + motionZ
+
+        f4 = 0.91f
+        if (mc.thePlayer.onGround) {
+            f4 = mc.thePlayer.worldObj.getBlockState(BlockPos(
+                MathHelper.floor_double(newPosX),
+                MathHelper.floor_double(mc.thePlayer.entityBoundingBox.minY) - 1,
+                MathHelper.floor_double(newPosZ)
+            )).block.slipperiness * 0.91f
+        }
+
+        if (mc.thePlayer.worldObj.isRemote && (!mc.thePlayer.worldObj.isBlockLoaded(BlockPos(newPosX.toInt(), 0, newPosZ.toInt())) ||
+                    !mc.thePlayer.worldObj.getChunkFromBlockCoords(BlockPos(newPosX.toInt(), 0, newPosZ.toInt())).isLoaded())) {
+            motionY = if (newPosY > 0.0) -0.1 else 0.0
+        } else {
+            motionY -= 0.08
+        }
+
+        motionY *= 0.9800000190734863
+        motionX *= f4
+        motionZ *= f4
+
+        return Position(forward, strafe, motionX, motionY, motionZ, newPosX, newPosY, newPosZ, isJumping, yaw)
+    }
+
+    fun Position.toVec3XYZ() = Vec3(this.posX, this.posY, this.posZ)
+
+
+    /**
+     * Checks if the player is inside a block
+     *
+     * @return inside block
+     */
+    fun insideBlock(): Boolean {
+        if (mc.thePlayer.ticksExisted < 5) {
+            return false
+        }
+
+        val player: EntityPlayerSP = mc.thePlayer
+        val world: WorldClient = mc.theWorld
+        val bb = player.entityBoundingBox
+        for (x in MathHelper.floor_double(bb.minX) until MathHelper.floor_double(bb.maxX) + 1) {
+            for (y in MathHelper.floor_double(bb.minY) until MathHelper.floor_double(bb.maxY) + 1) {
+                for (z in MathHelper.floor_double(bb.minZ) until MathHelper.floor_double(bb.maxZ) + 1) {
+                    val block = world.getBlockState(BlockPos(x, y, z)).block
+                    var boundingBox: AxisAlignedBB? = null
+                    if (block != null && block !is BlockAir && (block.getCollisionBoundingBox(
+                            world,
+                            BlockPos(x, y, z),
+                            world.getBlockState(BlockPos(x, y, z))
+                        ).also {
+                            boundingBox = it
+                        }) != null && player.entityBoundingBox.intersectsWith(boundingBox)
+                    ) {
+                        return true
+                    }
+                }
+            }
+        }
+        return false
+    }
 }
+
+data class Position(
+    var forward: Float,
+    var strafe: Float,
+    var motionX: Double,
+    var motionY: Double,
+    var motionZ: Double,
+    var posX: Double,
+    var posY: Double,
+    var posZ: Double,
+    var isJumping: Boolean,
+    var yaw: Float,
+)

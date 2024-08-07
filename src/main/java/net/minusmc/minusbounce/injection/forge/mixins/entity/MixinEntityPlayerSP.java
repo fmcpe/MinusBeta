@@ -27,6 +27,7 @@ import net.minecraft.util.*;
 import net.minusmc.minusbounce.MinusBounce;
 import net.minusmc.minusbounce.event.*;
 import net.minusmc.minusbounce.features.module.modules.combat.KillAura;
+import net.minusmc.minusbounce.features.module.modules.combat.SuperKnockback;
 import net.minusmc.minusbounce.features.module.modules.movement.Fly;
 import net.minusmc.minusbounce.features.module.modules.movement.InvMove;
 import net.minusmc.minusbounce.features.module.modules.movement.NoSlow;
@@ -38,7 +39,6 @@ import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.List;
@@ -251,6 +251,7 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
      */
     @Overwrite
     public void onLivingUpdate() {
+        final SuperKnockback superKB = MinusBounce.moduleManager.getModule(SuperKnockback.class);
         MinusBounce.eventManager.callEvent(new UpdateEvent());
 
         if (this.sprintingTicksLeft > 0) {
@@ -350,6 +351,12 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
         if(this.reSprint == 2){
             this.movementInput.moveForward = forward;
             this.reSprint = 1;
+        }
+
+        assert superKB != null;
+        if (superKB.getCancelSprint()) {
+            superKB.setCancelSprint(false);
+            this.setSprinting(false);
         }
 
         if (this.capabilities.allowFlying) {
@@ -724,26 +731,17 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
             final PreUpdateEvent event = new PreUpdateEvent();
             MinusBounce.eventManager.callEvent(event);
 
+            if (event.isCancelled()) {
+                return;
+            }
+
             super.onUpdate();
+
+            MinusBounce.eventManager.callEvent(new PostPlayerTickEvent());
 
             this.onUpdateWalkingPlayer();
 
             MinusBounce.eventManager.callEvent(new PostMotionEvent());
         }
-    }
-
-    @Inject(method = "onUpdate", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/entity/AbstractClientPlayer;onUpdate()V", shift = At.Shift.BEFORE, ordinal = 0), cancellable = true)
-    private void preTickEvent(CallbackInfo ci) {
-        final PrePlayerTickEvent tickEvent = new PrePlayerTickEvent();
-        MinusBounce.eventManager.callEvent(tickEvent);
-
-        if (tickEvent.isCancelled()) {
-            ci.cancel();
-        }
-    }
-
-    @Inject(method = "onUpdate", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/entity/AbstractClientPlayer;onUpdate()V", shift = At.Shift.AFTER, ordinal = 0))
-    private void postTickEvent(CallbackInfo ci) {
-        MinusBounce.eventManager.callEvent(new PostPlayerTickEvent());
     }
 }

@@ -14,8 +14,8 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.CapabilityDispatcher;
 import net.minusmc.minusbounce.MinusBounce;
+import net.minusmc.minusbounce.event.HitBoxEvent;
 import net.minusmc.minusbounce.event.StrafeEvent;
-import net.minusmc.minusbounce.features.module.modules.combat.HitBox;
 import net.minusmc.minusbounce.injection.implementations.IEntity;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -204,12 +204,9 @@ public abstract class MixinEntity implements IEntity {
 
     @Inject(method = "getCollisionBorderSize", at = @At("HEAD"), cancellable = true)
     private void getCollisionBorderSize(final CallbackInfoReturnable<Float> callbackInfoReturnable) {
-        final HitBox hitBox = MinusBounce.moduleManager.getModule(HitBox.class);
-
-        assert hitBox != null;
-        if (hitBox.getState()) {
-            callbackInfoReturnable.setReturnValue(0.1F + hitBox.getSizeValue().get());
-        }
+        final HitBoxEvent event = new HitBoxEvent(0.1F);
+        MinusBounce.eventManager.callEvent(event);
+        callbackInfoReturnable.setReturnValue(event.getSize());
     }
 
     /**

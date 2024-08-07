@@ -5,6 +5,8 @@
  */
 package net.minusmc.minusbounce.features.module.modules.combat
 
+import net.minusmc.minusbounce.event.EventTarget
+import net.minusmc.minusbounce.event.HitBoxEvent
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
@@ -13,6 +15,10 @@ import net.minusmc.minusbounce.value.FloatValue
 @ModuleInfo(name = "HitBox", spacedName = "Hit Box", description = "Makes hitboxes of targets bigger.", category = ModuleCategory.COMBAT)
 class HitBox : Module() {
 
-    val sizeValue = FloatValue("Size", 0.4F, 0F, 1F)
+    private val sizeValue = FloatValue("Size", 0.4F, 0F, 1F)
 
+    @EventTarget
+    fun onHitBox(e: HitBoxEvent){
+        e.size = sizeValue.get()
+    }
 }

@@ -2,6 +2,7 @@ package net.minusmc.minusbounce.features.module.modules.combat.killaura
 
 import net.minusmc.minusbounce.MinusBounce
 import net.minusmc.minusbounce.event.PacketEvent
+import net.minusmc.minusbounce.event.PreUpdateEvent
 import net.minusmc.minusbounce.event.SlowDownEvent
 import net.minusmc.minusbounce.features.module.modules.combat.KillAura
 import net.minusmc.minusbounce.utils.MinecraftInstance
@@ -24,7 +25,7 @@ abstract class KillAuraBlocking(val modeName: String): MinecraftInstance() {
 
 	open fun onPostAttack() {}
 
-	open fun onPreUpdate() {}
+	open fun onPreUpdate(event: PreUpdateEvent) {}
 
 	open fun onPacket(event: PacketEvent) {}
 

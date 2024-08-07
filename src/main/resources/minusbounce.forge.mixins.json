@@ -89,10 +89,10 @@
     "render.MixinModelSkeleton",
     "render.MixinModelVillager",
     "render.MixinRender",
-    "render.MixinRenderItem",
-    "render.MixinRenderPlayer",
     "render.MixinRenderEntityItem",
     "render.MixinRendererLivingEntity",
+    "render.MixinRenderItem",
+    "render.MixinRenderPlayer",
     "render.MixinTileEntityBannerRenderer",
     "render.MixinTileEntityChestRenderer",
     "render.MixinTileEntityItemStackRenderer",
@@ -103,6 +103,7 @@
     "resources.MixinDefaultResourcePack",
     "resources.MixinSkinManager",
     "world.MixinWorld",
-    "world.MixinWorldClient"
+    "world.MixinWorldClient",
+    "util.MixinTimer"
   ]
 }

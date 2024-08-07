@@ -652,8 +652,7 @@ class Scaffold: Module(){
                 }
 
                 if (
-                    ticksOnAir > 0
-                    && !isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)
+                    !isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)
                 ){
                     val blockPlace = blockPlace ?: return
                     if (
@@ -682,7 +681,7 @@ class Scaffold: Module(){
                 }
             }
 
-            else -> if (BlockPos(mc.thePlayer).getBlock() is BlockAir && !isObjectMouseOverBlock( placeInfo?.enumFacing ?: return, blockPlace ?: return, currentRotation)) {
+            else -> if (!isObjectMouseOverBlock( placeInfo?.enumFacing ?: return, blockPlace ?: return)) {
                 getRotations()
             }
         }

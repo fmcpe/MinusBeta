@@ -1,10 +1,14 @@
 package net.minusmc.minusbounce.features.module.modules.combat.killaura.blocking
 
-import net.minusmc.minusbounce.utils.PacketUtils
-import net.minusmc.minusbounce.features.module.modules.combat.killaura.KillAuraBlocking
-import net.minecraft.util.*
+import net.minecraft.network.play.client.C07PacketPlayerDigging
+import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement
+import net.minecraft.network.play.client.C09PacketHeldItemChange
+import net.minecraft.util.BlockPos
+import net.minecraft.util.EnumFacing
 import net.minusmc.minusbounce.event.PacketEvent
-import net.minecraft.network.play.client.*
+import net.minusmc.minusbounce.event.PreUpdateEvent
+import net.minusmc.minusbounce.features.module.modules.combat.killaura.KillAuraBlocking
+import net.minusmc.minusbounce.utils.PacketUtils
 
 class VerusBlocking: KillAuraBlocking("Verus") {
     private var verusBlocking = false
@@ -25,7 +29,7 @@ class VerusBlocking: KillAuraBlocking("Verus") {
             verusBlocking = false
     }
 
-    override fun onPreUpdate(){
+    override fun onPreUpdate(event: PreUpdateEvent){
         if (blockingStatus || mc.thePlayer.isBlocking)
             verusBlocking = true
         else if (verusBlocking) {

@@ -12,6 +12,7 @@ import net.minusmc.minusbounce.event.StrafeEvent
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
+import net.minusmc.minusbounce.features.module.modules.combat.SuperKnockback
 import net.minusmc.minusbounce.features.module.modules.world.Scaffold
 
 
@@ -19,9 +20,20 @@ import net.minusmc.minusbounce.features.module.modules.world.Scaffold
 class Sprint : Module(){
     @EventTarget(priority = -5)
     fun onStrafe(event: StrafeEvent){
+        MinusBounce.moduleManager[SuperKnockback::class.java]?.let {
+            if (it.stopSprint && it.stopTimer.hasTimePassed(it.delay / 2 + 50)) {
+                it.stopSprint = false
+            }
+        }
+
         val scaffold = MinusBounce.moduleManager.getModule(Scaffold::class.java) ?: return
-        if(mc.thePlayer.reSprint != 2 && !scaffold.state) {
+        if(!scaffold.state) {
             mc.gameSettings.keyBindSprint.pressed = true
+        }
+
+        if(MinusBounce.moduleManager[SuperKnockback::class.java]?.stopSprint == true || mc.thePlayer.reSprint == 2){
+            mc.thePlayer.isSprinting = false
+            mc.gameSettings.keyBindSprint.pressed = false
         }
     }
 

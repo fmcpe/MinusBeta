@@ -45,7 +45,7 @@ class TickBase : Module() {
     }
 
     @EventTarget
-    fun onTickPre(event: PrePlayerTickEvent) {
+    fun onTickPre(event: PreUpdateEvent) {
         val player = mc.thePlayer ?: return
 
         if (player.ridingEntity != null || Blink.handleEvents()) {

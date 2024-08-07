@@ -11,10 +11,17 @@ import net.minusmc.minusbounce.utils.MovementUtils
 
 
 class Intave: NoSlowMode("Intave") {
+    private var lastUsingItem = false
+
     override fun onPreMotion(event: PreMotionEvent) {
+        if (!mc.thePlayer.isUsingItem || noslow.heldItem == null) {
+            lastUsingItem = false
+            return
+        }
+
         if(MovementUtils.isMoving){
             if(noslow.isEating){
-                if(!noslow.lastUsingItem){
+                if(!lastUsingItem){
                     mc.netHandler.addToSendQueue(C07PacketPlayerDigging(C07PacketPlayerDigging.Action.RELEASE_USE_ITEM, BlockPos.ORIGIN, EnumFacing.UP))
                 }
             } else {
@@ -23,5 +30,11 @@ class Intave: NoSlowMode("Intave") {
                 }
             }
         }
+
+        lastUsingItem = true
+    }
+
+    override fun onDisable() {
+        lastUsingItem = false
     }
 }

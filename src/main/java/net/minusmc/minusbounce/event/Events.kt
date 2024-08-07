@@ -43,7 +43,6 @@ class BlockBBEvent(blockPos: BlockPos, val block: Block, var boundingBox: AxisAl
 class TimeDelay: Event()
 class GameLoop: Event()
 class ClickingEvent: CancellableEvent()
-class PrePlayerTickEvent: CancellableEvent()
 class PostPlayerTickEvent: CancellableEvent()
 class StartRenderTickEvent: Event()
 class EndRenderTickEvent: Event()
@@ -120,6 +119,8 @@ class PreMotionEvent(var x: Double, var y: Double, var z: Double, var yaw: Float
 class PostMotionEvent: Event()
 
 class ForceUpdate(var yaw: Float, var pitch: Float): Event()
+
+class HitBoxEvent(var size: Float): Event()
 
 /**
  * Called in "onLivingUpdate" when the player is using a use item.

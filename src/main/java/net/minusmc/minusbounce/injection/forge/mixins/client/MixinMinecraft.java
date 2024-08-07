@@ -47,6 +47,7 @@ import net.minusmc.minusbounce.MinusBounce;
 import net.minusmc.minusbounce.event.*;
 import net.minusmc.minusbounce.features.module.modules.combat.AutoClicker;
 import net.minusmc.minusbounce.features.module.modules.combat.KillAura;
+import net.minusmc.minusbounce.features.module.modules.combat.TimerRange;
 import net.minusmc.minusbounce.features.module.modules.exploit.MultiActions;
 import net.minusmc.minusbounce.features.module.modules.misc.Patcher;
 import net.minusmc.minusbounce.features.module.modules.world.FastPlace;
@@ -483,6 +484,7 @@ public abstract class MixinMinecraft {
 
         for (int j = 0; j < this.timer.elapsedTicks; ++j)
         {
+            if (TimerRange.handleTick()) continue;
             this.runTick();
         }
 

@@ -7,7 +7,6 @@ package net.minusmc.minusbounce.utils
 
 import com.google.common.base.Predicate
 import com.google.common.collect.Lists
-import net.minusmc.minusbounce.features.module.modules.movement.NoJumpDelay
 import net.minecraft.block.*
 import net.minecraft.block.material.Material
 import net.minecraft.block.state.IBlockState
@@ -37,6 +36,7 @@ import net.minecraft.world.chunk.Chunk
 import net.minecraft.world.chunk.IChunkProvider
 import net.minecraftforge.common.ForgeModContainer
 import net.minusmc.minusbounce.MinusBounce
+import net.minusmc.minusbounce.features.module.modules.movement.NoJumpDelay
 import kotlin.math.abs
 import kotlin.math.ceil
 
@@ -153,7 +153,7 @@ class SimulatedPlayer(
             )
         }
 
-        private fun createFoodStatsCopy(player: EntityPlayerSP): FoodStats {
+        fun createFoodStatsCopy(player: EntityPlayerSP): FoodStats {
             val foodStatsNBT = NBTTagCompound()
             val foodStats = FoodStats()
 
@@ -162,7 +162,7 @@ class SimulatedPlayer(
             return foodStats
         }
 
-        private fun createCapabilitiesCopy(player: EntityPlayerSP): PlayerCapabilities {
+        fun createCapabilitiesCopy(player: EntityPlayerSP): PlayerCapabilities {
             val capabilitiesNBT = NBTTagCompound()
             val capabilities = PlayerCapabilities()
 

@@ -14,47 +14,94 @@ import net.minusmc.minusbounce.event.UpdateEvent
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
+import net.minusmc.minusbounce.features.module.modules.movement.Sprint
+import net.minusmc.minusbounce.features.module.modules.render.FreeCam
+import net.minusmc.minusbounce.utils.ClientUtils
 import net.minusmc.minusbounce.utils.MovementUtils
 import net.minusmc.minusbounce.utils.timer.MSTimer
+import net.minusmc.minusbounce.utils.timer.TimeUtils
+import net.minusmc.minusbounce.value.BoolValue
 import net.minusmc.minusbounce.value.IntegerValue
 import net.minusmc.minusbounce.value.ListValue
 
 @ModuleInfo(name = "SuperKnockback", spacedName = "Super Knockback", description = "Increases knockback dealt to other entities.", category = ModuleCategory.COMBAT)
 class SuperKnockback : Module() {
+    private val modeValue = ListValue("Mode", arrayOf("ExtraPacket", "Packet", "W-Tap", "Legit", "LegitFast"), "ExtraPacket")
+    private val maxDelay: IntegerValue = object : IntegerValue("Legit-MaxDelay", 60, 0, 100) {
+        override fun onChanged(oldValue: Int, newValue: Int) {
+            val i = minDelay.get()
+            if (i > newValue) set(i)
+
+            delay = TimeUtils.randomDelay(minDelay.get(), this.get())
+        }
+    }
+    private val minDelay: IntegerValue = object : IntegerValue("Legit-MinDelay", 50, 0, 100) {
+        override fun onChanged(oldValue: Int, newValue: Int) {
+            val i = maxDelay.get()
+            if (i < newValue) set(i)
+
+            delay = TimeUtils.randomDelay(this.get(), maxDelay.get())
+        }
+    }
     private val hurtTimeValue = IntegerValue("HurtTime", 10, 0, 10)
-    private val modeValue = ListValue("Mode", arrayOf("ExtraPacket", "Legit", "Silent", "Packet"), "ExtraPacket")
-    private val delay = IntegerValue("Delay", 0, 0, 500, "ms")
-    var forward: Float = 0.0F
+    private val delayValue = IntegerValue("Delay", 0, 0, 500)
+    private val onlyMoveValue = BoolValue("OnlyMove", true)
+    private val onlyGroundValue = BoolValue("OnlyGround", false)
 
-    val timer = MSTimer()
+    private val timer = MSTimer()
+    var delay = 0L
+    var stopSprint = false
+    var cancelSprint = false
+    val stopTimer = MSTimer()
+    private var isHit = false
+    private val attackTimer = MSTimer()
 
-    private var ticks = 0
+    override fun onEnable() {
+        isHit = false
+        if (modeValue.get() == "Legit" && MinusBounce.moduleManager.getModule(Sprint::class.java)?.state == false) {
+            ClientUtils.displayChatMessage("§cError: You must turn on sprint to use the legit mode SuperKnockBack.")
+            this.state = false
+        }
+    }
 
     @EventTarget
     fun onAttack(event: AttackEvent) {
         if (event.targetEntity is EntityLivingBase) {
-            val backtrack = MinusBounce.moduleManager.getModule(BackTrack::class.java) ?: return
-            if (event.targetEntity.hurtTime >= hurtTimeValue.get() || !timer.hasTimePassed(delay.get().toLong()) || (backtrack.state && backtrack.packets.isNotEmpty()) || !MovementUtils.isMoving || !mc.thePlayer.onGround)
+            val player = mc.thePlayer ?: return
+            if (event.targetEntity.hurtTime > hurtTimeValue.get()
+                || !timer.hasTimePassed(delayValue.get().toLong())
+                || (!MovementUtils.isMoving && onlyMoveValue.get())
+                || (!mc.thePlayer.onGround && onlyGroundValue.get())
+                || MinusBounce.moduleManager.getModule(FreeCam::class.java)?.state == true)
                 return
 
-            when (modeValue.get().lowercase()) {
-                "extrapacket" -> {
-                    if (mc.thePlayer.isSprinting)
-                        mc.thePlayer.isSprinting = true
-                    mc.netHandler.addToSendQueue(C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.STOP_SPRINTING))
-                    mc.netHandler.addToSendQueue(C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.START_SPRINTING))
-                    mc.netHandler.addToSendQueue(C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.STOP_SPRINTING))
+            when (modeValue.get()) {
+                "ExtraPacket" -> {
+                    if (player.isSprinting) mc.netHandler.addToSendQueue(C0BPacketEntityAction(player, C0BPacketEntityAction.Action.STOP_SPRINTING))
+                    mc.netHandler.addToSendQueue(C0BPacketEntityAction(player, C0BPacketEntityAction.Action.START_SPRINTING))
+                    mc.netHandler.addToSendQueue(C0BPacketEntityAction(player, C0BPacketEntityAction.Action.STOP_SPRINTING))
+                    mc.netHandler.addToSendQueue(C0BPacketEntityAction(player, C0BPacketEntityAction.Action.START_SPRINTING))
+                    //player.isSprinting = true
+                    player.serverSprintState = true
+                }
+                "Packet" -> {
+                    if (player.isSprinting) mc.netHandler.addToSendQueue(C0BPacketEntityAction(player, C0BPacketEntityAction.Action.STOP_SPRINTING))
+                    mc.netHandler.addToSendQueue(C0BPacketEntityAction(player, C0BPacketEntityAction.Action.START_SPRINTING))
+                    player.serverSprintState = true
+                }
+                "W-Tap" -> {
+                    if (mc.thePlayer.isSprinting) {
+                        mc.thePlayer.isSprinting = false
+                    }
                     mc.netHandler.addToSendQueue(C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.START_SPRINTING))
                     mc.thePlayer.serverSprintState = true
                 }
-                "silent" -> ticks = 1
-                "legit" -> mc.thePlayer.reSprint = 2
-                "packet" -> {
-                    if(mc.thePlayer.isSprinting)
-                        mc.thePlayer.isSprinting = true
-                    mc.netHandler.addToSendQueue(C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.STOP_SPRINTING))
-                    mc.netHandler.addToSendQueue(C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.START_SPRINTING))
-                    mc.thePlayer.serverSprintState = true
+                "Legit", "LegitFast" -> {
+                    if (!isHit) {
+                        isHit = true
+                        attackTimer.reset()
+                        delay = TimeUtils.randomDelay(minDelay.get(), maxDelay.get())
+                    }
                 }
             }
             timer.reset()
@@ -63,19 +110,25 @@ class SuperKnockback : Module() {
 
     @EventTarget
     fun onUpdate(event: UpdateEvent) {
-        when (modeValue.get().lowercase()) {
-            "slient" -> if (ticks == 1) {
-                mc.netHandler.addToSendQueue(C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.STOP_SPRINTING))
-                ticks = 2
-            } else if (ticks == 2) {
-                mc.netHandler.addToSendQueue(C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.START_SPRINTING))
-                ticks = 0
+        if  (modeValue.get() == "LegitFast") {
+            if (isHit && stopTimer.hasTimePassed(80)) {
+                isHit = false
+                cancelSprint = true
+                stopTimer.reset()
             }
         }
-    }
-
-    override fun onDisable() {
-        mc.gameSettings.keyBindSprint.pressed = false
+        if (modeValue.get() == "Legit") {
+            if (isHit && attackTimer.hasTimePassed(delay / 2)) {
+                isHit = false
+                mc.thePlayer.isSprinting = false
+                stopSprint = true
+                stopTimer.reset()
+            }
+            if (MinusBounce.moduleManager.getModule(Sprint::class.java)?.state == false) {
+                ClientUtils.displayChatMessage("§cError: You must turn on sprint to use the legit mode SuperKnockBack.")
+                this.state = false
+            }
+        }
     }
 
     override val tag: String

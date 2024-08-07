@@ -15,11 +15,8 @@ import net.minecraft.item.ItemTool
 import net.minecraft.network.play.client.*
 import net.minecraft.network.play.server.S2FPacketSetSlot
 import net.minecraft.potion.Potion
-import net.minecraft.util.BlockPos
-import net.minecraft.util.EnumFacing
-import net.minecraft.util.MovingObjectPosition
+import net.minecraft.util.*
 import net.minecraft.util.MovingObjectPosition.MovingObjectType
-import net.minecraft.util.Vec3
 import net.minusmc.minusbounce.MinusBounce
 import net.minusmc.minusbounce.event.*
 import net.minusmc.minusbounce.features.module.Module
@@ -84,6 +81,7 @@ class KillAura : Module() {
     private val Hitable = BoolValue("Hitable", false) { !rotations.get().equals("none", true) && !throughWallsValue.get()}
     private val attackBlock = BoolValue("AttackBlock", true)
     private val interact = BoolValue("Interact", true)
+    private val via = BoolValue("ViaFix", true)
     private val noslow = BoolValue("NoSlow", true)
 
     // AutoBlock & Interact
@@ -137,7 +135,7 @@ class KillAura : Module() {
     private val attackTimer = MSTimer()
     private var attackDelay = 0L
     private val switchTimer = MSTimer()
-    private var clicks = 0
+    var clicks = 0
     private var swing = false
     private var attackTickTimes = mutableListOf<Pair<MovingObjectPosition, Int>>()
 
@@ -195,7 +193,7 @@ class KillAura : Module() {
             }
         }
 
-        blockingMode.onPreUpdate()
+        blockingMode.onPreUpdate(event)
     }
 
     @EventTarget
@@ -546,7 +544,7 @@ class KillAura : Module() {
 
     private fun clickBlatant(entity: EntityLivingBase){
         /* Swing*/
-        when (swingValue.get().lowercase()) {
+        if(!via.get()) when (swingValue.get().lowercase()) {
             "normal" -> mc.thePlayer.swingItem()
             "packet" -> mc.netHandler.addToSendQueue(C0APacketAnimation())
         }
@@ -557,10 +555,18 @@ class KillAura : Module() {
                 Potion.blindness) && mc.thePlayer.ridingEntity == null){
             mc.thePlayer.onCriticalHit(entity)
         }
+
+        if(via.get()) when (swingValue.get().lowercase()) {
+            "normal" -> mc.thePlayer.swingItem()
+            "packet" -> mc.netHandler.addToSendQueue(C0APacketAnimation())
+        }
     }
 
     private fun getTargetRotation(entity: Entity): Rotation {
-        var boundingBox = entity.entityBoundingBox
+        var boundingBox = if(via.get()) AxisAlignedBB(
+            entity.posX - 0.3, entity.posY, entity.posZ - 0.3,
+            entity.posX + 0.3, entity.posY + 1.8, entity.posZ + 0.3
+        ) else entity.entityBoundingBox
 
         if (predictValue.get() && !rotations.get().equals("Grim", true) && !rotations.get().equals("Intave", true)) {
             boundingBox = boundingBox.offset(
