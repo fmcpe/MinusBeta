@@ -10,8 +10,6 @@ import net.minecraft.item.ItemSword
 import net.minecraft.item.ItemTool
 import net.minecraft.network.play.client.C02PacketUseEntity
 import net.minecraft.network.play.client.C09PacketHeldItemChange
-import net.minusmc.minusbounce.MinusBounce
-import net.minusmc.minusbounce.event.AttackEvent
 import net.minusmc.minusbounce.event.EventTarget
 import net.minusmc.minusbounce.event.PacketEvent
 import net.minusmc.minusbounce.event.UpdateEvent
@@ -19,7 +17,6 @@ import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
 import net.minusmc.minusbounce.utils.PacketUtils
-import net.minusmc.minusbounce.utils.timer.MSTimer
 import net.minusmc.minusbounce.utils.item.ItemUtils
 import net.minusmc.minusbounce.value.BoolValue
 import net.minusmc.minusbounce.value.IntegerValue
@@ -32,45 +29,38 @@ class AutoWeapon : Module() {
 
     @EventTarget
     fun onPacket(event: PacketEvent) {
-        MinusBounce.moduleManager[KillAura::class.java]?.let{
-            if (event.packet is C02PacketUseEntity && !it.state) {
-                /* Find the best weapon in hotbar */
-                val (slot, _) = (0..8)
-                    .map { Pair(it, mc.thePlayer.inventory.getStackInSlot(it)) }
-                    .filter { it.second != null && (it.second.item is ItemSword || it.second.item is ItemTool) }
-                    .maxByOrNull {
-                        (it.second.attributeModifiers["generic.attackDamage"].first()?.amount
-                            ?: 0.0) + 1.25 * ItemUtils.getEnchantment(it.second, Enchantment.sharpness)
-                    } ?: return
+        if (event.packet is C02PacketUseEntity) {
+            /* Find the best weapon in hotbar */
+            val (slot, _) = (0..8)
+                .map { Pair(it, mc.thePlayer.inventory.getStackInSlot(it)) }
+                .filter { it.second != null && (it.second.item is ItemSword || it.second.item is ItemTool) }
+                .maxByOrNull {
+                    (it.second.attributeModifiers["generic.attackDamage"].first()?.amount
+                        ?: 0.0) + 1.25 * ItemUtils.getEnchantment(it.second, Enchantment.sharpness)
+                } ?: return
 
-                /* If we are holding it. return */
-                if (slot == mc.thePlayer.inventory.currentItem) {
-                    return
-                }
-
-                if (silentValue.get()) {
-                    mc.netHandler.addToSendQueue(C09PacketHeldItemChange(slot))
-                    spoofedSlot = ticksValue.get()
-                } else {
-                    mc.thePlayer.inventory.currentItem = slot
-                    mc.playerController.syncCurrentPlayItem()
-                }
-
-                PacketUtils.sendPacketNoEvent(event.packet)
-                event.cancelEvent()
+            /* If we are holding it. return */
+            if (slot == mc.thePlayer.inventory.currentItem) {
+                return
             }
+
+            if (silentValue.get()) {
+                mc.netHandler.addToSendQueue(C09PacketHeldItemChange(slot))
+                spoofedSlot = ticksValue.get()
+            } else {
+                mc.thePlayer.inventory.currentItem = slot
+                mc.playerController.syncCurrentPlayItem()
+            }
+
+            PacketUtils.sendPacketNoEvent(event.packet)
+            event.cancelEvent()
         }
     }
 
     @EventTarget
     fun onUpdate(event: UpdateEvent) {
-        // Switch back to old item after some time
-        if (spoofedSlot > 0) {
-            if (spoofedSlot == 1) {
-                mc.netHandler.addToSendQueue(C09PacketHeldItemChange(mc.thePlayer.inventory.currentItem))
-            }
-
-            spoofedSlot--
+        if (spoofedSlot-- == 1) {
+            mc.netHandler.addToSendQueue(C09PacketHeldItemChange(mc.thePlayer.inventory.currentItem))
         }
     }
 }

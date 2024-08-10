@@ -1,11 +1,11 @@
 package net.minusmc.minusbounce.features.module.modules.combat
 
-import net.minecraft.client.renderer.GlStateManager
 import net.minecraft.entity.EntityLivingBase
 import net.minecraft.network.Packet
-import net.minecraft.network.play.client.C0FPacketConfirmTransaction
 import net.minecraft.network.play.server.*
 import net.minecraft.util.AxisAlignedBB
+import net.minecraft.util.MathHelper
+import net.minecraft.util.Vec3
 import net.minusmc.minusbounce.MinusBounce
 import net.minusmc.minusbounce.event.EventTarget
 import net.minusmc.minusbounce.event.GameLoop
@@ -14,18 +14,17 @@ import net.minusmc.minusbounce.event.Render3DEvent
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
+import net.minusmc.minusbounce.features.module.modules.player.Blink
 import net.minusmc.minusbounce.features.module.modules.world.Scaffold
 import net.minusmc.minusbounce.utils.Constants
 import net.minusmc.minusbounce.utils.PacketUtils
-import net.minusmc.minusbounce.utils.render.RenderUtils
 import net.minusmc.minusbounce.utils.timer.MSTimer
 import net.minusmc.minusbounce.value.BoolValue
 import net.minusmc.minusbounce.value.FloatValue
 import net.minusmc.minusbounce.value.IntegerValue
-import org.lwjgl.opengl.GL11
-import java.awt.Color
 
 
+@Suppress("UNUSED_PARAMETER")
 @ModuleInfo("BackTrack", "Back Track", "Let you attack in their previous position", ModuleCategory.COMBAT)
 class BackTrack : Module() {
     private val delay = IntegerValue("Delay", 400, 0, 10000)
@@ -36,6 +35,8 @@ class BackTrack : Module() {
     private val keepAlive = BoolValue("KeepAlive", true)
     private val esp = BoolValue("ESP", true)
 
+    private var active = false
+    private var switch = false
     val packets = mutableListOf<Packet<*>>()
     val timer = MSTimer()
 
@@ -126,71 +127,86 @@ class BackTrack : Module() {
         get() = MinusBounce.moduleManager[KillAura::class.java]?.target
 
     @EventTarget
-    fun onGameLoop(event: GameLoop) {
+    fun onRender3D(event: Render3DEvent) {
         mc.thePlayer ?: return
         mc.theWorld ?: return
         val target = this.target ?: return
+        val realX = target.realPosX / 32.0
+        val realY = target.realPosY / 32.0
+        val realZ = target.realPosZ / 32.0
 
-        if (target.realPosX == 0.0 || target.realPosY == 0.0 || target.realPosZ == 0.0)
-            return
-
-        if (target.width == 0f || target.height == 0f)
-            return
-
-        val realX = target.realPosX / 32
-        val realY = target.realPosY / 32
-        val realZ = target.realPosZ / 32
-
-        val realDistance = mc.thePlayer.getDistance(realX, realY, realZ)
-        val targetDistance = mc.thePlayer.getDistance(target.posX, target.posY, target.posZ)
-
-        if (targetDistance >= realDistance || realDistance > hitRange.get())
-            flushPackets()
-        else if (timer.hasTimePassed(delay.get())) {
-            timer.reset()
-            flushPackets()
+        if (target != mc.thePlayer && !target.isInvisible && esp.get() && active) {
+            Blink.drawBox(Vec3(realX, realY, realZ))
         }
     }
 
     @EventTarget
-    fun onRender3D(event: Render3DEvent) {
-        if (!esp.get())
-            return
-
+    fun onUpdate(e: GameLoop){
         mc.thePlayer ?: return
         mc.theWorld ?: return
         val target = this.target ?: return
 
-        if (target.realPosX == 0.0 || target.realPosY == 0.0 || target.realPosZ == 0.0)
+        if (target.realPosX == 0.0 || target.realPosY == 0.0 || target.realPosZ == 0.0 || target.width == 0f || target.height == 0f){
+            active = false
             return
+        }
 
-        if (target.width == 0f || target.height == 0f)
-            return
+        val d0 = target.realPosX / 32.0
+        val d2 = target.realPosY / 32.0
+        val d3 = target.realPosZ / 32.0
+        val d4 = target.serverPosX / 32.0
+        val d5 = target.serverPosY / 32.0
+        val d6 = target.serverPosZ / 32.0
+        val f = target.width / 2.0f
+        val entityServerPos = AxisAlignedBB(d4 - f, d5, d6 - f, d4 + f, d5 + target.height, d6 + f)
+        val positionEyes = mc.thePlayer.getPositionEyes(mc.timer.renderPartialTicks)
+        val currentX = MathHelper.clamp_double(positionEyes.xCoord, entityServerPos.minX, entityServerPos.maxX)
+        val currentY = MathHelper.clamp_double(positionEyes.yCoord, entityServerPos.minY, entityServerPos.maxY)
+        val currentZ = MathHelper.clamp_double(positionEyes.zCoord, entityServerPos.minZ, entityServerPos.maxZ)
+        val entityPosMe = AxisAlignedBB(d0 - f, d2, d3 - f, d0 + f, d2 + target.height, d3 + f)
+        val realX = MathHelper.clamp_double(positionEyes.xCoord, entityPosMe.minX, entityPosMe.maxX)
+        val realY = MathHelper.clamp_double(positionEyes.yCoord, entityPosMe.minY, entityPosMe.maxY)
+        val realZ = MathHelper.clamp_double(positionEyes.zCoord, entityPosMe.minZ, entityPosMe.maxZ)
 
-        var render = true
-        val realX = target.realPosX / 32
-        val realY = target.realPosY / 32
-        val realZ = target.realPosZ / 32
+        var distance = hitRange.get().toDouble()
+        if (!mc.thePlayer.canEntityBeSeen(target)) {
+            distance = if (distance > 3.0) 3.0 else distance
+        }
 
-        val realDistance = mc.thePlayer.getDistance(realX, realY, realZ)
-        val targetDistance = mc.thePlayer.getDistance(target.posX, target.posY, target.posZ)
-        if (targetDistance >= realDistance || realDistance > hitRange.get() || timer.hasTimePassed(delay.get()))
-            render = false
+        val collision = target.collisionBorderSize.toDouble()
+        val width = (mc.thePlayer.width / 2.0f).toDouble()
+        val mePosXForPlayer = lastServerPosition.xCoord + (serverPosition.xCoord - lastServerPosition.xCoord) / MathHelper.clamp_int(rotIncrement, 1, 3)
+        val mePosYForPlayer = lastServerPosition.yCoord + (serverPosition.yCoord - lastServerPosition.yCoord) / MathHelper.clamp_int(rotIncrement, 1, 3)
+        val mePosZForPlayer = lastServerPosition.zCoord + (serverPosition.zCoord - lastServerPosition.zCoord) / MathHelper.clamp_int(rotIncrement, 1, 3)
+        val mePosForPlayerBox = AxisAlignedBB(
+            mePosXForPlayer - width,
+            mePosYForPlayer,
+            mePosZForPlayer - width,
+            mePosXForPlayer + width,
+            mePosYForPlayer + mc.thePlayer.height,
+            mePosZForPlayer + width
+        ).expand(collision, collision, collision)
 
-        if (target != mc.thePlayer && !target.isInvisible && render) {
-            val color = Color(119, 130, 190).rgb
-            val x = realX - mc.renderManager.renderPosX
-            val y = realY - mc.renderManager.renderPosY
-            val z = realZ - mc.renderManager.renderPosZ
+        val entityPosEyes = Vec3(d4, d5 + target.eyeHeight, d6)
+        val bestX = MathHelper.clamp_double(entityPosEyes.xCoord, mePosForPlayerBox.minX, mePosForPlayerBox.maxX)
+        val bestY = MathHelper.clamp_double(entityPosEyes.yCoord, mePosForPlayerBox.minY, mePosForPlayerBox.maxY)
+        val bestZ = MathHelper.clamp_double(entityPosEyes.zCoord, mePosForPlayerBox.minZ, mePosForPlayerBox.maxZ)
 
-            GlStateManager.pushMatrix()
-            RenderUtils.start3D()
-            RenderUtils.color(color)
-            RenderUtils.renderHitbox(AxisAlignedBB(x - target.width / 2, y, z - target.width / 2, x + target.width / 2, y + target.height, z + target.width / 2), GL11.GL_QUADS)
-            RenderUtils.color(color)
-            RenderUtils.renderHitbox(AxisAlignedBB(x - target.width / 2, y, z - target.width / 2, x + target.width / 2, y + target.height, z + target.width / 2), GL11.GL_LINE_LOOP)
-            RenderUtils.stop3D()
-            GlStateManager.popMatrix()
+        if (entityPosEyes.distanceTo(Vec3(bestX, bestY, bestZ)) > 3.0 || (mc.thePlayer.hurtTime in 4..7)
+        ) {
+            switch = true
+        }
+
+        val eyesToRealPosition = positionEyes.distanceTo(Vec3(realX, realY, realZ))
+        val eyesToCurrentPosition = positionEyes.distanceTo(Vec3(currentX, currentY, currentZ))
+
+        if (switch && eyesToRealPosition > eyesToCurrentPosition && serverPosition.distanceTo(Vec3(d0, d2, d3)) < distance) {
+            active = true
+        } else if(timer.hasTimePassed(delay.get())){
+            active = false
+            switch = false
+            timer.reset()
+            flushPackets()
         }
     }
 
@@ -198,23 +214,10 @@ class BackTrack : Module() {
         if (packets.isNotEmpty()) {
             synchronized(packets) {
                 while (packets.size > 0) {
-                    when (val packet = packets.removeFirst()) {
-                        is S32PacketConfirmTransaction -> handleConfirmTransaction(packet)
-                        is S00PacketKeepAlive -> mc.netHandler.handleKeepAlive(packet)
-                        else -> PacketUtils.processPacket(packet)
-                    }
+                    val packet = packets.removeFirst()
+                    PacketUtils.processPacket(packet)
                 }
             }
-        }
-    }
-
-    private fun handleConfirmTransaction(packetIn: S32PacketConfirmTransaction) {
-        when (packetIn.windowId) {
-            0 -> mc.thePlayer.inventoryContainer
-            mc.thePlayer.openContainer.windowId -> mc.thePlayer.openContainer
-            else -> null
-        }?.takeIf { !packetIn.func_148888_e() }?.let {
-            mc.netHandler.addToSendQueue(C0FPacketConfirmTransaction(packetIn.windowId, packetIn.actionNumber, true))
         }
     }
 
@@ -223,7 +226,7 @@ class BackTrack : Module() {
         var freeze = true
 
         when (packet) {
-            is S19PacketEntityStatus -> freeze = packet.logicOpcode != 2.toByte() || mc.theWorld.getEntityByID(packet.entityId) !is EntityLivingBase
+            is S19PacketEntityStatus -> freeze = packet.opCode != 2.toByte() || mc.theWorld.getEntityByID(packet.entityId) !is EntityLivingBase
             is S03PacketTimeUpdate -> freeze = !time.get()
             is S00PacketKeepAlive -> freeze = !keepAlive.get()
             is S12PacketEntityVelocity -> freeze = !velocity.get()

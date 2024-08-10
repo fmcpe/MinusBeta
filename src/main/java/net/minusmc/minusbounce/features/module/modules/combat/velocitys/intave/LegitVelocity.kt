@@ -1,5 +1,6 @@
 package net.minusmc.minusbounce.features.module.modules.combat.velocitys.intave
 
+import net.minecraft.client.settings.KeyBinding
 import net.minecraft.network.play.server.S12PacketEntityVelocity
 import net.minecraft.util.Vec3
 import net.minusmc.minusbounce.MinusBounce
@@ -46,16 +47,25 @@ class Legit : VelocityMode("Legit") {
         }
     }
 
+    override fun onUpdate() {
+        if(lastVelocity && mc.thePlayer.hurtTime > 0 && !mc.thePlayer.onGround && mc.thePlayer.hurtTime != 9){
+            mc.thePlayer.isSprinting = false
+        } else {
+            KeyBinding.onTick(mc.gameSettings.keyBindSprint.keyCode)
+        }
+    }
+
     override fun onAttack(event: AttackEvent) {
         attacked = true
     }
 
     override fun onInput(event: MoveInputEvent) {
+        attacked = false
         mc.objectMouseOver ?: return
         mc.thePlayer ?: return
         mc.theWorld ?: return
 
-        if(mc.thePlayer.hurtTime > 0) {
+        if(lastVelocity && mc.thePlayer.hurtTime > 0){
             if (mc.objectMouseOver.entityHit != null) {
                 MinusBounce.moduleManager[KillAura::class.java]?.let { aura ->
                     val target = aura.target ?: mc.objectMouseOver.entityHit
@@ -89,7 +99,7 @@ class Legit : VelocityMode("Legit") {
                     event.strafe = input.second.strafe
                     event.sneak = false
                 }
-            } else if (lastVelocity) {
+            } else {
                 val playerPos = Vec3(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ)
                 val yaw = RotationUtils.targetRotation ?: mc.thePlayer.rotation
                 val pStrafe = mutableListOf<Pair<Vec3, RotationUtils.Input>>()
@@ -127,8 +137,6 @@ class Legit : VelocityMode("Legit") {
         } else {
             lastVelocity = false
         }
-
-        attacked = false
 
         if (mc.thePlayer.hurtTime != 9 || !mc.thePlayer.onGround || !mc.thePlayer.isSprinting || limitUntilJump < 0) {
             limitUntilJump++

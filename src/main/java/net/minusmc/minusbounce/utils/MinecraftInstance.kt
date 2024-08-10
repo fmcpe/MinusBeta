@@ -17,14 +17,16 @@ import net.minusmc.minusbounce.injection.implementations.IEntityPlayerSP
 
 open class MinecraftInstance {
     companion object {
-        @JvmField
-        val mc: Minecraft = Minecraft.getMinecraft()
+        @JvmField val mc: Minecraft = Minecraft.getMinecraft()
+        @JvmField var serverPosition = Vec3(0.0, 0.0, 0.0)
+        @JvmField var lastServerPosition = serverPosition
+        @JvmField var rotIncrement: Int = 0
 
         var runTimeTicks = 0
-        var serverPosition = Vec3(0.0, 0.0, 0.0)
         var AABBOffGroundticks = 0
         val serverRotation: Rotation
             get() = (mc.thePlayer as IEntityPlayerSP).serverRotation
+
 
         val motionX: Double
             get() = mc.thePlayer.motionX

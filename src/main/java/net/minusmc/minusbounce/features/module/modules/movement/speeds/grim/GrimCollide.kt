@@ -6,16 +6,18 @@ import net.minusmc.minusbounce.event.PreMotionEvent
 import net.minusmc.minusbounce.features.module.modules.movement.speeds.SpeedMode
 import net.minusmc.minusbounce.features.module.modules.movement.speeds.SpeedType
 import net.minusmc.minusbounce.utils.MovementUtils
+import net.minusmc.minusbounce.value.BoolValue
 import net.minusmc.minusbounce.value.FloatValue
 import kotlin.math.cos
 import kotlin.math.sin
 
 class GrimCollide: SpeedMode("GrimCollide", SpeedType.GRIM) {
 
+    private val jump = BoolValue("Jump", false)
     private val boostSpeed = FloatValue("BoostSpeed", 0.01f, 0.01f, 0.08f)
 
     override fun onUpdate() {
-        if (MovementUtils.isMoving && mc.thePlayer.onGround && !mc.gameSettings.keyBindJump.pressed)
+        if (MovementUtils.isMoving && mc.thePlayer.onGround && !mc.gameSettings.keyBindJump.pressed && jump.get())
             mc.thePlayer.jump()
     }
 

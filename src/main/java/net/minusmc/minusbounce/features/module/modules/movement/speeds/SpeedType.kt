@@ -9,7 +9,7 @@ enum class SpeedType(val typeName: String) {
     MATRIX("Matrix"),
     WATCHDOG("Watchdog"),
     BLOCKSMC("BlocksMC"),
-    INTAVE("INTAVE"),
-    GRIM("GRIM"),
+    INTAVE("Intave"),
+    GRIM("Grim"),
     OTHER("Other"),
 }

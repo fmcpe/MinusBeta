@@ -20,11 +20,15 @@ import net.minusmc.minusbounce.utils.Rotation
 import net.minusmc.minusbounce.utils.RotationUtils
 import net.minusmc.minusbounce.utils.block.BlockUtils
 import net.minusmc.minusbounce.utils.extensions.rotation
+import net.minusmc.minusbounce.utils.misc.RandomUtils
+import net.minusmc.minusbounce.utils.movement.MovementFixType
+import net.minusmc.minusbounce.value.FloatRangeValue
 import net.minusmc.minusbounce.value.IntegerValue
 
 
 @ModuleInfo(name = "BlockIn", description = "Make You BlockIn.", category = ModuleCategory.WORLD)
 class BlockIn : Module() {
+    private val speed = FloatRangeValue("Speed", 90f, 90f, 0f, 180f)
     private val placeDelay = IntegerValue("Delay", 50, 0, 500)
     private var lastPlace: Long = 0
     
@@ -62,7 +66,7 @@ class BlockIn : Module() {
             val info = BlockUtils.searchBlock(blockPos, true) ?: continue
 
             if (!isObjectMouseOverBlock(info.placeInfo.enumFacing, info.placeInfo.blockPos)){
-                RotationUtils.setRotations(info.rotation)
+                RotationUtils.setRotations(info.rotation, speed = RandomUtils.nextFloat(speed.getMinValue(), speed.getMaxValue()), fixType = MovementFixType.NORMAL)
                 return
             } else if (mc.playerController.onPlayerRightClick(
                     mc.thePlayer, mc.theWorld,

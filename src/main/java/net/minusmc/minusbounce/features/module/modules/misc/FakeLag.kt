@@ -11,7 +11,10 @@ import net.minecraft.network.play.server.S02PacketChat
 import net.minecraft.network.play.server.S03PacketTimeUpdate
 import net.minecraft.network.play.server.S19PacketEntityStatus
 import net.minecraft.util.Vec3
-import net.minusmc.minusbounce.event.*
+import net.minusmc.minusbounce.event.EventState
+import net.minusmc.minusbounce.event.EventTarget
+import net.minusmc.minusbounce.event.PacketEvent
+import net.minusmc.minusbounce.event.Render3DEvent
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
@@ -84,6 +87,7 @@ class FakeLag : Module() {
         if (e.eventType == EventState.RECEIVE) {
             inboundPackets.add(TimedPacket(e.packet))
             e.isCancelled = true
+            e.stopRunEvent = true
 
             while (inboundPackets.isNotEmpty()) {
                 if (inboundPackets.peek().time + inboundDelay.get() <= System.currentTimeMillis()) {
@@ -97,6 +101,7 @@ class FakeLag : Module() {
         if (e.eventType == EventState.SEND) {
             outboundPackets.add(TimedPacket(e.packet))
             e.isCancelled = true
+            e.stopRunEvent = true
 
             while (outboundPackets.isNotEmpty()) {
                 if (outboundPackets.peek().time + outboundDelay.get() <= System.currentTimeMillis()) {
