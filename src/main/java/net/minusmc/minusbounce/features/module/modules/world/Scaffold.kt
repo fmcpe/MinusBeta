@@ -446,7 +446,7 @@ class Scaffold: Module(){
 
         if (mc.thePlayer.inventory.currentItem == InventoryUtils.serverSlot &&
             !BadPacketUtils.bad(slot = false, attack = true, swing = false, block = false, inventory = true) &&
-            ticksOnAir > RandomUtils.nextInt(delayValue.getMinValue(), delayValue.getMaxValue()) &&
+            ticksOnAir >= RandomUtils.nextInt(delayValue.getMinValue(), delayValue.getMaxValue()) &&
             isObjectMouseOverBlock(placeInfo?.enumFacing ?: return, blockPlace ?: return)
         ){
             when(placeMethod.get().lowercase()){
