@@ -35,7 +35,6 @@ class BackTrack : Module() {
     private val keepAlive = BoolValue("KeepAlive", true)
     private val esp = BoolValue("ESP", true)
 
-    private var active = false
     private var switch = false
     val packets = mutableListOf<Packet<*>>()
     val timer = MSTimer()
@@ -135,7 +134,7 @@ class BackTrack : Module() {
         val realY = target.realPosY / 32.0
         val realZ = target.realPosZ / 32.0
 
-        if (target != mc.thePlayer && !target.isInvisible && esp.get() && active) {
+        if (target != mc.thePlayer && !target.isInvisible && esp.get() && packets.isNotEmpty()) {
             Blink.drawBox(Vec3(realX, realY, realZ))
         }
     }
@@ -147,7 +146,7 @@ class BackTrack : Module() {
         val target = this.target ?: return
 
         if (target.realPosX == 0.0 || target.realPosY == 0.0 || target.realPosZ == 0.0 || target.width == 0f || target.height == 0f){
-            active = false
+            switch = false
             return
         }
 
@@ -200,10 +199,7 @@ class BackTrack : Module() {
         val eyesToRealPosition = positionEyes.distanceTo(Vec3(realX, realY, realZ))
         val eyesToCurrentPosition = positionEyes.distanceTo(Vec3(currentX, currentY, currentZ))
 
-        if (switch && eyesToRealPosition > eyesToCurrentPosition && serverPosition.distanceTo(Vec3(d0, d2, d3)) < distance) {
-            active = true
-        } else if(timer.hasTimePassed(delay.get())){
-            active = false
+        if (!switch || eyesToRealPosition <= eyesToCurrentPosition || serverPosition.distanceTo(Vec3(d0, d2, d3)) >= distance || timer.hasTimePassed(delay.get())) {
             switch = false
             timer.reset()
             flushPackets()
