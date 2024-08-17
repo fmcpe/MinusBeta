@@ -44,13 +44,15 @@ class Spammer : Module() {
 
     override fun onEnable() {
         delay = TimeUtils.randomDelay(minDelayValue.get(), maxDelayValue.get())
-        refreshPlayerList()
-        currentIndex = 0
+        if (spamAllValue.get()) {
+            refreshPlayerList()
+            currentIndex = 0
+        }
     }
 
     @EventTarget
     fun onUpdate(event: UpdateEvent) {
-        if (refreshTimer.hasTimePassed(1000)) {
+        if (refreshTimer.hasTimePassed(60000)) { 
             refreshPlayerList()
             currentIndex = 0
             refreshTimer.reset()
