@@ -6,11 +6,6 @@
 package net.minusmc.minusbounce.features.module.modules.world
 
 import net.minusmc.minusbounce.MinusBounce
-import net.minusmc.minusbounce.event.EventTarget
-import net.minusmc.minusbounce.event.Render3DEvent
-import net.minusmc.minusbounce.event.Render2DEvent
-import net.minusmc.minusbounce.event.UpdateEvent
-import net.minusmc.minusbounce.event.WorldEvent
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
@@ -35,6 +30,7 @@ import net.minecraft.network.play.client.C07PacketPlayerDigging
 import net.minecraft.util.BlockPos
 import net.minecraft.util.EnumFacing
 import net.minecraft.util.Vec3
+import net.minusmc.minusbounce.event.*
 import java.awt.Color
 
 @ModuleInfo(name = "Breaker", description = "Destroys selected blocks around you. (aka. IDNuker)", category = ModuleCategory.WORLD)
@@ -92,7 +88,7 @@ object Breaker : Module() {
     }
 
     @EventTarget
-    fun onUpdate(event: UpdateEvent) {
+    fun onUpdate(event: PreUpdateEvent) {
         if (noHitValue.get()) {
             if (MinusBounce.moduleManager[KillAura::class.java]!!.state && MinusBounce.combatManager.target != null)
                 return

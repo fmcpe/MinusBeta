@@ -16,6 +16,7 @@ import net.minusmc.minusbounce.utils.MinecraftInstance
 import net.minusmc.minusbounce.utils.PlaceRotation
 import net.minusmc.minusbounce.utils.Rotation
 import net.minusmc.minusbounce.utils.RotationUtils
+import net.minusmc.minusbounce.utils.RotationUtils.getVectorForRotation
 import net.minusmc.minusbounce.utils.extensions.iterator
 import net.minusmc.minusbounce.utils.extensions.plus
 import net.minusmc.minusbounce.utils.extensions.times
@@ -137,11 +138,8 @@ object BlockUtils : MinecraftInstance() {
     fun floorVec3(vec3: Vec3) = Vec3(floor(vec3.xCoord),floor(vec3.yCoord),floor(vec3.zCoord))
 
     fun rayTrace(rotation: Rotation?, range: Double = if (mc.playerController.currentGameType.isCreative) 5.0 else 4.5): MovingObjectPosition? {
-        val (yaw, pitch) = rotation ?: return null
-        val eyes = mc.thePlayer.getPositionEyes(1.0F)
-        val look = mc.thePlayer.getVectorForRotation(pitch, yaw)
-        val vec = eyes + (look * range)
-        return mc.theWorld.rayTraceBlocks(eyes, vec, false, false, true)
+        val eyes = Vec3(mc.thePlayer.posX, mc.thePlayer.entityBoundingBox.minY + mc.thePlayer.eyeHeight, mc.thePlayer.posZ)
+        return mc.theWorld.rayTraceBlocks(eyes, eyes + (getVectorForRotation(rotation ?: return mc.objectMouseOver) * range), false, false, true)
     }
 
     @JvmStatic

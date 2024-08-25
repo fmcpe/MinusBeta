@@ -144,12 +144,7 @@ class TargetMark : Module() {
             ) currentTarget?.let {
                 RenderUtils.drawPlatform(
                     it,
-                    if (aura!!.hitable) ColorUtils.reAlpha(getColor(currentTarget), colorAlphaValue.get()) else Color(
-                        255,
-                        0,
-                        0,
-                        colorAlphaValue.get()
-                    )
+                    ColorUtils.reAlpha(getColor(currentTarget), colorAlphaValue.get())
                 )
             }
         } else { // = cai multi nay la box à
@@ -157,12 +152,7 @@ class TargetMark : Module() {
             ) currentTarget?.let {
                 RenderUtils.drawEntityBox(
                     it,
-                    if (aura!!.hitable) ColorUtils.reAlpha(getColor(currentTarget), colorAlphaValue.get()) else Color(
-                        255,
-                        0,
-                        0,
-                        colorAlphaValue.get()
-                    ),
+                    ColorUtils.reAlpha(getColor(currentTarget), colorAlphaValue.get()),
                     false
                 )
             }

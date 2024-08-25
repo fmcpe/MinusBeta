@@ -15,6 +15,7 @@ import net.minusmc.minusbounce.utils.particles.EvictingList
 import java.math.BigDecimal
 import java.math.RoundingMode
 import kotlin.math.abs
+import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -626,6 +627,12 @@ data class ClickProcessor(
  * MathUtils
  */
 object MathUtil {
+    fun wrappedDifference(number1: Double, number2: Double): Double {
+        return min(
+            abs(number1 - number2),
+            min(abs(number1 - 360) - abs(number2 - 0), abs(number2 - 360) - abs(number1 - 0))
+        )
+    }
     fun getVariance(data: Collection<Number>): Double {
         var count = 0
         var sum = 0.0

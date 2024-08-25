@@ -1,9 +1,6 @@
 package net.minusmc.minusbounce.utils
 
-import net.minecraft.block.BlockAir
-import net.minecraft.block.BlockIce
-import net.minecraft.block.BlockPackedIce
-import net.minecraft.block.BlockSlime
+import net.minecraft.block.*
 import net.minecraft.client.Minecraft
 import net.minecraft.client.entity.EntityPlayerSP
 import net.minecraft.client.multiplayer.WorldClient
@@ -37,6 +34,15 @@ object PlayerUtils {
             }
         }
         return -1
+    }
+
+    /**
+     * Gets the block at a position
+     *
+     * @return block
+     */
+    fun block(x: Double, y: Double, z: Double): Block {
+        return mc.theWorld.getBlockState(BlockPos(x, y, z)).block
     }
 
     fun getPearlSlot(): Int {

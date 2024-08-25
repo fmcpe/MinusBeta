@@ -30,7 +30,6 @@ class Aimbot : Module() {
     private val rangeValue = FloatValue("Range", 4.4F, 1F, 8F, "m")
     private val turnSpeedValue = FloatValue("TurnSpeed", 2F, 1F, 180F, "°")
     private val fovValue = FloatValue("FOV", 180F, 1F, 180F, "°")
-    private val centerValue = BoolValue("Center", false)
     private val lockValue = BoolValue("Lock", true)
     private val onClickValue = BoolValue("OnClick", false)
     private val jitterValue = BoolValue("Jitter", false)
@@ -60,20 +59,10 @@ class Aimbot : Module() {
 
         val boundingBox = entity.entityBoundingBox ?: return
 
-        val destinationRotation = if (centerValue.get()) {
-            RotationUtils.toRotation(RotationUtils.getCenter(boundingBox), true)
-        } else {
-            RotationUtils.searchCenter(
-                boundingBox,
-                random = false,
-                predict = true,
-                throughWalls = false,
-                distance = range
-            )!!.rotation
-        }
+        val destinationRotation = RotationUtils.toRotation(RotationUtils.getCenter(boundingBox), true)
         val rotation = RotationUtils.limitAngleChange(player.rotation, destinationRotation, (turnSpeedValue.get() + Math.random()).toFloat())
 
-        rotation.toPlayer(player)
+        rotation.toPlayer(mc.thePlayer)
 
         if (jitterValue.get()) {
             val yaw = Random.nextBoolean()

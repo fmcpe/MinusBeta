@@ -28,7 +28,8 @@ import net.minusmc.minusbounce.value.IntegerValue
 @ModuleInfo("BackTrack", "Back Track", "Let you attack in their previous position", ModuleCategory.COMBAT)
 class BackTrack : Module() {
     private val delay = IntegerValue("Delay", 400, 0, 10000)
-    private val hitRange = FloatValue("Range", 3F, 0F, 10F)
+    private val hitRange = FloatValue("MaxRange", 3F, 0F, 10F)
+    private val minRange = FloatValue("MinRange", 3F, 0F, 10F)
     private val velocity = BoolValue("Velocity", true)
     private val explosion = BoolValue("Explosion", true)
     private val time = BoolValue("TimeUpdate", true)
@@ -191,7 +192,7 @@ class BackTrack : Module() {
         val bestY = MathHelper.clamp_double(entityPosEyes.yCoord, mePosForPlayerBox.minY, mePosForPlayerBox.maxY)
         val bestZ = MathHelper.clamp_double(entityPosEyes.zCoord, mePosForPlayerBox.minZ, mePosForPlayerBox.maxZ)
 
-        if (entityPosEyes.distanceTo(Vec3(bestX, bestY, bestZ)) > 3.0 || (mc.thePlayer.hurtTime in 4..7)
+        if (entityPosEyes.distanceTo(Vec3(bestX, bestY, bestZ)) > minRange.get() || (mc.thePlayer.hurtTime in 4..7)
         ) {
             switch = true
         }

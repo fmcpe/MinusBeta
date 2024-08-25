@@ -131,24 +131,3 @@ fun ClosedFloatingPointRange<Float>.random(): Double {
 	require(endInclusive.isFinite())
 	return start + (endInclusive - start) * Math.random()
 }
-
-
-/**
- * Provides: (step is 0.1f by default)
- *
- *      for (x in 0.1F..0.9F step 0.05) {}
- *      for (y in 0.1F..0.9F) {}
- */
-class FloatIterator(private val range: ClosedFloatingPointRange<Float>, private val step: Float = 0.1f): Iterator<Float> {
-	private var value = range.start
-
-	override fun hasNext() = value < range.endInclusive
-
-	override fun next(): Float {
-		val returned = value
-		value = (value + step).coerceAtMost(range.endInclusive)
-		return returned
-	}
-}
-operator fun ClosedFloatingPointRange<Float>.iterator() = FloatIterator(this)
-infix fun ClosedFloatingPointRange<Float>.step(step: Float) = FloatIterator(this, step)

@@ -27,7 +27,7 @@ import net.minusmc.minusbounce.value.ListValue
 @ModuleInfo(name = "SuperKnockback", spacedName = "Super Knockback", description = "Increases knockback dealt to other entities.", category = ModuleCategory.COMBAT)
 class SuperKnockback : Module() {
     private val modeValue = ListValue("Mode", arrayOf("ExtraPacket", "Packet", "W-Tap", "Legit", "LegitFast"), "ExtraPacket")
-    private val maxDelay: IntegerValue = object : IntegerValue("Legit-MaxDelay", 60, 0, 100) {
+    private val maxDelay: IntegerValue = object : IntegerValue("Legit-MaxDelay", 60, 0, 100, { modeValue.get() == "Legit" }) {
         override fun onChanged(oldValue: Int, newValue: Int) {
             val i = minDelay.get()
             if (i > newValue) set(i)
@@ -35,7 +35,7 @@ class SuperKnockback : Module() {
             delay = TimeUtils.randomDelay(minDelay.get(), this.get())
         }
     }
-    private val minDelay: IntegerValue = object : IntegerValue("Legit-MinDelay", 50, 0, 100) {
+    private val minDelay: IntegerValue = object : IntegerValue("Legit-MinDelay", 50, 0, 100, { modeValue.get() == "Legit" }) {
         override fun onChanged(oldValue: Int, newValue: Int) {
             val i = maxDelay.get()
             if (i < newValue) set(i)
@@ -50,9 +50,8 @@ class SuperKnockback : Module() {
 
     private val timer = MSTimer()
     var delay = 0L
-    var stopSprint = false
     var cancelSprint = false
-    val stopTimer = MSTimer()
+    private val stopTimer = MSTimer()
     private var isHit = false
     private val attackTimer = MSTimer()
 
@@ -120,8 +119,7 @@ class SuperKnockback : Module() {
         if (modeValue.get() == "Legit") {
             if (isHit && attackTimer.hasTimePassed(delay / 2)) {
                 isHit = false
-                mc.thePlayer.isSprinting = false
-                stopSprint = true
+                cancelSprint
                 stopTimer.reset()
             }
             if (MinusBounce.moduleManager.getModule(Sprint::class.java)?.state == false) {

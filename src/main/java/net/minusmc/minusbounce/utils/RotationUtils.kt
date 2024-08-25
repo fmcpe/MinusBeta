@@ -7,7 +7,6 @@ package net.minusmc.minusbounce.utils
 
 import com.google.common.base.Predicate
 import com.google.common.base.Predicates
-import net.minecraft.client.Minecraft
 import net.minecraft.entity.Entity
 import net.minecraft.util.*
 import net.minusmc.minusbounce.event.*
@@ -37,8 +36,7 @@ object RotationUtils : MinecraftInstance(), Listenable {
     private var silent: Boolean = false
     private var lastRotations: Rotation? = null
     private var rotations: Rotation? = null
-    var rotationSpeed: Float = 0f
-    private var set: Boolean = true
+    private var rotationSpeed: Float = 0f
     var type: MovementFixType = MovementFixType.NONE
 
     private var x = random.nextDouble()
@@ -48,12 +46,14 @@ object RotationUtils : MinecraftInstance(), Listenable {
     @JvmStatic
     fun smooth() {
         if (!smoothed) {
-            targetRotation = limitAngleChange(lastRotations ?: return, rotations ?: return , rotationSpeed - Math.random().toFloat())
+            targetRotation = limitAngleChange(lastRotations ?: return, rotations ?: return, rotationSpeed - Math.random().toFloat())
         }
 
         mc.entityRenderer.getMouseOver(1F)
         smoothed = true
     }
+
+    data class Vec2(var x: Float, var y: Float)
 
     @EventTarget(priority = -5)
     fun onTick(event: PreUpdateEvent) {
@@ -86,12 +86,6 @@ object RotationUtils : MinecraftInstance(), Listenable {
         if (active && targetRotation != null) {
             keepLength--
 
-            // No Setting Rotation
-            if(!set){
-                lastRotations = targetRotation
-                return
-            }
-
             if(this.silent){
                 targetRotation?.let{
                     event.yaw = it.yaw
@@ -104,10 +98,10 @@ object RotationUtils : MinecraftInstance(), Listenable {
             if (abs((targetRotation!!.yaw - mc.thePlayer.rotationYaw) % 360) < 1 && abs((targetRotation!!.pitch - mc.thePlayer.rotationPitch)) < 1) {
                 active = false
 
-                if(silent && set){
+                if(silent){
                     /* It will conflict with non-silent */
                     val targetRotation = Rotation(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch)
-                    targetRotation.fixedSensitivity(r = lastRotations ?: serverRotation)
+                    targetRotation.fixedSensitivity(r = lastRotations!!)
 
                     mc.thePlayer.rotationYaw = targetRotation.yaw + MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw - targetRotation.yaw)
                     mc.thePlayer.rotationPitch = targetRotation.pitch
@@ -196,7 +190,6 @@ object RotationUtils : MinecraftInstance(), Listenable {
         speed: Float = 180f,
         fixType: MovementFixType = MovementFixType.FULL,
         silent: Boolean = true,
-        set: Boolean = true,
     ) {
         rotation.isNan() ?: return
         this.type = if(silent) fixType else MovementFixType.NONE
@@ -204,7 +197,6 @@ object RotationUtils : MinecraftInstance(), Listenable {
         this.rotations = rotation
         this.keepLength = keepLength
         this.silent = silent
-        this.set = set
         active = true
 
         smooth()
@@ -580,8 +572,8 @@ object RotationUtils : MinecraftInstance(), Listenable {
             pitch = currentRotation.pitch + pAdd
 
             /* Randomize */
-            for (i in 1.0..Minecraft.getDebugFPS() / 20.0 + Math.random() * 10.0 step 1.0) {
-                if (abs(yAdd) + abs(pAdd) > 1) {
+            for (i in 1.0..50.0 + Math.random() * 10.0 step 1.0) {
+                if (abs(yAdd) + abs(pAdd) > 0.001) {
                     yaw += (Math.random().toFloat() - 0.5f) / 1000f
                     pitch -= Math.random().toFloat() / 200f
                 }

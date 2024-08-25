@@ -33,6 +33,7 @@ import net.minusmc.minusbounce.features.module.modules.movement.InvMove;
 import net.minusmc.minusbounce.features.module.modules.movement.NoSlow;
 import net.minusmc.minusbounce.injection.implementations.IEntityPlayerSP;
 import net.minusmc.minusbounce.utils.Rotation;
+import net.minusmc.minusbounce.utils.RotationUtils;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -110,6 +111,11 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
         return (mc.getRenderViewEntity() != null && mc.getRenderViewEntity().equals(this)) || (MinusBounce.moduleManager != null && Objects.requireNonNull(MinusBounce.moduleManager.getModule(Fly.class)).getState());
     }
 
+    @Shadow public float prevRenderArmYaw;
+    @Shadow public float prevRenderArmPitch;
+    @Shadow public float renderArmYaw;
+    @Shadow public float renderArmPitch;
+
     @Shadow
     public double lastReportedPosX;
 
@@ -147,7 +153,6 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
 
     @Override
     public void setReSprint(int v) { reSprint = v; }
-
 
     /**
      * @author .
@@ -217,6 +222,15 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
                 }
 
                 ++this.positionUpdateTicks;
+
+                /* On / Off Ground Ticks*/
+                if(this.onGround){
+                    RotationUtils.offGroundTicks = 0;
+                    RotationUtils.onGroundTicks++;
+                } else {
+                    RotationUtils.onGroundTicks = 0;
+                    RotationUtils.offGroundTicks++;
+                }
 
                 if (flag2) {
                     this.lastReportedPosX = event.getX();
