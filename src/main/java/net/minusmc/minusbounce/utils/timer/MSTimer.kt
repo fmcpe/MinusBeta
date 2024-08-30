@@ -6,12 +6,12 @@
 package net.minusmc.minusbounce.utils.timer
 
 class MSTimer {
-    var time = -1L
+    var time = System.currentTimeMillis()
 
     fun hasTimeElapsed(delay: Double, reset: Boolean): Boolean {
-        if ((System.currentTimeMillis() - this.time).toDouble() > delay) {
+        if (System.currentTimeMillis() - time > delay) {
             if (reset) {
-                this.reset()
+                reset()
             }
 
             return true
@@ -21,6 +21,10 @@ class MSTimer {
     }
 
     fun hasTimePassed(delay: Int): Boolean {
+        return hasTimePassed(delay.toLong())
+    }
+
+    fun hasTimePassed(delay: Float): Boolean {
         return hasTimePassed(delay.toLong())
     }
 

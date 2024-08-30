@@ -8,10 +8,6 @@ class VulcanBlocking: KillAuraBlocking("VulcanTest") {
     private var canBlock = false
     override fun onPreUpdate(event: PreUpdateEvent) {
         if(canBlock){
-            val slot = mc.thePlayer.inventory.currentItem
-            mc.netHandler.addToSendQueue(C09PacketHeldItemChange(slot % 8 + 1))
-            mc.netHandler.addToSendQueue(C09PacketHeldItemChange(slot % 7 + 2))
-            mc.netHandler.addToSendQueue(C09PacketHeldItemChange(slot))
             killAura.startBlocking(true, true)
         }
 

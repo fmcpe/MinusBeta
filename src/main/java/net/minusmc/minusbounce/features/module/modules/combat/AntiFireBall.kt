@@ -5,26 +5,28 @@
  */
 package net.minusmc.minusbounce.features.module.modules.combat
 
-import net.minusmc.minusbounce.features.module.Module
-import net.minusmc.minusbounce.features.module.ModuleCategory
-import net.minusmc.minusbounce.utils.extensions.*
-import net.minusmc.minusbounce.utils.RotationUtils
-import net.minusmc.minusbounce.utils.misc.RandomUtils.nextFloat
-import net.minusmc.minusbounce.value.FloatRangeValue
-import net.minusmc.minusbounce.value.FloatValue
 import net.minecraft.entity.Entity
 import net.minecraft.entity.projectile.EntityFireball
 import net.minecraft.network.play.client.C02PacketUseEntity
 import net.minecraft.world.WorldSettings
-import net.minusmc.minusbounce.event.*
+import net.minusmc.minusbounce.event.EventTarget
+import net.minusmc.minusbounce.event.PreUpdateEvent
+import net.minusmc.minusbounce.event.TickEvent
+import net.minusmc.minusbounce.features.module.Module
+import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
 import net.minusmc.minusbounce.utils.PacketUtils.sendPacketNoEvent
+import net.minusmc.minusbounce.utils.RotationUtils
+import net.minusmc.minusbounce.utils.extensions.*
+import net.minusmc.minusbounce.utils.misc.RandomUtils.nextFloat
 import net.minusmc.minusbounce.utils.movement.MovementFixType
+import net.minusmc.minusbounce.value.FloatRangeValue
+import net.minusmc.minusbounce.value.FloatValue
 
 @ModuleInfo(name = "AntiFireball", description = "Make fireballs roll back", category = ModuleCategory.COMBAT)
 class AntiFireball : Module() {
     private val range = FloatValue("Range", 4.5f, 3f,8f)
-    private val turnSpeed = FloatRangeValue("TurnSpeed", 0f, 180f, 180f, 180f)
+    private val turnSpeed = FloatRangeValue("TurnSpeed", 0f, 180f, 0f, 180f)
 
     private var target: Entity? = null
     @EventTarget

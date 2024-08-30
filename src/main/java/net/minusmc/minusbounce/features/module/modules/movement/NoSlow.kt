@@ -143,7 +143,7 @@ class NoSlow : Module() {
             mc.thePlayer.heldItem.metadata
         ))
 
-    private val isBowing: Boolean
+    val isBowing: Boolean
         get() = mc.thePlayer.isUsingItem && mc.thePlayer.heldItem.item is ItemBow
 
     val heldItem: ItemStack?

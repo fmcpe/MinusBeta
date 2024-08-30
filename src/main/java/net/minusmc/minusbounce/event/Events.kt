@@ -42,6 +42,8 @@ class BlockBBEvent(blockPos: BlockPos, val block: Block, var boundingBox: AxisAl
 
 class TimeDelay: Event()
 class GameLoop: Event()
+
+class EventTick: Event()
 class ClickingEvent: CancellableEvent()
 class PostPlayerTickEvent: CancellableEvent()
 class StartRenderTickEvent: Event()
@@ -99,7 +101,7 @@ class LookEvent(var yaw: Float, var pitch: Float, var lastYaw: Float, var lastPi
  * Called when movement input
  */
 
-class MoveInputEvent(var forward: Float, var strafe: Float, var jump: Boolean, var sneak: Boolean, var sneakMultiplier: Double) : Event()
+class MoveInputEvent(var forward: Float, var strafe: Float, var lastForward: Float, var lastStrafe: Float, var jump: Boolean, var sneak: Boolean, var sneakMultiplier: Double) : Event()
 
 /**
  * Called when user press a key once

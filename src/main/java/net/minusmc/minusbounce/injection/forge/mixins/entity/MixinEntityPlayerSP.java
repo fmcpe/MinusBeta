@@ -341,7 +341,7 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
         boolean flag3 = (float) this.getFoodStats().getFoodLevel() > 6.0F || this.capabilities.allowFlying;
 
         final float forward = this.movementInput.moveForward;
-        if(this.reSprint == 2) this.movementInput.moveForward = 0.0F;
+        this.movementInput.moveForward = this.reSprint == 2 ? 0.0F : forward;
 
         assert noSlow != null;
         if (this.onGround && !flag1 && !flag2 && this.movementInput.moveForward >= f && !this.isSprinting() && flag3 && !this.isUsingItem() && !this.isPotionActive(Potion.blindness)) {
@@ -362,16 +362,8 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
             this.setSprinting(false);
         }
 
-        if(this.reSprint == 2){
-            this.movementInput.moveForward = forward;
-            this.reSprint = 1;
-        }
-
-        assert superKB != null;
-        if (superKB.getCancelSprint()) {
-            superKB.setCancelSprint(false);
-            this.setSprinting(false);
-        }
+        this.movementInput.moveForward = this.reSprint == 2 ? forward : this.movementInput.moveForward;
+        this.reSprint = this.reSprint == 2 ? 1 : this.reSprint;
 
         if (this.capabilities.allowFlying) {
             if (this.mc.playerController.isSpectatorMode()) {

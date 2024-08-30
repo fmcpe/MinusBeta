@@ -3,7 +3,10 @@ package net.minusmc.minusbounce.features.module.modules.movement
 import net.minecraft.block.BlockAir
 import net.minecraft.util.AxisAlignedBB
 import net.minecraft.util.MovingObjectPosition
-import net.minusmc.minusbounce.event.*
+import net.minusmc.minusbounce.event.BlockBBEvent
+import net.minusmc.minusbounce.event.EventTarget
+import net.minusmc.minusbounce.event.PreUpdateEvent
+import net.minusmc.minusbounce.event.PushOutEvent
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
@@ -53,25 +56,25 @@ class NoClip : Module() {
         if (block.get()) {
             val slot = InventoryUtils.findBlockInHotbar() ?: return
 
-            if (slot == -1 || PlayerUtils.insideBlock()) {
-                return
+            if (slot != -1) {
+                mc.thePlayer.inventory.currentItem = slot - 36
             }
 
-            mc.thePlayer.inventory.currentItem = slot - 36
+            if(PlayerUtils.insideBlock()) return
 
             RotationUtils.setRotations(
                 rotation = Rotation(mc.thePlayer.rotationYaw, 90F),
-                speed = 2 + Math.random().toFloat(),
+                speed = 36 + Math.random().toFloat(),
                 fixType = MovementFixType.NORMAL
             )
 
             if (RotationUtils.targetRotation?.yaw!! >= 89 && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && mc.thePlayer.posY == mc.objectMouseOver.blockPos.up().y.toDouble()) {
-                mc.playerController.onPlayerRightClick(
+                if(mc.playerController.onPlayerRightClick(
                     mc.thePlayer, mc.theWorld, mc.thePlayer.inventory.getCurrentItem(),
                     mc.objectMouseOver.blockPos, mc.objectMouseOver.sideHit, mc.objectMouseOver.hitVec
-                )
-
-                mc.thePlayer.swingItem()
+                )){
+                    mc.thePlayer.swingItem()
+                }
             }
         }
     }

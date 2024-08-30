@@ -7,6 +7,7 @@ package net.minusmc.minusbounce.utils
 
 import net.minecraft.client.network.NetworkPlayerInfo
 import net.minecraft.entity.Entity
+import net.minecraft.entity.EntityAgeable
 import net.minecraft.entity.EntityLivingBase
 import net.minecraft.entity.boss.EntityDragon
 import net.minecraft.entity.item.EntityArmorStand
@@ -17,14 +18,12 @@ import net.minecraft.entity.monster.EntitySlime
 import net.minecraft.entity.passive.EntityAnimal
 import net.minecraft.entity.passive.EntityBat
 import net.minecraft.entity.passive.EntitySquid
-import net.minecraft.entity.passive.EntityVillager
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.scoreboard.ScorePlayerTeam
 import net.minusmc.minusbounce.MinusBounce
 import net.minusmc.minusbounce.features.module.modules.client.Target
 import net.minusmc.minusbounce.features.module.modules.combat.AntiBot.isBot
 import net.minusmc.minusbounce.features.module.modules.misc.Teams
-import net.minusmc.minusbounce.utils.extensions.getDistanceToEntityBox
 import net.minusmc.minusbounce.utils.render.ColorUtils
 
 object EntityUtils : MinecraftInstance() {
@@ -45,10 +44,16 @@ object EntityUtils : MinecraftInstance() {
             if (!targetsModule.mobs.get() && isMob(entity))
                 return false
 
+            if(!targetsModule.ageable.get() && entity is EntityAgeable)
+                return false
+
             if (!targetsModule.animals.get() && isAnimal(entity))
                 return false
 
             if (!targetsModule.players.get() && entity is EntityPlayer)
+                return false
+
+            if(!targetsModule.friend.get() && isFriend(entity))
                 return false
 
             if (!canAttackCheck)
@@ -86,8 +91,7 @@ object EntityUtils : MinecraftInstance() {
     }
 
     fun isMob(entity: Entity?): Boolean {
-        return entity is EntityMob || entity is EntityVillager || entity is EntitySlime ||
-                entity is EntityGhast || entity is EntityDragon
+        return entity is EntityMob || entity is EntitySlime || entity is EntityGhast || entity is EntityDragon
     }
 
     fun isAlive(entity: EntityLivingBase) = entity.isEntityAlive && entity.health > 0

@@ -8,9 +8,9 @@ import net.minecraft.util.MathHelper
 import net.minecraft.util.Vec3
 import net.minusmc.minusbounce.MinusBounce
 import net.minusmc.minusbounce.event.EventTarget
-import net.minusmc.minusbounce.event.GameLoop
 import net.minusmc.minusbounce.event.PacketEvent
 import net.minusmc.minusbounce.event.Render3DEvent
+import net.minusmc.minusbounce.event.TickEvent
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
@@ -20,7 +20,7 @@ import net.minusmc.minusbounce.utils.Constants
 import net.minusmc.minusbounce.utils.PacketUtils
 import net.minusmc.minusbounce.utils.timer.MSTimer
 import net.minusmc.minusbounce.value.BoolValue
-import net.minusmc.minusbounce.value.FloatValue
+import net.minusmc.minusbounce.value.FloatRangeValue
 import net.minusmc.minusbounce.value.IntegerValue
 
 
@@ -28,12 +28,9 @@ import net.minusmc.minusbounce.value.IntegerValue
 @ModuleInfo("BackTrack", "Back Track", "Let you attack in their previous position", ModuleCategory.COMBAT)
 class BackTrack : Module() {
     private val delay = IntegerValue("Delay", 400, 0, 10000)
-    private val hitRange = FloatValue("MaxRange", 3F, 0F, 10F)
-    private val minRange = FloatValue("MinRange", 3F, 0F, 10F)
+    private val range = FloatRangeValue("Range", 3F, 6F, 0F, 10F)
     private val velocity = BoolValue("Velocity", true)
     private val explosion = BoolValue("Explosion", true)
-    private val time = BoolValue("TimeUpdate", true)
-    private val keepAlive = BoolValue("KeepAlive", true)
     private val esp = BoolValue("ESP", true)
 
     private var switch = false
@@ -141,7 +138,7 @@ class BackTrack : Module() {
     }
 
     @EventTarget
-    fun onUpdate(e: GameLoop){
+    fun onUpdate(e: TickEvent){
         mc.thePlayer ?: return
         mc.theWorld ?: return
         val target = this.target ?: return
@@ -168,7 +165,7 @@ class BackTrack : Module() {
         val realY = MathHelper.clamp_double(positionEyes.yCoord, entityPosMe.minY, entityPosMe.maxY)
         val realZ = MathHelper.clamp_double(positionEyes.zCoord, entityPosMe.minZ, entityPosMe.maxZ)
 
-        var distance = hitRange.get().toDouble()
+        var distance = range.getMaxValue().toDouble()
         if (!mc.thePlayer.canEntityBeSeen(target)) {
             distance = if (distance > 3.0) 3.0 else distance
         }
@@ -192,7 +189,7 @@ class BackTrack : Module() {
         val bestY = MathHelper.clamp_double(entityPosEyes.yCoord, mePosForPlayerBox.minY, mePosForPlayerBox.maxY)
         val bestZ = MathHelper.clamp_double(entityPosEyes.zCoord, mePosForPlayerBox.minZ, mePosForPlayerBox.maxZ)
 
-        if (entityPosEyes.distanceTo(Vec3(bestX, bestY, bestZ)) > minRange.get() || (mc.thePlayer.hurtTime in 4..7)
+        if (entityPosEyes.distanceTo(Vec3(bestX, bestY, bestZ)) > range.getMinValue() || (mc.thePlayer.hurtTime in 4..7)
         ) {
             switch = true
         }
@@ -224,8 +221,6 @@ class BackTrack : Module() {
 
         when (packet) {
             is S19PacketEntityStatus -> freeze = packet.opCode != 2.toByte() || mc.theWorld.getEntityByID(packet.entityId) !is EntityLivingBase
-            is S03PacketTimeUpdate -> freeze = !time.get()
-            is S00PacketKeepAlive -> freeze = !keepAlive.get()
             is S12PacketEntityVelocity -> freeze = !velocity.get()
             is S27PacketExplosion -> freeze = !explosion.get()
         }
@@ -233,7 +228,7 @@ class BackTrack : Module() {
         synchronized(packets) {
             if (packet::class.java !in Constants.serverOtherPacketClasses && freeze) {
                 packets.add(packet)
-                event.cancelEvent()
+                event.isCancelled = true
                 event.stopRunEvent = true
             }
         }

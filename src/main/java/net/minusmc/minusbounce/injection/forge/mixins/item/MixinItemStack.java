@@ -5,7 +5,7 @@
  */
 package net.minusmc.minusbounce.injection.forge.mixins.item;
 
-import net.minusmc.minusbounce.injection.implementations.IItemStack;
+import net.minusmc.minusbounce.injection.implementations.IStack;
 import net.minecraft.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -15,9 +15,21 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ItemStack.class)
-public class MixinItemStack implements IItemStack {
+public abstract class MixinItemStack implements IStack {
     private long itemDelay;
     private String cachedDisplayName;
+
+    private int id;
+
+    @Override
+    public int getId(){
+        return id;
+    }
+
+    @Override
+    public void setId(int v){
+        id = v;
+    }
 
     @Inject(method = "<init>(Lnet/minecraft/item/Item;IILnet/minecraft/nbt/NBTTagCompound;)V", at = @At("RETURN"))
     private void init(final CallbackInfo callbackInfo) {

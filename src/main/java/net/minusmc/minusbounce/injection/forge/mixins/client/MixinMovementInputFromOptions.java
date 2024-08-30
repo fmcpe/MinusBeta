@@ -27,6 +27,9 @@ public class MixinMovementInputFromOptions extends MixinMovementInput {
      */
     @Overwrite
     public void updatePlayerMoveState() {
+        final float strafe = this.moveStrafe;
+        final float forward = this.moveForward;
+
         this.moveStrafe = 0.0F;
         this.moveForward = 0.0F;
 
@@ -52,6 +55,8 @@ public class MixinMovementInputFromOptions extends MixinMovementInput {
         final MoveInputEvent event = new MoveInputEvent(
             this.moveForward,
             this.moveStrafe,
+            forward,
+            strafe,
             this.jump, 
             this.sneak, 
             0.3D

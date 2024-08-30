@@ -44,7 +44,7 @@ class TickBase : Module() {
         duringTickModification = false
     }
 
-    @EventTarget
+    @EventTarget(priority = -10)
     fun onTickPre(event: PreUpdateEvent) {
         val player = mc.thePlayer ?: return
 
@@ -54,6 +54,7 @@ class TickBase : Module() {
 
         if (ticksToSkip-- > 0) {
             event.cancelEvent()
+            event.stopRunEvent = true
         }
     }
 

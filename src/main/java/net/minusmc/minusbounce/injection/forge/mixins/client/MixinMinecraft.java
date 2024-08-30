@@ -1032,6 +1032,7 @@ public abstract class MixinMinecraft {
         {
             if (this.thePlayer != null)
             {
+                MinusBounce.eventManager.callEvent(new EventTick());
                 ++this.joinPlayerCounter;
 
                 if (this.joinPlayerCounter == 30)

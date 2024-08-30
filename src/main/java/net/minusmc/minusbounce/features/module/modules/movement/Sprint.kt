@@ -8,26 +8,19 @@ package net.minusmc.minusbounce.features.module.modules.movement
 import net.minecraft.client.settings.GameSettings
 import net.minusmc.minusbounce.MinusBounce
 import net.minusmc.minusbounce.event.EventTarget
-import net.minusmc.minusbounce.event.StrafeEvent
+import net.minusmc.minusbounce.event.EventTick
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
 import net.minusmc.minusbounce.features.module.modules.world.Scaffold
 
 
+@Suppress("UNUSED_PARAMETER")
 @ModuleInfo(name = "Sprint", description = "Automatically sprints all the time.", category = ModuleCategory.MOVEMENT)
 class Sprint : Module(){
-    @EventTarget(priority = -5)
-    fun onStrafe(event: StrafeEvent){
-        val scaffold = MinusBounce.moduleManager.getModule(Scaffold::class.java) ?: return
-        if(!scaffold.state) {
-            mc.gameSettings.keyBindSprint.pressed = true
-        }
-
-        if(mc.thePlayer.reSprint == 2){
-            mc.thePlayer.isSprinting = false
-            mc.gameSettings.keyBindSprint.pressed = false
-        }
+    @EventTarget
+    fun onUpdate(event: EventTick){
+        mc.gameSettings.keyBindSprint.pressed = !(MinusBounce.moduleManager.getModule(Scaffold::class.java) ?: return).state
     }
 
     override fun onDisable() {

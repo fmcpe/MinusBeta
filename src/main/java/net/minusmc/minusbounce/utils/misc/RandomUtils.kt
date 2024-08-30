@@ -26,6 +26,11 @@ object RandomUtils {
         return if (startInclusive == endInclusive || endInclusive - startInclusive <= 0f) startInclusive else (startInclusive + (endInclusive - startInclusive) * Math.random()).toFloat()
     }
 
+    fun nextLong(startInclusive: Long, endInclusive: Long): Long {
+        return if (startInclusive == endInclusive || endInclusive - startInclusive <= 0f) startInclusive else (startInclusive + (endInclusive - startInclusive) * Math.random()).toLong()
+    }
+
+
     fun randomNumber(length: Int): String {
         return random(length, "123456789")
     }

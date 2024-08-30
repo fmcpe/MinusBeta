@@ -7,13 +7,16 @@ package net.minusmc.minusbounce.utils
 
 import net.minecraft.client.Minecraft
 import net.minecraft.client.entity.EntityPlayerSP
+import net.minecraft.client.gui.GuiScreen
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityLivingBase
+import net.minecraft.item.ItemStack
 import net.minecraft.util.AxisAlignedBB
 import net.minecraft.util.Vec3
 import net.minusmc.minusbounce.injection.implementations.IEntity
 import net.minusmc.minusbounce.injection.implementations.IEntityLivingBase
 import net.minusmc.minusbounce.injection.implementations.IEntityPlayerSP
+import net.minusmc.minusbounce.injection.implementations.IStack
 
 open class MinecraftInstance {
     companion object {
@@ -69,5 +72,13 @@ open class MinecraftInstance {
             set(value) {
                 (this as IEntity).ticksSprint = value
             }
+
+        var ItemStack.id: Int
+            get() = (this as IStack).id
+            set(v){
+                (this as IStack).id = v
+            }
+
+        var serverInv: GuiScreen? = mc.currentScreen
     }
 }

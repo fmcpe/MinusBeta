@@ -14,6 +14,6 @@ class NewNCPBlocking: KillAuraBlocking("NewNCP") {
     }
 
     override fun onPostAttack(){
-        killAura.startBlocking(true, false)
+        killAura.startBlocking(true, true)
     }
 }

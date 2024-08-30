@@ -11,6 +11,6 @@ class OldIntave: KillAuraBlocking("OldIntave") {
     }
 
     override fun onPostAttack(){
-        killAura.startBlocking(true, false)
+        killAura.startBlocking(true, true)
     }
 }
