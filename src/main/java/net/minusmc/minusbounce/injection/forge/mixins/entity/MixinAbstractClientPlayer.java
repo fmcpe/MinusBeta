@@ -5,7 +5,9 @@
  */
 package net.minusmc.minusbounce.injection.forge.mixins.entity;
 
+import net.minecraft.util.Vec3;
 import net.minusmc.minusbounce.MinusBounce;
+import net.minusmc.minusbounce.event.LookEvent;
 import net.minusmc.minusbounce.features.module.modules.misc.NameProtect;
 import net.minusmc.minusbounce.features.module.modules.render.NoFOV;
 import net.minusmc.minusbounce.features.module.modules.client.Cape;
@@ -15,6 +17,7 @@ import net.minecraft.client.resources.DefaultPlayerSkin;
 import net.minecraft.init.Items;
 import net.minecraft.util.ResourceLocation;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;

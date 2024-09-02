@@ -27,8 +27,9 @@ import net.minusmc.minusbounce.value.IntegerValue
 @Suppress("UNUSED_PARAMETER")
 @ModuleInfo("BackTrack", "Back Track", "Let you attack in their previous position", ModuleCategory.COMBAT)
 class BackTrack : Module() {
-    private val delay = IntegerValue("Delay", 400, 0, 10000)
-    private val range = FloatRangeValue("Range", 3F, 6F, 0F, 10F)
+    private val pulse = BoolValue("Pulse", true)
+    private val delay = IntegerValue("Delay", 400, 0, 10000) { pulse.get() }
+    private val range = FloatRangeValue("Range", 3F, 6F, 0F, 10F) { pulse.get() }
     private val velocity = BoolValue("Velocity", true)
     private val explosion = BoolValue("Explosion", true)
     private val esp = BoolValue("ESP", true)
@@ -60,7 +61,7 @@ class BackTrack : Module() {
         packets.clear()
     }
 
-    @EventTarget(priority = 5)
+    @EventTarget(priority = Int.MAX_VALUE)
     fun onPacket(event: PacketEvent) {
         mc.thePlayer ?: return
         mc.theWorld ?: return
@@ -189,7 +190,7 @@ class BackTrack : Module() {
         val bestY = MathHelper.clamp_double(entityPosEyes.yCoord, mePosForPlayerBox.minY, mePosForPlayerBox.maxY)
         val bestZ = MathHelper.clamp_double(entityPosEyes.zCoord, mePosForPlayerBox.minZ, mePosForPlayerBox.maxZ)
 
-        if (entityPosEyes.distanceTo(Vec3(bestX, bestY, bestZ)) > range.getMinValue() || (mc.thePlayer.hurtTime in 4..7)
+        if (entityPosEyes.distanceTo(Vec3(bestX, bestY, bestZ)) > range.getMinValue()
         ) {
             switch = true
         }
@@ -197,8 +198,7 @@ class BackTrack : Module() {
         val eyesToRealPosition = positionEyes.distanceTo(Vec3(realX, realY, realZ))
         val eyesToCurrentPosition = positionEyes.distanceTo(Vec3(currentX, currentY, currentZ))
 
-        if (!switch || eyesToRealPosition <= eyesToCurrentPosition || serverPosition.distanceTo(Vec3(d0, d2, d3)) >= distance || timer.hasTimePassed(delay.get())) {
-            switch = false
+        if (!switch || eyesToRealPosition <= eyesToCurrentPosition || serverPosition.distanceTo(Vec3(d0, d2, d3)) >= distance || (timer.hasTimePassed(delay.get()) && pulse.get())) {
             timer.reset()
             flushPackets()
         }
@@ -206,12 +206,9 @@ class BackTrack : Module() {
 
     private fun flushPackets() {
         if (packets.isNotEmpty()) {
-            synchronized(packets) {
-                while (packets.size > 0) {
-                    val packet = packets.removeFirst()
-                    PacketUtils.processPacket(packet)
-                }
-            }
+            packets.forEach(PacketUtils::processPacket)
+            packets.clear()
+            switch = false
         }
     }
 
@@ -225,12 +222,10 @@ class BackTrack : Module() {
             is S27PacketExplosion -> freeze = !explosion.get()
         }
 
-        synchronized(packets) {
-            if (packet::class.java !in Constants.serverOtherPacketClasses && freeze) {
-                packets.add(packet)
-                event.isCancelled = true
-                event.stopRunEvent = true
-            }
+        if (packet::class.java !in Constants.serverOtherPacketClasses && freeze && switch) {
+            packets.add(packet)
+            event.isCancelled = true
+            event.stopRunEvent = true
         }
     }
 }

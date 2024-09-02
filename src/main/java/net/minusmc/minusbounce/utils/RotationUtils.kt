@@ -7,7 +7,6 @@ package net.minusmc.minusbounce.utils
 
 import com.google.common.base.Predicate
 import com.google.common.base.Predicates
-import net.minecraft.client.Minecraft
 import net.minecraft.entity.Entity
 import net.minecraft.util.*
 import net.minusmc.minusbounce.event.*
@@ -73,7 +72,8 @@ object RotationUtils : MinecraftInstance(), Listenable {
     }
 
     @EventTarget(priority = -5)
-    fun onMotion(event: PreMotionEvent) {/* On / Off Ground Ticks*/
+    fun onMotion(event: PreMotionEvent) {
+        /* On / Off Ground Ticks*/
         if (event.onGround) {
             offGroundTicks = 0
             onGroundTicks++
@@ -123,29 +123,29 @@ object RotationUtils : MinecraftInstance(), Listenable {
 
     @EventTarget(priority = -5)
     fun onInput(e: MoveInputEvent) {
-        if (type == MovementFixType.FULL && active) {
-            val floats = this.handleSilentMove(e.strafe, e.forward)
-            val diffForward: Float = e.lastForward - floats[1]
-            val diffStrafe: Float = e.lastStrafe - floats[0]
+        val floats = this.handleSilentMove(e.strafe, e.forward)
 
-            if (diffForward >= 2.0f) {
-                floats[1] = 0.0f
-            }
-            if (diffForward <= -2.0f) {
-                floats[1] = 0.0f
-            }
-            if (diffStrafe >= 2.0f) {
-                floats[0] = 0.0f
-            }
-            if (diffStrafe <= -2.0f) {
-                floats[0] = 0.0f
-            }
+        val diffForward: Float = e.lastForward - floats[1]
+        val diffStrafe: Float = e.lastStrafe - floats[0]
+
+        if (diffForward >= 2.0f) {
+            floats[1] = 0.0f
+        }
+        if (diffForward <= -2.0f) {
+            floats[1] = 0.0f
+        }
+        if (diffStrafe >= 2.0f) {
+            floats[0] = 0.0f
+        }
+        if (diffStrafe <= -2.0f) {
+            floats[0] = 0.0f
+        }
+
+        if (type == MovementFixType.FULL && active) {
             e.strafe = MathHelper.clamp_float(floats[0], -1.0f, 1.0f)
             e.forward = MathHelper.clamp_float(floats[1], -1.0f, 1.0f)
         }
     }
-
-    data class Input(val strafe: Float, val forward: Float)
 
     @EventTarget(priority = -5)
     fun onStrafe(event: StrafeEvent) {
@@ -172,15 +172,12 @@ object RotationUtils : MinecraftInstance(), Listenable {
     }
 
     private fun handleSilentMove(strafe: Float, forward: Float): FloatArray {
-        val mc = Minecraft.getMinecraft()
         var newForward: Float
         var newStrafe: Float
-        val realMotion = this.getMotion(0.22, strafe, forward, mc.thePlayer.rotationYaw)
+        val realMotion = this.getMotion(strafe, forward, mc.thePlayer.rotationYaw)
         val array = doubleArrayOf(mc.thePlayer.posX, mc.thePlayer.posZ)
-        val n = 0
-        array[n] += realMotion[0]
-        val n2 = 1
-        array[n2] += realMotion[1]
+        array[0] += realMotion[0]
+        array[1] += realMotion[1]
         val possibleForwardStrafe = ArrayList<FloatArray>()
         var i = 0
         var b = false
@@ -253,11 +250,9 @@ object RotationUtils : MinecraftInstance(), Listenable {
             } else if (flo[1] < -1.0f) {
                 flo[1] = -1.0f
             }
-            val motion2 = this.getMotion(0.22, flo[1], flo[0], targetRotation!!.yaw)
-            val n3 = 0
-            motion2[n3] += mc.thePlayer.posX
-            val n4 = 1
-            motion2[n4] += mc.thePlayer.posZ
+            val motion2 = this.getMotion(flo[1], flo[0], targetRotation!!.yaw)
+            motion2[0] += mc.thePlayer.posX
+            motion2[1] += mc.thePlayer.posZ
             val diffX = abs(array[0] - motion2[0])
             val diffZ = abs(array[1] - motion2[1])
             val d0 = diffX * diffX + diffZ * diffZ
@@ -269,12 +264,12 @@ object RotationUtils : MinecraftInstance(), Listenable {
         return floatArrayOf(floats[1], floats[0])
     }
 
-    private fun getMotion(speed: Double, strafe: Float, forward: Float, yaw: Float): DoubleArray {
-        val friction = speed.toFloat()
+    private fun getMotion(strafe: Float, forward: Float, yaw: Float): DoubleArray {
+        val friction = 0.22
         val f1 = MathHelper.sin(yaw * Math.PI.toFloat() / 180.0f)
         val f2 = MathHelper.cos(yaw * Math.PI.toFloat() / 180.0f)
-        val motionX = (strafe * friction * f2 - forward * friction * f1).toDouble()
-        val motionZ = (forward * friction * f2 + strafe * friction * f1).toDouble()
+        val motionX = strafe * friction * f2 - forward * friction * f1
+        val motionZ = forward * friction * f2 + strafe * friction * f1
         return doubleArrayOf(motionX, motionZ)
     }
 
@@ -579,52 +574,53 @@ object RotationUtils : MinecraftInstance(), Listenable {
      * @param throughWalls throughWalls option
      * @return center
      */
-    @JvmOverloads
     fun searchCenter(
         bb: AxisAlignedBB,
+        outborder: Boolean,
         random: Boolean,
         predict: Boolean,
         throughWalls: Boolean,
-        distance: Float,
-        randomMultiply: Float = 0f,
     ): VecRotation? {
-        val randomVec = Vec3(
-            bb.minX + (bb.maxX - bb.minX) * x * randomMultiply * Math.random(),
-            bb.minY + (bb.maxY - bb.minY) * y * randomMultiply * Math.random(),
-            bb.minZ + (bb.maxZ - bb.minZ) * z * randomMultiply * Math.random()
-        )
+        if (outborder) {
+            val vec3 = Vec3(
+                bb.minX + (bb.maxX - bb.minX) * (x * 0.3 + 1.0),
+                bb.minY + (bb.maxY - bb.minY) * (y * 0.3 + 1.0),
+                bb.minZ + (bb.maxZ - bb.minZ) * (z * 0.3 + 1.0)
+            )
+            return VecRotation(vec3, toRotation(vec3, predict))
+        }
 
+        val randomVec = Vec3(
+            bb.minX + (bb.maxX - bb.minX) * (x * 0.8 + 0.2),
+            bb.minY + (bb.maxY - bb.minY) * (y * 0.8 + 0.2),
+            bb.minZ + (bb.maxZ - bb.minZ) * (z * 0.8 + 0.2)
+        )
         val randomRotation = toRotation(randomVec, predict)
-        val eyes = mc.thePlayer.getPositionEyes(1f)
+
         var vecRotation: VecRotation? = null
 
-        for (x in 0.0..1.0) {
-            for (y in 0.0..1.0) {
-                for (z in 0.0..1.0) {
+        for (x in 0.0..1.0){
+            for (y in 0.0..1.0){
+                for (z in 0.0..1.0){
                     val vec3 = Vec3(
                         bb.minX + (bb.maxX - bb.minX) * x,
                         bb.minY + (bb.maxY - bb.minY) * y,
                         bb.minZ + (bb.maxZ - bb.minZ) * z
                     )
-                    val currentVec = VecRotation(
-                        vec3, toRotation(
-                            Vec3(0.0, 0.0, 0.0), predict, getVectorForRotation(targetRotation ?: serverRotation) - vec3
-                        )
-                    )
-                    if (eyes.distanceTo(vec3) > distance) {
-                        continue
-                    }
+                    val rotation = toRotation(vec3, predict)
+
                     if (throughWalls || isVisible(vec3)) {
-                        if (vecRotation == null || if (random) {
-                                getRotationDifference(currentVec.rotation, randomRotation) < getRotationDifference(
-                                    vecRotation.rotation, randomRotation
-                                )
-                            } else {
-                                getRotationDifference(currentVec.rotation) < getRotationDifference(vecRotation.rotation)
-                            }
-                        ) {
-                            vecRotation = currentVec
-                        }
+                        val currentVec = VecRotation(vec3, rotation)
+
+                        if (vecRotation == null || (if (random) getRotationDifference(
+                                currentVec.rotation,
+                                randomRotation
+                            ) < getRotationDifference(
+                                vecRotation.rotation, randomRotation
+                            ) else getRotationDifference(currentVec.rotation) < getRotationDifference(
+                                vecRotation.rotation
+                            ))
+                        ) vecRotation = currentVec
                     }
                 }
             }

@@ -3,7 +3,6 @@ package net.minusmc.minusbounce.features.module.modules.combat.velocitys.intave
 import net.minecraft.network.play.server.S12PacketEntityVelocity
 import net.minecraft.util.Vec3
 import net.minusmc.minusbounce.event.AttackEvent
-import net.minusmc.minusbounce.event.KnockBackEvent
 import net.minusmc.minusbounce.event.MoveInputEvent
 import net.minusmc.minusbounce.event.PacketEvent
 import net.minusmc.minusbounce.features.module.modules.combat.velocitys.VelocityMode
@@ -28,7 +27,6 @@ class Legit : VelocityMode("Legit") {
         Input(0f, 1f),
         Input(1f, 1f),
     )
-    private var limitUntilJump = 0
 
     override fun onPacket(event: PacketEvent) {
         val packet = event.packet
@@ -85,19 +83,6 @@ class Legit : VelocityMode("Legit") {
         } else {
             lastVelocity = false
         }
-
-        if (mc.thePlayer.hurtTime != 9 || !mc.thePlayer.onGround || !mc.thePlayer.isSprinting || limitUntilJump < 1) {
-            limitUntilJump++
-            return
-        }
-
-        event.jump = true
-        limitUntilJump = 0
-    }
-
-    override fun onKnockBack(event: KnockBackEvent) {
-        event.full = false
-        event.reduceY = true
     }
 }
 data class Input(val strafe: Float, val forward: Float)

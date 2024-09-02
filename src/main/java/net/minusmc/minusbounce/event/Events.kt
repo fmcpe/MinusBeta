@@ -25,7 +25,7 @@ import net.minecraft.util.EnumFacing
  */
 class AttackEvent(val targetEntity: Entity?) : CancellableEvent()
 
-class KnockBackEvent(var motion: Double, var full: Boolean, var power: Int, var postPower: Int, var strong: Boolean, var reduceY: Boolean) : CancellableEvent()
+class KnockBackEvent(var motion: Double, var full: Boolean, var power: Int, var postPower: Int, var strong: Boolean, var reduceY: Boolean, var debug: Boolean) : CancellableEvent()
 
 /**
  * Called when minecraft get bounding box of block
@@ -48,6 +48,10 @@ class ClickingEvent: CancellableEvent()
 class PostPlayerTickEvent: CancellableEvent()
 class StartRenderTickEvent: Event()
 class EndRenderTickEvent: Event()
+
+class PostVelocityEvent: Event()
+
+class RayTraceRangeEvent(var blockReachDistance: Float, var range: Float, var rayTraceRange: Float): Event()
 
 /**
  * Called when player clicks a block

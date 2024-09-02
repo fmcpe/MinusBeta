@@ -8,7 +8,10 @@ package net.minusmc.minusbounce.features.module.modules.combat
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityLivingBase
 import net.minecraft.item.ItemSword
-import net.minecraft.network.play.client.*
+import net.minecraft.network.play.client.C03PacketPlayer
+import net.minecraft.network.play.client.C07PacketPlayerDigging
+import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement
+import net.minecraft.network.play.client.C0APacketAnimation
 import net.minecraft.util.BlockPos
 import net.minecraft.util.EnumFacing
 import net.minecraft.util.MovingObjectPosition
@@ -35,10 +38,7 @@ import net.minusmc.minusbounce.value.*
 import org.lwjgl.input.Keyboard
 import org.lwjgl.opengl.GL11
 import java.util.*
-import kotlin.math.cos
-import kotlin.math.pow
-import kotlin.math.roundToLong
-import kotlin.math.sin
+import kotlin.math.*
 
 
 @Suppress("UNUSED_PARAMETER")
@@ -56,13 +56,19 @@ class KillAura : Module() {
     //CPS & HurtTime
     private val cps = IntRangeValue("CPS", 5, 8, 1, 20)
     private val hurtTimeValue = IntegerValue("HurtTime", 10, 0, 10)
-    private val clickMode = ListValue("ClickPattern", arrayOf("Legit", "Normal", "NormalNoise", "Blatant"), "Blatant")
+    private val clickMode = ListValue("Click-Pattern", arrayOf("Legit", "Normal", "NormalNoise", "Blatant"), "Blatant")
 
     // Range & throughWalls
-    private val rotationRangeValue = FloatValue("RotationRange", 3.7f, 1f, 8f, "m")
+    private val rotationRangeValue = FloatValue("Rotation-Range", 3.7f, 1f, 8f, "m")
+    private val range = FloatValue("Range", 3.7f, 1f, 8f, "m")
+    private val fixServersSideMisplace = BoolValue("Fix-MisPlace", true)
+    private val predict = BoolValue("Predict", false)
+    private val doRandom = BoolValue("Random", false)
+    private val throughWall = BoolValue("ThroughWall", true)
+    private val outborder = BoolValue("OutBorder", true)
 
     // Rotations & TurnSpeed
-    private val rotations = ListValue("RotationMode", arrayOf("Vanilla", "BackTrack", "Grim", "Intave"), "BackTrack")
+    private val rotations = ListValue("Rotation-Mode", arrayOf("Vanilla", "BackTrack", "Grim"), "BackTrack")
     private val turnSpeed = FloatRangeValue("Speed", 180f, 180f, 0f, 180f, "°") {
         !rotations.get().equals("None", true)
     }
@@ -75,9 +81,9 @@ class KillAura : Module() {
     }
 
     // Bypass
-    private val intaveRandomAmount = FloatValue("Random", 4f, 0.25f, 10f) { rotations.get().equals("Intave", true) }
     private val interact = BoolValue("Interact", true)
     private val noslow = BoolValue("NoSlow", true)
+    private val noBadPackets = BoolValue("NoBadPackets", false)
 
     // AutoBlock & Interact
     val autoBlockModeValue: ListValue = object : ListValue("AutoBlock", blockingModes.map { it.modeName }.toTypedArray(), "None") {
@@ -124,11 +130,15 @@ class KillAura : Module() {
     private var attackDelay = 0L
     private val switchTimer = MSTimer()
     var clicks = 0
-    private var swing = false
+    var swing = false
     private var attackTickTimes = mutableListOf<Pair<MovingObjectPosition, Int>>()
 
     // Fake block status
     var blockingStatus = false
+    
+    private var correctedRange: Float = 0f
+
+    private var packetSend: Boolean = false
     
     override fun onDisable() {
         target = null
@@ -152,7 +162,18 @@ class KillAura : Module() {
 
     @EventTarget
     fun onUpdate(event: PreUpdateEvent){
-        updateTarget()
+        val target = target ?: return
+
+        RotationUtils.setRotations(
+            rotation = getTargetRotation(target) ?: return,
+            speed = RandomUtils.nextFloat(turnSpeed.getMinValue(), turnSpeed.getMaxValue()),
+            fixType = when (movementCorrection.get().lowercase()) {
+                "normal" -> MovementFixType.NORMAL
+                "full" -> MovementFixType.FULL
+                else -> MovementFixType.NONE
+            },
+            silent = silentRotationValue.get()
+        )
 
         when(clickMode.get().lowercase()) {
             "normal", "normalnoise" -> {
@@ -165,7 +186,7 @@ class KillAura : Module() {
                     delay()
                 }
             }
-            else -> if(clicks > 0) { runAttack(); clicks-- }
+            else -> repeat(clicks) { runAttack(); clicks-- }
         }
     }
 
@@ -189,8 +210,10 @@ class KillAura : Module() {
             GL11.glRotatef(90F, 1F, 0F, 0F)
             GL11.glBegin(GL11.GL_LINE_STRIP)
 
+            val range = max(rotationRangeValue.get(), range.get())
+
             for (i in 0..360 step 60 - accuracyValue.get()) { // You can change circle accuracy  (60 - accuracy)
-                GL11.glVertex2f(cos(i * Math.PI / 180.0).toFloat() * rotationRangeValue.get(), (sin(i * Math.PI / 180.0).toFloat() * rotationRangeValue.get()))
+                GL11.glVertex2f(cos(i * Math.PI / 180.0).toFloat() * range, (sin(i * Math.PI / 180.0).toFloat() * range))
             }
 
             GL11.glEnd()
@@ -360,24 +383,33 @@ class KillAura : Module() {
         
         val target = mc.objectMouseOver.entityHit ?: return
 
-        /* Unblock & Attack */
-        if (canBlock && !autoBlockModeValue.get().equals("none", true)) {
-            blockingMode.onPreAttack()
+        if(target != this.target || mc.objectMouseOver == null || mc.objectMouseOver.typeOfHit != MovingObjectPosition.MovingObjectType.ENTITY){
+            return
         }
 
-        mc.playerController.syncCurrentPlayItem()
-        mc.netHandler.addToSendQueue(C0APacketAnimation())
-        mc.netHandler.addToSendQueue(C02PacketUseEntity(target, C02PacketUseEntity.Action.ATTACK))
-        mc.thePlayer.attackTargetEntityWithCurrentItem(target)
+        /* Unblock & Attack */
+        if (canBlock && blockingStatus && !autoBlockModeValue.get().equals("none", true)) {
+            if(packetSend && noBadPackets.get()){
+                return
+            }
+
+            blockingMode.onPreAttack()
+            packetSend = true
+        }
+
+        mc.leftClickCounter = 10
+
+        mc.clickMouse()
 
         /* AutoBlock */
-        if (canBlock && mc.thePlayer.getDistanceToEntityBox(target) <= autoBlockRangeValue.get()) {
-            if(!autoBlockModeValue.get().equals("none", true)){
-                blockingMode.onPostAttack()
+        if (canBlock && !blockingStatus && mc.thePlayer.getDistanceToEntityBox(target) <= autoBlockRangeValue.get() && !autoBlockModeValue.get().equals("none", true)) {
+            if(packetSend && noBadPackets.get()){
+                return
             }
-        }
 
-        prevTargetEntities.add(target.entityId)
+            blockingMode.onPostAttack()
+            packetSend = true
+        }
 
         if (targetModeValue.get().equals("Switch", true)) {
             if (switchTimer.hasTimePassed(switchDelayValue.get().toLong())) {
@@ -387,6 +419,21 @@ class KillAura : Module() {
         }
     }
 
+
+    @EventTarget(priority = -5)
+    fun onRayTrace(e: RayTraceRangeEvent){
+        if (target != null) {
+            correctedRange = range.get() + if (this.fixServersSideMisplace.get()) 0.00256f else 0f
+            if (this.fixServersSideMisplace.get()) {
+                val n = 0.010625f
+                if (mc.thePlayer.horizontalFacing === EnumFacing.NORTH || mc.thePlayer.horizontalFacing === EnumFacing.WEST) {
+                    correctedRange += n * 2.0f
+                }
+            }
+            e.range = correctedRange
+            e.blockReachDistance = max(mc.playerController.blockReachDistance, correctedRange)
+        }
+    }
     private fun updateTarget() {
         discoveredEntities.clear()
 
@@ -407,17 +454,6 @@ class KillAura : Module() {
             "armor" -> discoveredEntities.minByOrNull { it.totalArmorValue }
             else -> discoveredEntities.minByOrNull { mc.thePlayer.getDistanceToEntityBox(it) }
         }?.let {
-            RotationUtils.setRotations(
-                rotation = getTargetRotation(it),
-                speed = RandomUtils.nextFloat(turnSpeed.getMinValue(), turnSpeed.getMaxValue()),
-                fixType = when (movementCorrection.get().lowercase()) {
-                    "normal" -> MovementFixType.NORMAL
-                    "full" -> MovementFixType.FULL
-                    else -> MovementFixType.NONE
-                },
-                silent = silentRotationValue.get()
-            )
-
             target = it
             return
         }
@@ -430,29 +466,22 @@ class KillAura : Module() {
         }
     }
 
-    private fun getTargetRotation(entity: Entity): Rotation {
+    private fun getTargetRotation(entity: Entity): Rotation? {
         val boundingBox = entity.entityBoundingBox
 
         /* We don't override. So Vec3(0.0, 0.0, 0.0) is a good solution */
-        val rotation = RotationUtils.toRotation(
-            Vec3(0.0, 0.0, 0.0),
-            diff = Vec3(
-                entity.posX - mc.thePlayer.posX,
-                entity.posY + entity.eyeHeight * 0.9 - (mc.thePlayer.posY + mc.thePlayer.getEyeHeight()),
-                entity.posZ - mc.thePlayer.posZ
-            )
-        )
+        val rotation = RotationUtils.searchCenter(
+            entity.entityBoundingBox,
+            outborder.get(),
+            doRandom.get(),
+            predict.get(),
+            throughWall.get()
+        )?.rotation
 
         return when (rotations.get().lowercase()) {
             /* Old BackTrack Rotation Function is getting vecRotation and DO NOTHING with it. then calculate from vec (input) */
             "backtrack" -> RotationUtils.toRotation(RotationUtils.getCenter(entity.entityBoundingBox))
             "grim" -> RotationUtils.toRotation(getNearestPointBB(mc.thePlayer.getPositionEyes(1F), boundingBox))
-            "intave" -> {
-                Rotation(
-                    rotation.yaw + Math.random().toFloat() * intaveRandomAmount.get() - intaveRandomAmount.get() / 2,
-                    rotation.pitch + Math.random().toFloat() * intaveRandomAmount.get() - intaveRandomAmount.get() / 2
-                )
-            }
             else -> rotation
         }
     }
@@ -500,6 +529,9 @@ class KillAura : Module() {
 
     @EventTarget
     fun onPostMotion(event: PostMotionEvent) {
+        packetSend = false
+        updateTarget()
+
         blockingMode.onPostMotion()
     }
 

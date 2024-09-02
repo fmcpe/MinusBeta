@@ -1,73 +1,68 @@
 package net.minusmc.minusbounce.features.module.modules.combat.velocitys.intave
 
-import net.minecraft.network.play.server.S12PacketEntityVelocity
+import net.minecraft.entity.EntityLivingBase
+import net.minecraft.potion.Potion
+import net.minecraft.potion.PotionEffect
 import net.minusmc.minusbounce.event.AttackEvent
-import net.minusmc.minusbounce.event.KnockBackEvent
-import net.minusmc.minusbounce.event.MoveInputEvent
-import net.minusmc.minusbounce.event.PacketEvent
-import net.minusmc.minusbounce.event.EntityDamageEvent
+import net.minusmc.minusbounce.event.PostVelocityEvent
 import net.minusmc.minusbounce.features.module.modules.combat.velocitys.VelocityMode
-import net.minusmc.minusbounce.utils.RaycastUtils
-import net.minusmc.minusbounce.value.FloatValue
+import net.minusmc.minusbounce.utils.ClientUtils
 import net.minusmc.minusbounce.value.BoolValue
-import net.minecraft.util.MovingObjectPosition
+import net.minusmc.minusbounce.value.FloatValue
 
 
-class IntavePlusVelocity : VelocityMode("IntavePlus") {
-    private val targetRange = FloatValue("TargetRange", 3f, 0f, 5f)
-    private val hurtTime = BoolValue("KeepSprintOnlyHurtTime", false)
-    private var blockVelocity = false
-    private var isRaytracedToEntity = false
+class IntavePlusVelocity : VelocityMode("Intave") {
+    private var xzOnHit = FloatValue("XZ-on-hit", 0.6f, 0f, 1f)
+    private var xzOnSprintHit = FloatValue("XZ-on-sprint-hit", 0.6f, 0f, 1f)
+    private var reduceUnnecessarySlowdown = BoolValue("Reduce-unnecessary-slowdown", false)
+    private var jump = BoolValue("Jump", false)
+    private var notWhileSpeed = BoolValue("Not-while-speed", false)
+    private var notWhileJumpBoost = BoolValue("Not-while-jump-boost", false)
+    private var debug = BoolValue("Debug", false)
+
+    private var reduced = false
 
     override fun onEnable() {
-        isRaytracedToEntity = false
+        reduced = false
     }
 
-    override fun onDisable() {
-        mc.thePlayer.movementInput.jump = false
-    }
+    override fun onPostVelocity(event: PostVelocityEvent) {
+        if (noAction()) return
 
-    override fun onUpdate() {
-        blockVelocity = true
-        isRaytracedToEntity = false
-
-        RaycastUtils.runWithModifiedRaycastResult(targetRange.get(), 0f) {
-            isRaytracedToEntity = it.typeOfHit == MovingObjectPosition.MovingObjectType.ENTITY || 
-                mc.objectMouseOver?.typeOfHit == MovingObjectPosition.MovingObjectType.ENTITY
+        if (jump.get() && mc.thePlayer.onGround) {
+            mc.thePlayer.jump()
         }
-
-        if (isRaytracedToEntity && mc.thePlayer.hurtTime == 9 && !mc.thePlayer.isBurning)
-            mc.thePlayer.movementInput.jump = true
-    }
-
-    override fun onEntityDamage(event: EntityDamageEvent) {
-        if (isRaytracedToEntity && mc.thePlayer.hurtTime == 9 && !mc.thePlayer.isBurning)
-            mc.thePlayer.movementInput.jump = true
+        reduced = false
     }
 
     override fun onAttack(event: AttackEvent) {
-        if (mc.thePlayer.hurtTime > 0 && blockVelocity) {
-            mc.thePlayer.isSprinting = false
-            mc.thePlayer.motionX *= 0.6
-            mc.thePlayer.motionZ *= 0.6
-            blockVelocity = false
+        if (event.targetEntity is EntityLivingBase && mc.thePlayer.hurtTime > 0) {
+            if (noAction()) return
+            if (reduceUnnecessarySlowdown.get() && reduced) return
+
+            if (mc.thePlayer.isSprinting) {
+                mc.thePlayer.motionX *= xzOnSprintHit.get()
+                mc.thePlayer.motionZ *= xzOnSprintHit.get()
+            } else {
+                mc.thePlayer.motionX *= xzOnHit.get()
+                mc.thePlayer.motionZ *= xzOnHit.get()
+            }
+            reduced = true
+            if (debug.get()) ClientUtils.displayChatMessage(
+                String.format(
+                    "Reduced %.3f %.3f",
+                    mc.thePlayer.motionX,
+                    mc.thePlayer.motionZ
+                )
+            )
         }
     }
 
-    override fun onInput(event: MoveInputEvent) {
-        if (mc.thePlayer.hurtTime > 0 && isRaytracedToEntity) {
-            event.forward = 1.0F
-            event.strafe = 0.0F
-        }
-    }
-
-    override fun onKnockBack(event: KnockBackEvent) {
-        if (mc.thePlayer.hurtTime <= 0)
-            event.isCancelled = true
-
-        if (hurtTime.get() && mc.thePlayer.hurtTime == 0)
-            event.isCancelled = false
-
-        event.reduceY = true
+    private fun noAction(): Boolean {
+        return mc.thePlayer.activePotionEffects.parallelStream()
+            .anyMatch { effect: PotionEffect ->
+                (notWhileSpeed.get() && effect.potionID == Potion.moveSpeed.getId()
+                        || notWhileJumpBoost.get() && effect.potionID == Potion.jump.getId())
+            }
     }
 }

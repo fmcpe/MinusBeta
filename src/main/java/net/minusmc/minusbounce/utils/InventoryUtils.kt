@@ -27,7 +27,6 @@ import net.minusmc.minusbounce.features.module.modules.world.ChestAura
 import net.minusmc.minusbounce.utils.PacketUtils.sendPacket
 import net.minusmc.minusbounce.utils.timer.MSTimer
 import org.lwjgl.input.Keyboard
-import java.util.*
 
 
 object InventoryUtils : MinecraftInstance(), Listenable {
@@ -218,7 +217,7 @@ object InventoryUtils : MinecraftInstance(), Listenable {
 
     var timer = MSTimer()
 
-    var invalidBlocks: List<Block> = Arrays.asList(
+    var invalidBlocks: List<Block> = listOf(
         Blocks.enchanting_table,
         Blocks.carpet,
         Blocks.glass_pane,

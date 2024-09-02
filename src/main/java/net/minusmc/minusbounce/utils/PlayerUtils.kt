@@ -134,7 +134,7 @@ object PlayerUtils {
                 val attacked = targetEntity.attackEntityFrom(DamageSource.causePlayerDamage(mc.thePlayer), attackDamage)
                 if (attacked) {
                     if (knockbackModifier > 0) {
-                        val event = KnockBackEvent(0.6, false, 1, 0, false, false)
+                        val event = KnockBackEvent(0.6, false, 1, 0, false, false, false)
                         MinusBounce.eventManager.callEvent(event)
 
                         if(!event.isCancelled){

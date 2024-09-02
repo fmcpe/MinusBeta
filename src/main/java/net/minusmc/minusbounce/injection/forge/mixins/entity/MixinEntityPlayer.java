@@ -24,9 +24,12 @@ import net.minecraft.util.FoodStats;
 import net.minecraft.util.MathHelper;
 import net.minusmc.minusbounce.MinusBounce;
 import net.minusmc.minusbounce.event.KnockBackEvent;
+import net.minusmc.minusbounce.utils.ClientUtils;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
+
+import static net.minusmc.minusbounce.utils.MinecraftInstance.mc;
 
 @Mixin(EntityPlayer.class)
 public abstract class MixinEntityPlayer extends MixinEntityLivingBase {
@@ -141,7 +144,7 @@ public abstract class MixinEntityPlayer extends MixinEntityLivingBase {
 
                     if (flag2)
                     {
-                        KnockBackEvent event = new KnockBackEvent(0.6, false, 1, 0, false, false);
+                        KnockBackEvent event = new KnockBackEvent(0.6, false, 1, 0, false, false, false);
                         MinusBounce.eventManager.callEvent(event);
                         if (i > 0){
                             if(!event.isCancelled()){
@@ -162,6 +165,14 @@ public abstract class MixinEntityPlayer extends MixinEntityLivingBase {
                                 this.setSprinting(false);
                             }
                         }
+
+                        if (event.getDebug()) ClientUtils.INSTANCE.displayChatMessage(
+                                String.format(
+                                        "Reduced %.3f %.3f",
+                                        mc.thePlayer.motionX,
+                                        mc.thePlayer.motionZ
+                                )
+                        );
 
                         if (targetEntity instanceof EntityPlayerMP && targetEntity.velocityChanged)
                         {

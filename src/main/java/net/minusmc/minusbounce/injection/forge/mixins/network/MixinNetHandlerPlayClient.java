@@ -33,12 +33,14 @@ import net.minecraft.world.WorldSettings;
 import net.minusmc.minusbounce.MinusBounce;
 import net.minusmc.minusbounce.event.EntityDamageEvent;
 import net.minusmc.minusbounce.event.EntityMovementEvent;
+import net.minusmc.minusbounce.event.PostVelocityEvent;
 import net.minusmc.minusbounce.features.module.modules.misc.NoRotateSet;
 import net.minusmc.minusbounce.features.module.modules.misc.Patcher;
 import net.minusmc.minusbounce.features.special.AntiForge;
 import net.minusmc.minusbounce.ui.client.clickgui.dropdown.DropDownClickGui;
 import net.minusmc.minusbounce.ui.client.hud.designer.GuiHudDesigner;
 import net.minusmc.minusbounce.utils.ClientUtils;
+import net.minusmc.minusbounce.utils.MinecraftInstance;
 import net.minusmc.minusbounce.utils.Rotation;
 import net.minusmc.minusbounce.utils.RotationUtils;
 import net.minusmc.minusbounce.utils.movement.MovementFixType;
@@ -269,6 +271,18 @@ public abstract class MixinNetHandlerPlayClient {
                 if (entity instanceof EntityPlayer)
                     MinusBounce.hud.handleDamage((EntityPlayer) entity);
             }
+        }
+    }
+
+    @Inject(method = "handleEntityVelocity", at = @At("RETURN"))
+    public void onPostHandleEntityVelocity(S12PacketEntityVelocity packet, CallbackInfo ci) {
+        if(MinecraftInstance.mc.thePlayer == null ||
+                MinecraftInstance.mc.theWorld == null) {
+            return;
+        }
+
+        if (packet.getEntityID() == MinecraftInstance.mc.thePlayer.getEntityId()) {
+            MinusBounce.eventManager.callEvent(new PostVelocityEvent());
         }
     }
 

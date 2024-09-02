@@ -117,6 +117,11 @@ class Velocity : Module() {
         mode.onRender(e)
     }
 
+    @EventTarget(priority = -5)
+    fun onTick(e: PreUpdateEvent){
+        mode.onPreUpdate()
+    }
+
     override val tag: String
         get() = modeValue.get()
 

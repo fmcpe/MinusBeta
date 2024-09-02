@@ -5,7 +5,16 @@
  */
 package net.minusmc.minusbounce.features.module.modules.world
 
+import net.minecraft.block.Block
+import net.minecraft.block.BlockAir
+import net.minecraft.client.gui.ScaledResolution
+import net.minecraft.client.multiplayer.WorldClient
+import net.minecraft.network.play.client.C07PacketPlayerDigging
+import net.minecraft.util.BlockPos
+import net.minecraft.util.EnumFacing
+import net.minecraft.util.Vec3
 import net.minusmc.minusbounce.MinusBounce
+import net.minusmc.minusbounce.event.*
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
@@ -22,15 +31,6 @@ import net.minusmc.minusbounce.utils.extensions.getBlock
 import net.minusmc.minusbounce.utils.render.RenderUtils
 import net.minusmc.minusbounce.utils.timer.MSTimer
 import net.minusmc.minusbounce.value.*
-import net.minecraft.block.Block
-import net.minecraft.block.BlockAir
-import net.minecraft.client.gui.ScaledResolution
-import net.minecraft.client.multiplayer.WorldClient
-import net.minecraft.network.play.client.C07PacketPlayerDigging
-import net.minecraft.util.BlockPos
-import net.minecraft.util.EnumFacing
-import net.minecraft.util.Vec3
-import net.minusmc.minusbounce.event.*
 import java.awt.Color
 
 @ModuleInfo(name = "Breaker", description = "Destroys selected blocks around you. (aka. IDNuker)", category = ModuleCategory.WORLD)
@@ -161,7 +161,7 @@ object Breaker : Module() {
 
         // Face block
         if (rotationsValue.get())
-            RotationUtils.setRotations(rotations.rotation)
+            RotationUtils.setRotations(rotations.rotation, keepLength = 5)
 
         when {
             // Destory block

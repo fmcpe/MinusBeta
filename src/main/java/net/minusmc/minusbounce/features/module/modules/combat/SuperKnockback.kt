@@ -22,7 +22,7 @@ import kotlin.math.abs
 
 @ModuleInfo(name = "SuperKnockback", spacedName = "Super Knockback", description = "Increases knockback dealt to other entities.", category = ModuleCategory.COMBAT)
 class SuperKnockback : Module() {
-    private val mode = ListValue("Mode", arrayOf("Legit", "LessPacket", "Packet", "DoublePacket"), "Legit")
+    private val mode = ListValue("Mode", arrayOf("Legit", "LegitFast", "LessPacket", "Packet", "DoublePacket"), "Legit")
     private val intelligent = BoolValue("Intelligent", false)
 
     @EventTarget
@@ -102,6 +102,7 @@ class SuperKnockback : Module() {
                 }
             }
             "legit" -> mc.thePlayer.reSprint = if (entity.hurtTime == 10) 2 else mc.thePlayer.reSprint
+            "legitfast" -> mc.thePlayer.sprintingTicksLeft = 0
             "lesspacket" -> {
                 if (entity.hurtTime == 10) {
                     if (mc.thePlayer.isSprinting) {

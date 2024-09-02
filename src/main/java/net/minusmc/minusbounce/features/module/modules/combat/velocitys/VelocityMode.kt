@@ -31,7 +31,10 @@ abstract class VelocityMode(val modeName: String): MinecraftInstance() {
 	open fun onAttack(event: AttackEvent) {}
 	open fun onKnockBack(event: KnockBackEvent) {}
 	open fun onEntityDamage(event: EntityDamageEvent) {}
+	open fun onPostVelocity(event: PostVelocityEvent) {}
 
+	open fun onPreUpdate() {
+	}
 	open fun gameLoop() {}
 	open fun onTick() {}
 }
