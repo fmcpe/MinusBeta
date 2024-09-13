@@ -205,10 +205,12 @@ class BackTrack : Module() {
     }
 
     private fun flushPackets() {
-        if (packets.isNotEmpty()) {
-            packets.forEach(PacketUtils::processPacket)
-            packets.clear()
-            switch = false
+        synchronized(packets){
+            if (packets.isNotEmpty()) {
+                packets.forEach(PacketUtils::processPacket)
+                packets.clear()
+                switch = false
+            }
         }
     }
 
@@ -222,10 +224,12 @@ class BackTrack : Module() {
             is S27PacketExplosion -> freeze = !explosion.get()
         }
 
-        if (packet::class.java !in Constants.serverOtherPacketClasses && freeze && switch) {
-            packets.add(packet)
-            event.isCancelled = true
-            event.stopRunEvent = true
+        synchronized(packets) {
+            if (packet::class.java !in Constants.serverOtherPacketClasses && freeze && switch) {
+                packets.add(packet)
+                event.isCancelled = true
+                event.stopRunEvent = true
+            }
         }
     }
 }

@@ -160,12 +160,16 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
      */
     @Overwrite
     public void onUpdateWalkingPlayer() {
+        MinusBounce.eventManager.callEvent(new MotionEvent());
+
         final PreMotionEvent event = new PreMotionEvent(
                 this.posX,
                 this.getEntityBoundingBox().minY,
                 this.posZ,
                 this.rotationYaw,
                 this.rotationPitch,
+                this.isSprinting(),
+                this.isSneaking(),
                 this.onGround
         );
         MinusBounce.eventManager.callEvent(event);
@@ -178,8 +182,8 @@ public abstract class MixinEntityPlayerSP extends MixinAbstractClientPlayer impl
         assert inventoryMove != null;
         final boolean fakeSprint = (inventoryMove.getState() && inventoryMove.isAACAP());
 
-        boolean sprinting = this.isSprinting() && !fakeSprint;
-        boolean sneaking = this.isSneaking();
+        boolean sprinting = event.getSprint() && !fakeSprint;
+        boolean sneaking = event.getSneak();
 
         if (sprinting != this.serverSprintState) {
             if (sprinting)

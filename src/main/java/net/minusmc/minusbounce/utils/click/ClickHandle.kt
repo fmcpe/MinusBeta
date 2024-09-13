@@ -14,6 +14,7 @@ import net.minusmc.minusbounce.utils.click.MathUtil.getVariance
 import net.minusmc.minusbounce.utils.particles.EvictingList
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.util.concurrent.ThreadLocalRandom
 import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.pow
@@ -627,6 +628,26 @@ data class ClickProcessor(
  * MathUtils
  */
 object MathUtil {
+    /**
+     * Method which returns a double between two input numbers
+     *
+     * @param min minimal number
+     * @param max maximal number
+     * @return random between both numbers
+     */
+    fun getRandom(min: Float, max: Float): Float {
+        var min = min
+        var max = max
+        if (min == max) {
+            return min
+        } else if (min > max) {
+            val d = min
+            min = max
+            max = d
+        }
+        return ThreadLocalRandom.current().nextDouble(min.toDouble(), max.toDouble()).toFloat()
+    }
+
     fun wrappedDifference(number1: Double, number2: Double): Double {
         return min(
             abs(number1 - number2),

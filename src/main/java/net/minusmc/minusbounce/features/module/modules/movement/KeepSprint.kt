@@ -18,8 +18,10 @@ class KeepSprint: Module(){
 
     @EventTarget
     fun onKB(event: KnockBackEvent){
-        if(hurtTime.get() && mc.thePlayer.hurtTime == 0){
-            event.cancelEvent()
+        event.isCancelled = true
+
+        if(hurtTime.get() && mc.thePlayer.hurtTime != 0){
+            event.isCancelled = false
         }
     }
 }

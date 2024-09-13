@@ -5,6 +5,7 @@
  */
 package net.minusmc.minusbounce.injection.forge.mixins.client;
 
+import net.fmcpe.viaforge.api.ProtocolFixer;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.MusicTicker;
@@ -24,11 +25,9 @@ import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.chunk.RenderChunk;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.client.renderer.texture.TextureManager;
-import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.client.settings.GameSettings;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.client.shader.Framebuffer;
-import net.minecraft.client.stream.IStream;
 import net.minecraft.crash.CrashReport;
 import net.minecraft.crash.CrashReportCategory;
 import net.minecraft.entity.Entity;
@@ -73,7 +72,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 import java.util.Queue;
-import java.util.concurrent.Callable;
 import java.util.concurrent.FutureTask;
 
 import static net.minecraft.client.Minecraft.getSystemTime;
@@ -83,9 +81,6 @@ public abstract class MixinMinecraft {
 
     @Shadow
     public GuiScreen currentScreen;
-
-    @Shadow
-    private Entity renderViewEntity;
 
     @Shadow
     private boolean fullscreen;
@@ -108,7 +103,8 @@ public abstract class MixinMinecraft {
     @Shadow
     public EffectRenderer effectRenderer;
 
-    @Shadow public EntityRenderer entityRenderer;
+    @Shadow
+    public EntityRenderer entityRenderer;
 
     @Shadow
     public PlayerControllerMP playerController;
@@ -150,16 +146,13 @@ public abstract class MixinMinecraft {
 
     @Shadow
     @Final
-    public FrameTimer field_181542_y;
+    public FrameTimer frameTimer;
 
     @Shadow
-    public long field_181543_z;
+    long startNanoTime;
 
     @Shadow
     public boolean inGameHasFocus;
-
-    @Shadow
-    public abstract IResourceManager getResourceManager();
 
     @Shadow
     private PlayerUsageSnooper usageSnooper = new PlayerUsageSnooper("client", (IPlayerUsage) this, MinecraftServer.getCurrentTimeMillis());
@@ -183,20 +176,10 @@ public abstract class MixinMinecraft {
     private Framebuffer framebufferMc;
 
     @Shadow
-    long startNanoTime = System.nanoTime();
-
-    @Shadow
     protected abstract void checkGLError(String message);
 
     @Shadow
     long debugUpdateTime = getSystemTime();
-
-    @Shadow
-    private IStream stream;
-
-    @Shadow
-    @Final
-    public final FrameTimer frameTimer = new FrameTimer();
 
     @Shadow
     public String debug = "";
@@ -221,7 +204,8 @@ public abstract class MixinMinecraft {
     private static final Logger logger = LogManager.getLogger();
 
     @Shadow
-    private void displayDebugInfo(long elapsedTicksTime) {}
+    private void displayDebugInfo(long elapsedTicksTime) {
+    }
 
     @Shadow
     private long debugCrashKeyPressTime = -1L;
@@ -260,13 +244,16 @@ public abstract class MixinMinecraft {
     private SoundHandler mcSoundHandler;
     @Shadow
     private MusicTicker mcMusicTicker;
+
     @Shadow
     public abstract NetHandlerPlayClient getNetHandler();
+
     @Shadow
     public abstract void setIngameFocus();
 
     @Shadow
-    private void updateDebugProfilerName(int p_updateDebugProfilerName_1_) {}
+    private void updateDebugProfilerName(int p_updateDebugProfilerName_1_) {
+    }
 
     @Shadow
     public abstract void displayInGameMenu();
@@ -278,7 +265,8 @@ public abstract class MixinMinecraft {
     public abstract void displayCrashReport(CrashReport crashReportIn);
 
     @Shadow
-    public void displayGuiScreen(GuiScreen p_displayGuiScreen_1_) {}
+    public void displayGuiScreen(GuiScreen p_displayGuiScreen_1_) {
+    }
 
     @Shadow
     public abstract CrashReport addGraphicsAndWorldToCrashReport(CrashReport theCrash);
@@ -306,11 +294,9 @@ public abstract class MixinMinecraft {
 
     @Inject(method = "run", at = @At("HEAD"))
     private void init(CallbackInfo callbackInfo) {
-        if(displayWidth < 1067)
-            displayWidth = 1067;
+        if (displayWidth < 1067) displayWidth = 1067;
 
-        if(displayHeight < 622)
-            displayHeight = 622;
+        if (displayHeight < 622) displayHeight = 622;
     }
 
     /**
@@ -318,70 +304,49 @@ public abstract class MixinMinecraft {
      * @reason .
      */
     @Overwrite
-    public void run()
-    {
+    public void run() {
         this.running = true;
 
-        try
-        {
+        try {
             this.startGame();
-        }
-        catch (Throwable throwable)
-        {
+        } catch (Throwable throwable) {
             CrashReport crashreport = CrashReport.makeCrashReport(throwable, "Initializing game");
             crashreport.makeCategory("Initialization");
             this.displayCrashReport(this.addGraphicsAndWorldToCrashReport(crashreport));
             return;
         }
 
-        while (true)
-        {
-            try
-            {
-                while (this.running)
-                {
+        while (true) {
+            try {
+                while (this.running) {
                     MinusBounce.eventManager.callEvent(new GameLoop());
-                    if (!this.hasCrashed || this.crashReporter == null)
-                    {
-                        try
-                        {
+                    if (!this.hasCrashed || this.crashReporter == null) {
+                        try {
                             this.runGameLoop();
-                        }
-                        catch (OutOfMemoryError var10)
-                        {
+                        } catch (OutOfMemoryError var10) {
                             this.freeMemory();
                             this.displayGuiScreen(new GuiMemoryErrorScreen());
                             System.gc();
                         }
-                    }
-                    else
-                    {
+                    } else {
                         this.displayCrashReport(this.crashReporter);
                     }
                 }
-            }
-            catch (MinecraftError var12)
-            {
+            } catch (MinecraftError var12) {
                 break;
-            }
-            catch (ReportedException reportedexception)
-            {
+            } catch (ReportedException reportedexception) {
                 this.addGraphicsAndWorldToCrashReport(reportedexception.getCrashReport());
                 this.freeMemory();
-                logger.fatal((String)"Reported exception thrown!", (Throwable)reportedexception);
+                logger.fatal("Reported exception thrown!", reportedexception);
                 this.displayCrashReport(reportedexception.getCrashReport());
                 break;
-            }
-            catch (Throwable throwable1)
-            {
+            } catch (Throwable throwable1) {
                 CrashReport crashreport1 = this.addGraphicsAndWorldToCrashReport(new CrashReport("Unexpected error", throwable1));
                 this.freeMemory();
                 logger.fatal("Unreported exception thrown!", throwable1);
                 this.displayCrashReport(crashreport1);
                 break;
-            }
-            finally
-            {
+            } finally {
                 this.shutdownMinecraftApplet();
             }
 
@@ -407,10 +372,7 @@ public abstract class MixinMinecraft {
     }
 
     @SuppressWarnings("UnstableApiUsage")
-    @Inject(
-        method = "loadWorld(Lnet/minecraft/client/multiplayer/WorldClient;Ljava/lang/String;)V",
-        at = @At(value = "FIELD", target = "Lnet/minecraft/client/Minecraft;theWorld:Lnet/minecraft/client/multiplayer/WorldClient;", opcode = Opcodes.PUTFIELD, shift = At.Shift.AFTER)
-    )
+    @Inject(method = "loadWorld(Lnet/minecraft/client/multiplayer/WorldClient;Ljava/lang/String;)V", at = @At(value = "FIELD", target = "Lnet/minecraft/client/Minecraft;theWorld:Lnet/minecraft/client/multiplayer/WorldClient;", opcode = Opcodes.PUTFIELD, shift = At.Shift.AFTER))
     private void clearRenderCache(CallbackInfo ci) {
         //noinspection ResultOfMethodCallIgnored
         MinecraftForgeClient.getRenderPass(); // Ensure class is loaded, strange accessor issue
@@ -420,7 +382,7 @@ public abstract class MixinMinecraft {
 
     @Inject(method = "displayGuiScreen", at = @At(value = "FIELD", target = "Lnet/minecraft/client/Minecraft;currentScreen:Lnet/minecraft/client/gui/GuiScreen;", shift = At.Shift.AFTER))
     private void displayGuiScreen1(CallbackInfo callbackInfo) {
-        if(currentScreen instanceof net.minecraft.client.gui.GuiMainMenu || (currentScreen != null && currentScreen.getClass().getName().startsWith("net.labymod") && currentScreen.getClass().getSimpleName().equals("ModGuiMainMenu"))) {
+        if (currentScreen instanceof net.minecraft.client.gui.GuiMainMenu || (currentScreen != null && currentScreen.getClass().getName().startsWith("net.labymod") && currentScreen.getClass().getSimpleName().equals("ModGuiMainMenu"))) {
             currentScreen = new GuiMainMenu();
 
             ScaledResolution scaledResolution = new ScaledResolution(Minecraft.getMinecraft());
@@ -448,33 +410,27 @@ public abstract class MixinMinecraft {
         long i = System.nanoTime();
         this.mcProfiler.startSection("root");
 
-        if (Display.isCreated() && Display.isCloseRequested())
-        {
+        if (Display.isCreated() && Display.isCloseRequested()) {
             this.shutdown();
         }
 
-        if (this.isGamePaused && this.theWorld != null)
-        {
+        if (this.isGamePaused && this.theWorld != null) {
             float f = this.timer.renderPartialTicks;
             this.timer.updateTimer();
             this.timer.renderPartialTicks = f;
             float f2 = this.timer.renderPartialTicks;
             this.minusBounce$fakeTimer.updateTimer();
             this.minusBounce$fakeTimer.renderPartialTicks = f2;
-        }
-        else
-        {
+        } else {
             this.timer.updateTimer();
             this.minusBounce$fakeTimer.updateTimer();
         }
 
         this.mcProfiler.startSection("scheduledExecutables");
 
-        synchronized (this.scheduledTasks)
-        {
-            while (!this.scheduledTasks.isEmpty())
-            {
-                Util.runTask((FutureTask)this.scheduledTasks.poll(), logger);
+        synchronized (this.scheduledTasks) {
+            while (!this.scheduledTasks.isEmpty()) {
+                Util.runTask((FutureTask) this.scheduledTasks.poll(), logger);
             }
         }
 
@@ -482,13 +438,12 @@ public abstract class MixinMinecraft {
         long l = System.nanoTime();
         this.mcProfiler.startSection("tick");
 
-        for (int j = 0; j < this.timer.elapsedTicks; ++j)
-        {
+        for (int j = 0; j < this.timer.elapsedTicks; ++j) {
             if (TimerRange.handleTick()) continue;
             this.runTick();
         }
 
-        for (int j = 0; j < this.minusBounce$fakeTimer.elapsedTicks; ++j){
+        for (int j = 0; j < this.minusBounce$fakeTimer.elapsedTicks; ++j) {
             MinusBounce.eventManager.callEvent(new TimeDelay());
         }
 
@@ -505,15 +460,13 @@ public abstract class MixinMinecraft {
         this.mcProfiler.startSection("display");
         GlStateManager.enableTexture2D();
 
-        if (this.thePlayer != null && this.thePlayer.isEntityInsideOpaqueBlock())
-        {
+        if (this.thePlayer != null && this.thePlayer.isEntityInsideOpaqueBlock()) {
             this.gameSettings.thirdPersonView = 0;
         }
 
         this.mcProfiler.endSection();
 
-        if (!this.skipRenderWorld)
-        {
+        if (!this.skipRenderWorld) {
             MinusBounce.eventManager.callEvent(new StartRenderTickEvent());
             this.mcProfiler.endStartSection("gameRenderer");
             this.entityRenderer.updateCameraAndRender(this.timer.renderPartialTicks, i);
@@ -523,18 +476,14 @@ public abstract class MixinMinecraft {
 
         this.mcProfiler.endSection();
 
-        if (this.gameSettings.showDebugInfo && this.gameSettings.showDebugProfilerChart && !this.gameSettings.hideGUI)
-        {
-            if (!this.mcProfiler.profilingEnabled)
-            {
+        if (this.gameSettings.showDebugInfo && this.gameSettings.showDebugProfilerChart && !this.gameSettings.hideGUI) {
+            if (!this.mcProfiler.profilingEnabled) {
                 this.mcProfiler.clearProfiling();
             }
 
             this.mcProfiler.profilingEnabled = true;
             this.displayDebugInfo(i1);
-        }
-        else
-        {
+        } else {
             this.mcProfiler.profilingEnabled = false;
             this.prevFrameTime = System.nanoTime();
         }
@@ -560,26 +509,23 @@ public abstract class MixinMinecraft {
         ++this.fpsCounter;
         this.isGamePaused = this.isSingleplayer() && this.currentScreen != null && this.currentScreen.doesGuiPauseGame() && !this.theIntegratedServer.getPublic();
         long k = System.nanoTime();
-        this.field_181542_y.addFrame(k - this.field_181543_z);
-        this.field_181543_z = k;
+        this.frameTimer.addFrame(k - this.startNanoTime);
+        this.startNanoTime = k;
 
-        while (Minecraft.getSystemTime() >= this.debugUpdateTime + 1000L)
-        {
+        while (Minecraft.getSystemTime() >= this.debugUpdateTime + 1000L) {
             debugFPS = this.fpsCounter;
-            this.debug = String.format("%d fps (%d chunk update%s) T: %s%s%s%s%s", Integer.valueOf(debugFPS), Integer.valueOf(RenderChunk.renderChunksUpdated), RenderChunk.renderChunksUpdated != 1 ? "s" : "", (float)this.gameSettings.limitFramerate == GameSettings.Options.FRAMERATE_LIMIT.getValueMax() ? "inf" : Integer.valueOf(this.gameSettings.limitFramerate), this.gameSettings.enableVsync ? " vsync" : "", this.gameSettings.fancyGraphics ? "" : " fast", this.gameSettings.clouds == 0 ? "" : (this.gameSettings.clouds == 1 ? " fast-clouds" : " fancy-clouds"), OpenGlHelper.useVbo() ? " vbo" : "");
+            this.debug = String.format("%d fps (%d chunk update%s) T: %s%s%s%s%s", debugFPS, RenderChunk.renderChunksUpdated, RenderChunk.renderChunksUpdated != 1 ? "s" : "", (float) this.gameSettings.limitFramerate == GameSettings.Options.FRAMERATE_LIMIT.getValueMax() ? "inf" : Integer.valueOf(this.gameSettings.limitFramerate), this.gameSettings.enableVsync ? " vsync" : "", this.gameSettings.fancyGraphics ? "" : " fast", this.gameSettings.clouds == 0 ? "" : (this.gameSettings.clouds == 1 ? " fast-clouds" : " fancy-clouds"), OpenGlHelper.useVbo() ? " vbo" : "");
             RenderChunk.renderChunksUpdated = 0;
             this.debugUpdateTime += 1000L;
             this.fpsCounter = 0;
             this.usageSnooper.addMemoryStatsToSnooper();
 
-            if (!this.usageSnooper.isSnooperRunning())
-            {
+            if (!this.usageSnooper.isSnooperRunning()) {
                 this.usageSnooper.startSnooper();
             }
         }
 
-        if (this.isFramerateLimitBelowMax())
-        {
+        if (this.isFramerateLimitBelowMax()) {
             this.mcProfiler.startSection("fpslimit_wait");
             Display.sync(this.getLimitFramerate());
             this.mcProfiler.endSection();
@@ -597,20 +543,17 @@ public abstract class MixinMinecraft {
      * @reason .
      */
     @Overwrite
-    public void runTick() throws IOException
-    {
+    public void runTick() throws IOException {
         MinecraftInstance.Companion.setRunTimeTicks(MinecraftInstance.Companion.getRunTimeTicks() + 1);
         MinusBounce.eventManager.callEvent(new TickEvent());
 
-        if (this.rightClickDelayTimer > 0)
-        {
+        if (this.rightClickDelayTimer > 0) {
             --this.rightClickDelayTimer;
         }
 
         this.mcProfiler.startSection("gui");
 
-        if (!this.isGamePaused)
-        {
+        if (!this.isGamePaused) {
             this.ingameGUI.updateTick();
         }
 
@@ -618,310 +561,228 @@ public abstract class MixinMinecraft {
         this.entityRenderer.getMouseOver(1.0F);
         this.mcProfiler.startSection("gameMode");
 
-        if (!this.isGamePaused && this.theWorld != null)
-        {
+        if (!this.isGamePaused && this.theWorld != null) {
             this.playerController.updateController();
         }
 
         this.mcProfiler.endStartSection("textures");
 
-        if (!this.isGamePaused)
-        {
+        if (!this.isGamePaused) {
             this.renderEngine.tick();
         }
 
-        if (this.currentScreen == null && this.thePlayer != null)
-        {
-            if (this.thePlayer.getHealth() <= 0.0F)
-            {
+        if (this.currentScreen == null && this.thePlayer != null) {
+            if (this.thePlayer.getHealth() <= 0.0F) {
                 this.displayGuiScreen(null);
-            }
-            else if (this.thePlayer.isPlayerSleeping() && this.theWorld != null)
-            {
+            } else if (this.thePlayer.isPlayerSleeping() && this.theWorld != null) {
                 this.displayGuiScreen(new GuiSleepMP());
             }
-        }
-        else if (this.currentScreen != null && this.currentScreen instanceof GuiSleepMP && !this.thePlayer.isPlayerSleeping())
-        {
+        } else if (this.currentScreen != null && this.currentScreen instanceof GuiSleepMP && !this.thePlayer.isPlayerSleeping()) {
             this.displayGuiScreen(null);
         }
 
-        if (this.currentScreen != null)
-        {
+        if (this.currentScreen != null) {
             this.leftClickCounter = 10000;
         }
 
-        if (this.currentScreen != null)
-        {
-            try
-            {
+        if (this.currentScreen != null) {
+            try {
                 this.currentScreen.handleInput();
-            }
-            catch (Throwable throwable1)
-            {
+            } catch (Throwable throwable1) {
                 CrashReport crashreport = CrashReport.makeCrashReport(throwable1, "Updating screen events");
                 CrashReportCategory crashreportcategory = crashreport.makeCategory("Affected screen");
-                crashreportcategory.addCrashSectionCallable("Screen name", new Callable<String>() {
-                    public String call() throws Exception {
-                        return Minecraft.getMinecraft().currentScreen.getClass().getCanonicalName();
-                    }
-                });
+                crashreportcategory.addCrashSectionCallable("Screen name", () -> Minecraft.getMinecraft().currentScreen.getClass().getCanonicalName());
                 throw new ReportedException(crashreport);
             }
 
-            if (this.currentScreen != null)
-            {
-                try
-                {
+            if (this.currentScreen != null) {
+                try {
                     this.currentScreen.updateScreen();
-                }
-                catch (Throwable throwable)
-                {
+                } catch (Throwable throwable) {
                     CrashReport crashreport1 = CrashReport.makeCrashReport(throwable, "Ticking screen");
                     CrashReportCategory crashreportcategory1 = crashreport1.makeCategory("Affected screen");
-                    crashreportcategory1.addCrashSectionCallable("Screen name", new Callable<String>() {
-                        public String call() throws Exception {
-                            return Minecraft.getMinecraft().currentScreen.getClass().getCanonicalName();
-                        }
-                    });
+                    crashreportcategory1.addCrashSectionCallable("Screen name", () -> Minecraft.getMinecraft().currentScreen.getClass().getCanonicalName());
                     throw new ReportedException(crashreport1);
                 }
             }
         }
 
-        if (this.currentScreen == null || this.currentScreen.allowUserInput)
-        {
+        if (this.currentScreen == null || this.currentScreen.allowUserInput) {
             this.mcProfiler.endStartSection("mouse");
 
-            while (Mouse.next())
-            {
+            while (Mouse.next()) {
                 int i = Mouse.getEventButton();
                 KeyBinding.setKeyBindState(i - 100, Mouse.getEventButtonState());
 
-                if (Mouse.getEventButtonState())
-                {
-                    if (this.thePlayer.isSpectator() && i == 2)
-                    {
+                if (Mouse.getEventButtonState()) {
+                    if (this.thePlayer.isSpectator() && i == 2) {
                         this.ingameGUI.getSpectatorGui().func_175261_b();
-                    }
-                    else
-                    {
+                    } else {
                         KeyBinding.onTick(i - 100);
                     }
                 }
 
                 long i1 = getSystemTime() - this.systemTime;
 
-                if (i1 <= 200L)
-                {
+                if (i1 <= 200L) {
                     int j = Mouse.getEventDWheel();
 
-                    if (j != 0)
-                    {
-                        if (this.thePlayer.isSpectator())
-                        {
+                    if (j != 0) {
+                        if (this.thePlayer.isSpectator()) {
                             j = j < 0 ? -1 : 1;
 
-                            if (this.ingameGUI.getSpectatorGui().func_175262_a())
-                            {
+                            if (this.ingameGUI.getSpectatorGui().func_175262_a()) {
                                 this.ingameGUI.getSpectatorGui().func_175259_b(-j);
-                            }
-                            else
-                            {
-                                float f = MathHelper.clamp_float(this.thePlayer.capabilities.getFlySpeed() + (float)j * 0.005F, 0.0F, 0.2F);
+                            } else {
+                                float f = MathHelper.clamp_float(this.thePlayer.capabilities.getFlySpeed() + (float) j * 0.005F, 0.0F, 0.2F);
                                 this.thePlayer.capabilities.setFlySpeed(f);
                             }
-                        }
-                        else
-                        {
+                        } else {
                             this.thePlayer.inventory.changeCurrentItem(j);
                         }
                     }
 
-                    if (this.currentScreen == null)
-                    {
-                        if (!this.inGameHasFocus && Mouse.getEventButtonState())
-                        {
+                    if (this.currentScreen == null) {
+                        if (!this.inGameHasFocus && Mouse.getEventButtonState()) {
                             this.setIngameFocus();
                         }
-                    }
-                    else if (this.currentScreen != null)
-                    {
+                    } else {
                         this.currentScreen.handleMouseInput();
                     }
                 }
             }
 
-            if (this.leftClickCounter > 0)
-            {
+            if (this.leftClickCounter > 0) {
                 --this.leftClickCounter;
             }
 
             this.mcProfiler.endStartSection("keyboard");
 
-            while (Keyboard.next())
-            {
+            while (Keyboard.next()) {
                 int k = Keyboard.getEventKey() == 0 ? Keyboard.getEventCharacter() + 256 : Keyboard.getEventKey();
                 KeyBinding.setKeyBindState(k, Keyboard.getEventKeyState());
 
-                if (Keyboard.getEventKeyState())
-                {
+                if (Keyboard.getEventKeyState()) {
                     KeyBinding.onTick(k);
                 }
 
-                if (this.debugCrashKeyPressTime > 0L)
-                {
-                    if (getSystemTime() - this.debugCrashKeyPressTime >= 6000L)
-                    {
+                if (this.debugCrashKeyPressTime > 0L) {
+                    if (getSystemTime() - this.debugCrashKeyPressTime >= 6000L) {
                         throw new ReportedException(new CrashReport("Manually triggered debug crash", new Throwable()));
                     }
 
-                    if (!Keyboard.isKeyDown(46) || !Keyboard.isKeyDown(61))
-                    {
+                    if (!Keyboard.isKeyDown(46) || !Keyboard.isKeyDown(61)) {
                         this.debugCrashKeyPressTime = -1L;
                     }
-                }
-                else if (Keyboard.isKeyDown(46) && Keyboard.isKeyDown(61))
-                {
+                } else if (Keyboard.isKeyDown(46) && Keyboard.isKeyDown(61)) {
                     this.debugCrashKeyPressTime = getSystemTime();
                 }
 
                 this.dispatchKeypresses();
 
-                if (Keyboard.getEventKeyState())
-                {
+                if (Keyboard.getEventKeyState()) {
 
-                    if(Keyboard.getEventKeyState() && currentScreen == null)
+                    if (currentScreen == null)
                         MinusBounce.eventManager.callEvent(new KeyEvent(Keyboard.getEventKey() == 0 ? Keyboard.getEventCharacter() + 256 : Keyboard.getEventKey()));
 
-                    if (k == 62 && this.entityRenderer != null)
-                    {
+                    if (k == 62 && this.entityRenderer != null) {
                         this.entityRenderer.switchUseShader();
                     }
 
-                    if (this.currentScreen != null)
-                    {
+                    if (this.currentScreen != null) {
                         this.currentScreen.handleKeyboardInput();
-                    }
-                    else
-                    {
-                        if (k == 1)
-                        {
+                    } else {
+                        if (k == 1) {
                             this.displayInGameMenu();
                         }
 
-                        if (k == 32 && Keyboard.isKeyDown(61) && this.ingameGUI != null)
-                        {
+                        if (k == 32 && Keyboard.isKeyDown(61) && this.ingameGUI != null) {
                             this.ingameGUI.getChatGUI().clearChatMessages();
                         }
 
-                        if (k == 31 && Keyboard.isKeyDown(61))
-                        {
+                        if (k == 31 && Keyboard.isKeyDown(61)) {
                             this.refreshResources();
                         }
 
-                        if (k == 17 && Keyboard.isKeyDown(61))
-                        {
+                        if (k == 17 && Keyboard.isKeyDown(61)) {
                         }
 
-                        if (k == 18 && Keyboard.isKeyDown(61))
-                        {
+                        if (k == 18 && Keyboard.isKeyDown(61)) {
                         }
 
-                        if (k == 47 && Keyboard.isKeyDown(61))
-                        {
+                        if (k == 47 && Keyboard.isKeyDown(61)) {
                         }
 
-                        if (k == 38 && Keyboard.isKeyDown(61))
-                        {
+                        if (k == 38 && Keyboard.isKeyDown(61)) {
                         }
 
-                        if (k == 22 && Keyboard.isKeyDown(61))
-                        {
+                        if (k == 22 && Keyboard.isKeyDown(61)) {
                         }
 
-                        if (k == 20 && Keyboard.isKeyDown(61))
-                        {
+                        if (k == 20 && Keyboard.isKeyDown(61)) {
                             this.refreshResources();
                         }
 
-                        if (k == 33 && Keyboard.isKeyDown(61))
-                        {
+                        if (k == 33 && Keyboard.isKeyDown(61)) {
                             this.gameSettings.setOptionValue(GameSettings.Options.RENDER_DISTANCE, GuiScreen.isShiftKeyDown() ? -1 : 1);
                         }
 
-                        if (k == 30 && Keyboard.isKeyDown(61))
-                        {
+                        if (k == 30 && Keyboard.isKeyDown(61)) {
                             this.renderGlobal.loadRenderers();
                         }
 
-                        if (k == 35 && Keyboard.isKeyDown(61))
-                        {
+                        if (k == 35 && Keyboard.isKeyDown(61)) {
                             this.gameSettings.advancedItemTooltips = !this.gameSettings.advancedItemTooltips;
                             this.gameSettings.saveOptions();
                         }
 
-                        if (k == 48 && Keyboard.isKeyDown(61))
-                        {
+                        if (k == 48 && Keyboard.isKeyDown(61)) {
                             this.renderManager.setDebugBoundingBox(!this.renderManager.isDebugBoundingBox());
                         }
 
-                        if (k == 25 && Keyboard.isKeyDown(61))
-                        {
+                        if (k == 25 && Keyboard.isKeyDown(61)) {
                             this.gameSettings.pauseOnLostFocus = !this.gameSettings.pauseOnLostFocus;
                             this.gameSettings.saveOptions();
                         }
 
-                        if (k == 59)
-                        {
+                        if (k == 59) {
                             this.gameSettings.hideGUI = !this.gameSettings.hideGUI;
                         }
 
-                        if (k == 61)
-                        {
+                        if (k == 61) {
                             this.gameSettings.showDebugInfo = !this.gameSettings.showDebugInfo;
                             this.gameSettings.showDebugProfilerChart = GuiScreen.isShiftKeyDown();
                             this.gameSettings.showLagometer = GuiScreen.isAltKeyDown();
                         }
 
-                        if (this.gameSettings.keyBindTogglePerspective.isPressed())
-                        {
+                        if (this.gameSettings.keyBindTogglePerspective.isPressed()) {
                             ++this.gameSettings.thirdPersonView;
 
-                            if (this.gameSettings.thirdPersonView > 2)
-                            {
+                            if (this.gameSettings.thirdPersonView > 2) {
                                 this.gameSettings.thirdPersonView = 0;
                             }
 
-                            if (this.gameSettings.thirdPersonView == 0)
-                            {
+                            if (this.gameSettings.thirdPersonView == 0) {
                                 this.entityRenderer.loadEntityShader(this.getRenderViewEntity());
-                            }
-                            else if (this.gameSettings.thirdPersonView == 1)
-                            {
+                            } else if (this.gameSettings.thirdPersonView == 1) {
                                 this.entityRenderer.loadEntityShader(null);
                             }
 
                             this.renderGlobal.setDisplayListEntitiesDirty();
                         }
 
-                        if (this.gameSettings.keyBindSmoothCamera.isPressed())
-                        {
+                        if (this.gameSettings.keyBindSmoothCamera.isPressed()) {
                             this.gameSettings.smoothCamera = !this.gameSettings.smoothCamera;
                         }
                     }
 
-                    if (this.gameSettings.showDebugInfo && this.gameSettings.showDebugProfilerChart)
-                    {
-                        if (k == 11)
-                        {
+                    if (this.gameSettings.showDebugInfo && this.gameSettings.showDebugProfilerChart) {
+                        if (k == 11) {
                             this.updateDebugProfilerName(0);
                         }
 
-                        for (int j1 = 0; j1 < 9; ++j1)
-                        {
-                            if (k == 2 + j1)
-                            {
+                        for (int j1 = 0; j1 < 9; ++j1) {
+                            if (k == 2 + j1) {
                                 this.updateDebugProfilerName(j1 + 1);
                             }
                         }
@@ -929,16 +790,11 @@ public abstract class MixinMinecraft {
                 }
             }
 
-            for (int l = 0; l < 9; ++l)
-            {
-                if (this.gameSettings.keyBindsHotbar[l].isPressed())
-                {
-                    if (this.thePlayer.isSpectator())
-                    {
+            for (int l = 0; l < 9; ++l) {
+                if (this.gameSettings.keyBindsHotbar[l].isPressed()) {
+                    if (this.thePlayer.isSpectator()) {
                         this.ingameGUI.getSpectatorGui().func_175260_a(l);
-                    }
-                    else
-                    {
+                    } else {
                         this.thePlayer.inventory.currentItem = l;
                     }
                 }
@@ -946,34 +802,26 @@ public abstract class MixinMinecraft {
 
             boolean flag = this.gameSettings.chatVisibility != EntityPlayer.EnumChatVisibility.HIDDEN;
 
-            while (this.gameSettings.keyBindInventory.isPressed())
-            {
-                if (this.playerController.isRidingHorse())
-                {
+            while (this.gameSettings.keyBindInventory.isPressed()) {
+                if (this.playerController.isRidingHorse()) {
                     this.thePlayer.sendHorseInventory();
-                }
-                else
-                {
+                } else {
                     this.getNetHandler().addToSendQueue(new C16PacketClientStatus(C16PacketClientStatus.EnumState.OPEN_INVENTORY_ACHIEVEMENT));
                     this.displayGuiScreen(new GuiInventory(this.thePlayer));
                 }
             }
 
-            while (this.gameSettings.keyBindDrop.isPressed())
-            {
-                if (!this.thePlayer.isSpectator())
-                {
+            while (this.gameSettings.keyBindDrop.isPressed()) {
+                if (!this.thePlayer.isSpectator()) {
                     this.thePlayer.dropOneItem(GuiScreen.isCtrlKeyDown());
                 }
             }
 
-            while (this.gameSettings.keyBindChat.isPressed() && flag)
-            {
+            while (this.gameSettings.keyBindChat.isPressed() && flag) {
                 this.displayGuiScreen(new GuiChat());
             }
 
-            if (this.currentScreen == null && this.gameSettings.keyBindCommand.isPressed() && flag)
-            {
+            if (this.currentScreen == null && this.gameSettings.keyBindCommand.isPressed() && flag) {
                 this.displayGuiScreen(new GuiChat("/"));
             }
 
@@ -982,45 +830,34 @@ public abstract class MixinMinecraft {
             MinusBounce.eventManager.callEvent(event);
 
             if (!event.isCancelled()) {
-                if (this.thePlayer.isUsingItem())
-                {
-                    if (!this.gameSettings.keyBindUseItem.isKeyDown())
-                    {
+                if (this.thePlayer.isUsingItem()) {
+                    if (!this.gameSettings.keyBindUseItem.isKeyDown()) {
                         this.playerController.onStoppedUsingItem(this.thePlayer);
                     }
 
-                    while (this.gameSettings.keyBindAttack.isPressed())
-                    {
+                    while (this.gameSettings.keyBindAttack.isPressed()) {
                     }
 
-                    while (this.gameSettings.keyBindUseItem.isPressed())
-                    {
+                    while (this.gameSettings.keyBindUseItem.isPressed()) {
                     }
 
-                    while (this.gameSettings.keyBindPickBlock.isPressed())
-                    {
+                    while (this.gameSettings.keyBindPickBlock.isPressed()) {
                     }
-                }
-                else
-                {
-                    while (this.gameSettings.keyBindAttack.isPressed())
-                    {
+                } else {
+                    while (this.gameSettings.keyBindAttack.isPressed()) {
                         this.clickMouse();
                     }
 
-                    while (this.gameSettings.keyBindUseItem.isPressed())
-                    {
+                    while (this.gameSettings.keyBindUseItem.isPressed()) {
                         this.rightClickMouse();
                     }
 
-                    while (this.gameSettings.keyBindPickBlock.isPressed())
-                    {
+                    while (this.gameSettings.keyBindPickBlock.isPressed()) {
                         this.middleClickMouse();
                     }
                 }
 
-                if (this.gameSettings.keyBindUseItem.isKeyDown() && this.rightClickDelayTimer == 0 && !this.thePlayer.isUsingItem())
-                {
+                if (this.gameSettings.keyBindUseItem.isKeyDown() && this.rightClickDelayTimer == 0 && !this.thePlayer.isUsingItem()) {
                     this.rightClickMouse();
                 }
 
@@ -1028,15 +865,12 @@ public abstract class MixinMinecraft {
             }
         }
 
-        if (this.theWorld != null)
-        {
-            if (this.thePlayer != null)
-            {
+        if (this.theWorld != null) {
+            if (this.thePlayer != null) {
                 MinusBounce.eventManager.callEvent(new EventTick());
                 ++this.joinPlayerCounter;
 
-                if (this.joinPlayerCounter == 30)
-                {
+                if (this.joinPlayerCounter == 30) {
                     this.joinPlayerCounter = 0;
                     this.theWorld.joinEntityInSurroundings(this.thePlayer);
                 }
@@ -1044,62 +878,47 @@ public abstract class MixinMinecraft {
 
             this.mcProfiler.endStartSection("gameRenderer");
 
-            if (!this.isGamePaused)
-            {
+            if (!this.isGamePaused) {
                 this.entityRenderer.updateRenderer();
             }
 
             this.mcProfiler.endStartSection("levelRenderer");
 
-            if (!this.isGamePaused)
-            {
+            if (!this.isGamePaused) {
                 this.renderGlobal.updateClouds();
             }
 
             this.mcProfiler.endStartSection("level");
 
-            if (!this.isGamePaused)
-            {
-                if (this.theWorld.getLastLightningBolt() > 0)
-                {
+            if (!this.isGamePaused) {
+                if (this.theWorld.getLastLightningBolt() > 0) {
                     this.theWorld.setLastLightningBolt(this.theWorld.getLastLightningBolt() - 1);
                 }
 
                 this.theWorld.updateEntities();
             }
-        }
-        else if (this.entityRenderer.isShaderActive())
-        {
+        } else if (this.entityRenderer.isShaderActive()) {
             this.entityRenderer.stopUseShader();
         }
 
-        if (!this.isGamePaused)
-        {
+        if (!this.isGamePaused) {
             this.mcMusicTicker.update();
             this.mcSoundHandler.update();
         }
 
-        if (this.theWorld != null)
-        {
-            if (!this.isGamePaused)
-            {
+        if (this.theWorld != null) {
+            if (!this.isGamePaused) {
                 this.theWorld.setAllowedSpawnTypes(this.theWorld.getDifficulty() != EnumDifficulty.PEACEFUL, true);
 
-                try
-                {
+                try {
                     this.theWorld.tick();
-                }
-                catch (Throwable throwable2)
-                {
+                } catch (Throwable throwable2) {
                     CrashReport crashreport2 = CrashReport.makeCrashReport(throwable2, "Exception in world tick");
 
-                    if (this.theWorld == null)
-                    {
+                    if (this.theWorld == null) {
                         CrashReportCategory crashreportcategory2 = crashreport2.makeCategory("Affected level");
                         crashreportcategory2.addCrashSection("Problem", "Level is null!");
-                    }
-                    else
-                    {
+                    } else {
                         this.theWorld.addWorldInfoToCrashReport(crashreport2);
                     }
 
@@ -1109,20 +928,16 @@ public abstract class MixinMinecraft {
 
             this.mcProfiler.endStartSection("animateTick");
 
-            if (!this.isGamePaused && this.theWorld != null)
-            {
+            if (!this.isGamePaused && this.theWorld != null) {
                 this.theWorld.doVoidFogParticles(MathHelper.floor_double(this.thePlayer.posX), MathHelper.floor_double(this.thePlayer.posY), MathHelper.floor_double(this.thePlayer.posZ));
             }
 
             this.mcProfiler.endStartSection("particles");
 
-            if (!this.isGamePaused)
-            {
+            if (!this.isGamePaused) {
                 this.effectRenderer.updateEffects();
             }
-        }
-        else if (this.myNetworkManager != null)
-        {
+        } else if (this.myNetworkManager != null) {
             this.mcProfiler.endStartSection("pendingConnection");
             this.myNetworkManager.processReceivedPackets();
         }
@@ -1133,9 +948,9 @@ public abstract class MixinMinecraft {
 
     @Inject(method = "setWindowIcon", at = @At("HEAD"), cancellable = true)
     private void setWindowIcon(CallbackInfo callbackInfo) {
-        if(Util.getOSType() != Util.EnumOS.OSX) {
+        if (Util.getOSType() != Util.EnumOS.OSX) {
             final ByteBuffer[] liquidBounceFavicon = IconUtils.INSTANCE.getFavicon();
-            if(liquidBounceFavicon != null) {
+            if (liquidBounceFavicon != null) {
                 Display.setIcon(liquidBounceFavicon);
                 callbackInfo.cancel();
             }
@@ -1148,7 +963,7 @@ public abstract class MixinMinecraft {
     }
 
     @Inject(method = "clickMouse", at = @At("HEAD"))
-    private void clickMouse(CallbackInfo callbackInfo) {
+    private void mouse(CallbackInfo callbackInfo) {
         CPSCounter.INSTANCE.registerClick(CPSCounter.MouseButton.LEFT);
 
         if (Patcher.INSTANCE.getNoHitDelay().get() || Objects.requireNonNull(MinusBounce.moduleManager.getModule(AutoClicker.class)).getState() || Objects.requireNonNull(MinusBounce.moduleManager.getModule(KillAura.class)).getState()) {
@@ -1196,22 +1011,21 @@ public abstract class MixinMinecraft {
      */
     @Overwrite
     public void sendClickBlockToController(boolean leftClick) {
-        if(!leftClick)
-            this.leftClickCounter = 0;
+        if (!leftClick) this.leftClickCounter = 0;
 
         if (this.leftClickCounter <= 0 && (!this.thePlayer.isUsingItem() || MinusBounce.moduleManager.getModule(MultiActions.class).getState())) {
-            if(leftClick && this.objectMouseOver != null && this.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
+            if (leftClick && this.objectMouseOver != null && this.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
                 BlockPos blockPos = this.objectMouseOver.getBlockPos();
 
-                if(this.leftClickCounter == 0 && theWorld.getBlockState(objectMouseOver.getBlockPos()).getBlock().getMaterial() != Material.air) {
+                if (this.leftClickCounter == 0 && theWorld.getBlockState(objectMouseOver.getBlockPos()).getBlock().getMaterial() != Material.air) {
                     MinusBounce.eventManager.callEvent(new ClickBlockEvent(objectMouseOver.getBlockPos(), this.objectMouseOver.sideHit));
                 }
 
-                if(this.leftClickCounter == 0) {
+                if (this.leftClickCounter == 0) {
                     MinusBounce.eventManager.callEvent(new ClickBlockEvent(blockPos, this.objectMouseOver.sideHit));
                 }
 
-                if(this.theWorld.getBlockState(blockPos).getBlock().getMaterial() != Material.air && this.playerController.onPlayerDamageBlock(blockPos, this.objectMouseOver.sideHit)) {
+                if (this.theWorld.getBlockState(blockPos).getBlock().getMaterial() != Material.air && this.playerController.onPlayerDamageBlock(blockPos, this.objectMouseOver.sideHit)) {
                     this.effectRenderer.addBlockHitEffects(blockPos, this.objectMouseOver.sideHit);
                     this.thePlayer.swingItem();
                 }
@@ -1219,6 +1033,48 @@ public abstract class MixinMinecraft {
                 this.playerController.resetBlockRemoving();
             }
         }
+    }
+
+    /**
+     * @author As_pw
+     * @reason Attack Order Packet Fix
+     */
+    @Inject(method = "clickMouse", at = @At("HEAD"), cancellable = true)
+    private void clickMouse(CallbackInfo ci) {
+        if (this.leftClickCounter <= 0) {
+            if (this.objectMouseOver != null && Objects.requireNonNull(this.objectMouseOver.typeOfHit) != MovingObjectPosition.MovingObjectType.ENTITY) {
+                this.thePlayer.swingItem();
+            }
+
+            if (this.objectMouseOver != null) {
+                switch (this.objectMouseOver.typeOfHit) {
+                    case ENTITY:
+                        ProtocolFixer.sendFixedAttack(this.thePlayer, this.objectMouseOver.entityHit);
+                        break;
+
+                    case BLOCK:
+                        BlockPos blockpos = this.objectMouseOver.getBlockPos();
+
+                        if (this.theWorld.getBlockState(blockpos).getBlock().getMaterial() != Material.air) {
+                            this.playerController.clickBlock(blockpos, this.objectMouseOver.sideHit);
+                            break;
+                        }
+
+                    case MISS:
+                    default:
+                        if (this.playerController.isNotCreative()) {
+                            this.leftClickCounter = 10;
+                        }
+                }
+            }
+        }
+
+        ci.cancel();
+    }
+
+    @Redirect(method = "clickMouse", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/entity/EntityPlayerSP;swingItem()V"))
+    private void fixAttackOrder_VanillaSwing(EntityPlayerSP instance) {
+        ProtocolFixer.sendConditionalSwing(this.objectMouseOver);
     }
 
     /**

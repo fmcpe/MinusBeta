@@ -8,7 +8,7 @@ package net.minusmc.minusbounce.features.module.modules.movement
 import net.minecraft.client.settings.GameSettings
 import net.minusmc.minusbounce.MinusBounce
 import net.minusmc.minusbounce.event.EventTarget
-import net.minusmc.minusbounce.event.EventTick
+import net.minusmc.minusbounce.event.TickEvent
 import net.minusmc.minusbounce.features.module.Module
 import net.minusmc.minusbounce.features.module.ModuleCategory
 import net.minusmc.minusbounce.features.module.ModuleInfo
@@ -19,7 +19,7 @@ import net.minusmc.minusbounce.features.module.modules.world.Scaffold
 @ModuleInfo(name = "Sprint", description = "Automatically sprints all the time.", category = ModuleCategory.MOVEMENT)
 class Sprint : Module(){
     @EventTarget
-    fun onUpdate(event: EventTick){
+    fun onUpdate(event: TickEvent){
         mc.gameSettings.keyBindSprint.pressed = !(MinusBounce.moduleManager.getModule(Scaffold::class.java) ?: return).state
     }
 

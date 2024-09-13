@@ -117,6 +117,11 @@ class Velocity : Module() {
         mode.onRender(e)
     }
 
+    @EventTarget
+    fun onPostVelocity(e: PostVelocityEvent){
+        mode.onPostVelocity(e)
+    }
+
     @EventTarget(priority = -5)
     fun onTick(e: PreUpdateEvent){
         mode.onPreUpdate()

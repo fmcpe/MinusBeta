@@ -13,6 +13,7 @@ repositories {
     mavenCentral()
     maven { url = "https://maven.minecraftforge.net/" }
     maven { url = "https://repo.spongepowered.org/repository/maven-public/" }
+	maven { url = "https://repo.viaversion.com" }
     maven { url = "https://jitpack.io/" }
 }
 
@@ -65,6 +66,19 @@ dependencies {
 
     include 'com.github.TheAltening:TheAltening4j:d0771f42d3'
     include 'com.github.TheAltening:TheAlteningAuth4j:-SNAPSHOT'
+	
+	include "com.viaversion:viaversion-common:${project.viaversion_version}"
+    include "com.viaversion:viabackwards-common:${project.viabackwards_version}"
+    include "com.viaversion:viarewind-common:${project.viarewind_version}"
+    include ("net.raphimc:ViaLegacy:${project.vialegacy_version}") {
+        exclude group: "com.google.code.gson", module: "gson"
+    }
+    include ("net.raphimc:ViaLoader:${project.vialoader_version}") {
+        exclude module: "guava"
+    }
+
+    include "org.slf4j:slf4j-api:${project.slf4j_version}"
+    include "org.yaml:snakeyaml:${project.snake_yml_version}"
 }
 
 shadowJar {

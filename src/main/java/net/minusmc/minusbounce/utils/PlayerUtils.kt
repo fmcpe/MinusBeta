@@ -23,7 +23,35 @@ import net.minusmc.minusbounce.utils.MinecraftInstance.Companion.mc
 
 
 object PlayerUtils {
-	fun getSlimeSlot(): Int {
+
+    private val GOOD_POTIONS = object : HashMap<Int, Int>() {
+        init {
+            put(6, 1) // Instant Health
+            put(10, 2) // Regeneration
+            put(11, 3) // Resistance
+            put(21, 4) // Health Boost
+            put(22, 5) // Absorption
+            put(23, 6) // Saturation
+            put(5, 7) // Strength
+            put(1, 8) // Speed
+            put(12, 9) // Fire Resistance
+            put(14, 10) // Invisibility
+            put(3, 11) // Haste
+            put(13, 12) // Water Breathing
+        }
+    }
+
+    /**
+     * Checks if a potion is good
+     *
+     * @return good potion
+     */
+    fun goodPotion(id: Int): Boolean {
+        return GOOD_POTIONS.containsKey(id)
+    }
+
+
+    fun getSlimeSlot(): Int {
         for(i in 36..44) {
             val stack = mc.thePlayer.inventoryContainer.getSlot(i).stack
             if (stack != null && stack.item != null) {
@@ -34,6 +62,15 @@ object PlayerUtils {
             }
         }
         return -1
+    }
+
+    /**
+     * Gets a potions ranking
+     *
+     * @return potion ranking
+     */
+    fun potionRanking(id: Int): Int {
+        return GOOD_POTIONS.getOrDefault(id, -1)
     }
 
     /**
@@ -89,7 +126,7 @@ object PlayerUtils {
             var off = 0
             while (off < mc.thePlayer.posY.toInt() + 2) {
                 val bb = mc.thePlayer.entityBoundingBox.offset(0.0, -off.toDouble(), 0.0)
-                if (mc.theWorld.getCollidingBoundingBoxes(mc.thePlayer, bb).isNotEmpty()) {
+                if (mc.theWorld.getCollidingBoundingBoxes(mc.thePlayer, bb)?.isNotEmpty() == true) {
                     return true
                 }
                 off += 2

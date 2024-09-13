@@ -4,6 +4,7 @@ import net.minecraft.entity.EntityLivingBase
 import net.minecraft.potion.Potion
 import net.minecraft.potion.PotionEffect
 import net.minusmc.minusbounce.event.AttackEvent
+import net.minusmc.minusbounce.event.KnockBackEvent
 import net.minusmc.minusbounce.event.PostVelocityEvent
 import net.minusmc.minusbounce.features.module.modules.combat.velocitys.VelocityMode
 import net.minusmc.minusbounce.utils.ClientUtils
@@ -64,5 +65,11 @@ class IntavePlusVelocity : VelocityMode("Intave") {
                 (notWhileSpeed.get() && effect.potionID == Potion.moveSpeed.getId()
                         || notWhileJumpBoost.get() && effect.potionID == Potion.jump.getId())
             }
+    }
+
+    override fun onKnockBack(event: KnockBackEvent) {
+        event.motion = if(mc.thePlayer.isSprinting) xzOnSprintHit.get().toDouble() else xzOnHit.get().toDouble()
+        event.full = false
+        event.reduceY = true
     }
 }

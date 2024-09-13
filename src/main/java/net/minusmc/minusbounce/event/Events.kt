@@ -60,6 +60,8 @@ class ClickBlockEvent(val clickedBlock: BlockPos?, val enumFacing: EnumFacing?) 
 
 class ClickEvent : CancellableEvent()
 
+class MotionEvent: Event()
+
 /**
  * Called when client is shutting down
  */
@@ -117,7 +119,7 @@ class KeyEvent(val key: Int) : Event()
 /**
  * Called before motion
  */
-class PreMotionEvent(var x: Double, var y: Double, var z: Double, var yaw: Float, var pitch: Float, var onGround: Boolean): CancellableEvent()
+class PreMotionEvent(var x: Double, var y: Double, var z: Double, var yaw: Float, var pitch: Float, var sprint: Boolean, var sneak: Boolean, var onGround: Boolean): CancellableEvent()
 
 /**
  * Called after motion

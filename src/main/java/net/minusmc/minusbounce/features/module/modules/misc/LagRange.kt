@@ -110,12 +110,17 @@ class LagRange : Module() {
         val positionEyes = mc.thePlayer.eyes
         val positionEyesServer = serverPosition + Vec3(0.0, mc.thePlayer.getEyeHeight().toDouble(), 0.0)
         val bestHitVec = RotationUtils.getBestHitVec(target)
+        val packet = e.packet
         canStart = e.eventType == EventState.SEND && positionEyes.distanceTo(bestHitVec) > 2.9 && positionEyes.distanceTo(bestHitVec) < positionEyesServer.distanceTo(bestHitVec)
 
         if(canStart){
             outboundPackets.add(TimedPacket(e.packet))
             e.isCancelled = true
             e.stopRunEvent = true
+        } else {
+            if(packet is C03PacketPlayer && packet.isMoving) {
+                render = Vec3(packet.x, packet.y, packet.z)
+            }
         }
     }
 

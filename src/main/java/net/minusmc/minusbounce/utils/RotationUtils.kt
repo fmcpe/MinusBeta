@@ -5,11 +5,11 @@
  */
 package net.minusmc.minusbounce.utils
 
-import com.google.common.base.Predicate
-import com.google.common.base.Predicates
 import net.minecraft.entity.Entity
 import net.minecraft.util.*
+import net.minusmc.minusbounce.MinusBounce
 import net.minusmc.minusbounce.event.*
+import net.minusmc.minusbounce.features.module.modules.world.Scaffold
 import net.minusmc.minusbounce.utils.RaycastUtils.IEntityFilter
 import net.minusmc.minusbounce.utils.RaycastUtils.raycastEntity
 import net.minusmc.minusbounce.utils.extensions.*
@@ -86,7 +86,14 @@ object RotationUtils : MinecraftInstance(), Listenable {
             keepLength--
 
             if (this.silent) {
-                targetRotation?.let {
+                var setting = true
+                val scaffold = MinusBounce.moduleManager[Scaffold::class.java]
+
+                if(scaffold?.state == true && scaffold.getValue("mode")?.get() == "None"){
+                    setting = false
+                }
+
+                if(setting) targetRotation?.let {
                     event.yaw = it.yaw
                     event.pitch = it.pitch
                 }
@@ -303,57 +310,6 @@ object RotationUtils : MinecraftInstance(), Listenable {
      */
     override fun handleEvents() = true
 
-    fun rayTrace(range: Double, rotations: Rotation): Entity? {
-        if (range == 3.0) {
-            return mc.objectMouseOver.entityHit
-        } else {
-            val vec3 = mc.thePlayer.getPositionEyes(1.0f)
-            val vec31 = getVectorForRotation(rotations)
-            val vec32 = vec3.addVector(vec31.xCoord * range, vec31.yCoord * range, vec31.zCoord * range)
-            var pointedEntity: Entity? = null
-            val f = 1.0f
-            val list: List<*> = mc.theWorld.getEntitiesInAABBexcluding(
-                mc.renderViewEntity,
-                mc.renderViewEntity.entityBoundingBox.addCoord(
-                    vec31.xCoord * range, vec31.yCoord * range, vec31.zCoord * range
-                ).expand(f.toDouble(), f.toDouble(), f.toDouble()),
-                Predicates.and(EntitySelectors.NOT_SPECTATING, Predicate { obj: Entity? -> obj!!.canBeCollidedWith() })
-            )
-            var d2 = range
-            val var11 = list.iterator()
-
-            while (true) {
-                while (var11.hasNext()) {
-                    val o = var11.next()!!
-                    val entity1 = o as Entity
-                    val f1 = entity1.collisionBorderSize
-                    val axisalignedbb = entity1.entityBoundingBox.expand(f1.toDouble(), f1.toDouble(), f1.toDouble())
-                    val movingobjectposition = axisalignedbb.calculateIntercept(vec3, vec32)
-                    if (axisalignedbb.isVecInside(vec3)) {
-                        if (d2 >= 0.0) {
-                            pointedEntity = entity1
-                            d2 = 0.0
-                        }
-                    } else if (movingobjectposition != null) {
-                        val d3 = vec3.distanceTo(movingobjectposition.hitVec)
-                        if (d3 < d2 || d2 == 0.0) {
-                            if (entity1 === mc.renderViewEntity.ridingEntity) {
-                                if (d2 == 0.0) {
-                                    pointedEntity = entity1
-                                }
-                            } else {
-                                pointedEntity = entity1
-                                d2 = d3
-                            }
-                        }
-                    }
-                }
-
-                return pointedEntity
-            }
-        }
-    }
-
     /**
      * Face block
      *
@@ -466,7 +422,7 @@ object RotationUtils : MinecraftInstance(), Listenable {
         )
     }
 
-    fun getRotations(ent: Entity, offsetX: Double, offsetY: Double, offsetZ: Double): Rotation {
+    private fun getRotations(ent: Entity, offsetX: Double, offsetY: Double, offsetZ: Double): Rotation {
         val eyeHeight = ent.eyeHeight.toDouble()
         var y = ent.posY
         val playerY = mc.thePlayer.posY + mc.thePlayer.getEyeHeight().toDouble()
@@ -504,7 +460,7 @@ object RotationUtils : MinecraftInstance(), Listenable {
     fun getRotationFromPosition(x: Double, y: Double, z: Double): Rotation {
         val xDiff = x - mc.thePlayer.posX
         val zDiff = z - mc.thePlayer.posZ
-        val yDiff = y - mc.thePlayer.posY - 1.2
+        val yDiff = y - mc.thePlayer.posY + 1.2
         val dist = MathHelper.sqrt_double(xDiff * xDiff + zDiff * zDiff).toDouble()
         val yaw = (atan2(zDiff, xDiff) * 180.0 / 3.141592653589793).toFloat() - 90.0f
         val pitch = (-(atan2(yDiff, dist) * 180.0 / 3.141592653589793)).toFloat()

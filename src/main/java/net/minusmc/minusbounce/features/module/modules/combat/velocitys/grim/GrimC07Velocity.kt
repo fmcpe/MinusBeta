@@ -8,13 +8,10 @@ import net.minecraft.network.play.server.S27PacketExplosion
 import net.minecraft.util.BlockPos
 import net.minecraft.util.EnumFacing
 import net.minusmc.minusbounce.event.PacketEvent
-import net.minusmc.minusbounce.event.PreMotionEvent
 import net.minusmc.minusbounce.features.module.modules.combat.velocitys.VelocityMode
-import net.minusmc.minusbounce.utils.PacketUtils
-import net.minusmc.minusbounce.utils.RotationUtils
 import net.minusmc.minusbounce.utils.timer.MSTimer
 
-class GrimC07Velocity : VelocityMode("GrimLatest") {
+class GrimC07Velocity : VelocityMode("GrimC07") {
     private var canCancel = false
 
     private var flagTimer = MSTimer()

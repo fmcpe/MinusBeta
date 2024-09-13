@@ -46,10 +46,9 @@ fun Entity.getVectorForRotation(pitch: Float, yaw: Float): Vec3 {
     val f4 = MathHelper.sin(-pitch * 0.017453292f)
     return Vec3((f2 * f3).toDouble(), f4.toDouble(), (f * f3).toDouble())
 }
-fun Entity.rayTraceCustom(blockReachDistance: Double, yaw: Float, pitch: Float): MovingObjectPosition? {
-    val mc = Minecraft.getMinecraft()
-    val vec3 = mc.thePlayer.getPositionEyes(1.0f)
-    val vec31 = mc.thePlayer.getVectorForRotation(pitch, yaw)
+fun EntityPlayerSP.rayTraceCustom(blockReachDistance: Float, ticks: Float, yaw: Float, pitch: Float): MovingObjectPosition? {
+    val vec3 = this.getPositionEyes(ticks)
+    val vec31 = this.getVectorForRotation(pitch, yaw)
     val vec32 = vec3.addVector(
         vec31.xCoord * blockReachDistance,
         vec31.yCoord * blockReachDistance,

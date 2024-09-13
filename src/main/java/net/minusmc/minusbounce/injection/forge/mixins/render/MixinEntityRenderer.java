@@ -6,6 +6,7 @@
 package net.minusmc.minusbounce.injection.forge.mixins.render;
 
 import com.google.common.base.Predicates;
+import net.fmcpe.viaforge.api.AnimationUtils;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
@@ -24,12 +25,15 @@ import net.minusmc.minusbounce.features.module.modules.client.NoHurtCam;
 import net.minusmc.minusbounce.features.module.modules.combat.KillAura;
 import net.minusmc.minusbounce.features.module.modules.render.CameraClip;
 import net.minusmc.minusbounce.features.module.modules.render.TargetMark;
+import net.minusmc.minusbounce.utils.MinecraftInstance;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.Slice;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
@@ -59,6 +63,12 @@ public abstract class MixinEntityRenderer {
 
     @Shadow
     private boolean cloudFog;
+
+    @Unique
+    private float height;
+
+    @Unique
+    private float previousHeight;
 
     @Inject(method = "renderStreamIndicator", at = @At("HEAD"), cancellable = true)
     private void cancelStreamIndicator(CallbackInfo ci) {
@@ -260,5 +270,22 @@ public abstract class MixinEntityRenderer {
             }
             this.mc.mcProfiler.endSection();
         }
+    }
+
+    @Redirect(method = "orientCamera", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/Entity;getEyeHeight()F"))
+    public float modifyEyeHeight(Entity entity, float partialTicks) {
+        return previousHeight + (height - previousHeight) * partialTicks;
+    }
+
+    @Inject(method = "updateRenderer", at = @At("HEAD"))
+    private void interpolateHeight(CallbackInfo ci) {
+        Entity entity = MinecraftInstance.mc.getRenderViewEntity();
+        float eyeHeight = entity.getEyeHeight();
+        previousHeight = height;
+        if (eyeHeight < height)
+            height = eyeHeight;
+        else
+            height += (eyeHeight - height) * 0.5f;
+        AnimationUtils.setAnimatedEyeHeight(height);
     }
 }

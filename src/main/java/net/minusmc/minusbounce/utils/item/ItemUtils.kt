@@ -5,21 +5,55 @@
  */
 package net.minusmc.minusbounce.utils.item
 
+import net.minecraft.block.*
 import net.minecraft.enchantment.Enchantment
-import net.minecraft.item.Item
-import net.minecraft.item.ItemStack
+import net.minecraft.init.Items
+import net.minecraft.item.*
 import net.minecraft.nbt.JsonToNBT
 import net.minecraft.util.ResourceLocation
-import java.util.*
+import net.minusmc.minusbounce.utils.PlayerUtils
 import java.util.regex.Pattern
 import kotlin.math.min
+
 
 /**
  * @author MCModding4K
  */
 object ItemUtils {
+    private val WHITELISTED_ITEMS = listOf(
+        Items.fishing_rod,
+        Items.water_bucket,
+        Items.bucket,
+        Items.arrow,
+        Items.bow,
+        Items.snowball,
+        Items.egg,
+        Items.ender_pearl
+    )
+
+    fun useful(stack: ItemStack): Boolean {
+        val item = stack.item
+
+        if (item is ItemPotion) {
+            return ItemPotion.isSplash(stack.metadata) && PlayerUtils.goodPotion(item.getEffects(stack)[0].potionID)
+        }
+
+        if (item is ItemBlock) {
+            val block: Block = item.getBlock()
+            if (block is BlockGlass || block is BlockStainedGlass || (block.isFullBlock && !(block is BlockTNT || block is BlockSlime || block is BlockFalling))) {
+                return true
+            }
+        }
+
+        return item is ItemSword ||
+                item is ItemTool ||
+                item is ItemArmor ||
+                item is ItemFood ||
+                WHITELISTED_ITEMS.contains(item)
+    }
+
     /**
-     * Allows you to create a item using the item json
+     * Allows you to create an item using the item json
      *
      * @param itemArguments arguments of item
      * @return created item

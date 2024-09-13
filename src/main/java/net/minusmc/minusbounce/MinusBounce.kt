@@ -5,7 +5,19 @@
  */
 package net.minusmc.minusbounce
 
+import com.viaversion.viaversion.api.connection.UserConnection
+import net.fmcpe.viaforge.ProtocolBase
+import net.fmcpe.viaforge.ProtocolMod
+import net.fmcpe.viaforge.api.McUpdatesHandler
+import net.fmcpe.viaforge.api.PacketManager
+import net.fmcpe.viaforge.inventorytabs.EnchantItems
+import net.fmcpe.viaforge.inventorytabs.ModItems
+import net.fmcpe.viaforge.inventorytabs.StackItems
+import net.fmcpe.viaforge.packets.C1APacketSwapHand
+import net.fmcpe.viaforge.packets.C1BPacketTeleportConfirm
+import net.fmcpe.viaforge.packets.PacketHandler
 import net.minecraft.client.gui.GuiScreen
+import net.minecraft.network.Packet
 import net.minecraft.util.ResourceLocation
 import net.minusmc.minusbounce.event.ClientShutdownEvent
 import net.minusmc.minusbounce.event.EventManager
@@ -47,6 +59,7 @@ object MinusBounce {
     lateinit var pluginManager: PluginManager
     lateinit var clickGui: DropDownClickGui
     lateinit var sessionManager: SessionManager
+    lateinit var viaUser: UserConnection
 
     // HUD & ClickGUI
     lateinit var hud: HUD
@@ -70,6 +83,7 @@ object MinusBounce {
 
         ClientUtils.logger.info("Starting $CLIENT_NAME")
         ClassUtils.initCacheClass()
+        ProtocolBase.init(ProtocolMod.PLATFORM)
         lastTick = System.currentTimeMillis()
 
         fileManager = FileManager()
@@ -87,9 +101,16 @@ object MinusBounce {
         eventManager.registerListener(MacroManager)
         eventManager.registerListener(BadPacketUtils)
         eventManager.registerListener(MovementUtils)
+        eventManager.registerListener(SelectorDetectionComponent)
         eventManager.registerListener(combatManager)
         eventManager.registerListener(sessionManager)
         eventManager.registerListener(ClickHandle)
+        eventManager.registerListener(PacketManager())
+        eventManager.registerListener(McUpdatesHandler())
+
+        ModItems()
+        StackItems()
+        EnchantItems()
 
         commandManager = CommandManager()
         Fonts.loadFonts()
@@ -128,6 +149,17 @@ object MinusBounce {
 
         // Set is starting status
         isStarting = false
+    }
+
+    @JvmStatic
+    fun handlePacket(packet: Packet<*>): Boolean {
+        when (packet) {
+            is C1APacketSwapHand -> PacketHandler.handlePacketSwapHand(packet)
+            is C1BPacketTeleportConfirm -> PacketHandler.handlePacketTeleportConfirm(packet)
+            else -> return false
+        }
+
+        return true
     }
 
     /**

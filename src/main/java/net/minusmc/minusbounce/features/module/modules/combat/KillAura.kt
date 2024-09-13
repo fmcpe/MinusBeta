@@ -28,6 +28,8 @@ import net.minusmc.minusbounce.utils.ClassUtils
 import net.minusmc.minusbounce.utils.EntityUtils.isSelected
 import net.minusmc.minusbounce.utils.Rotation
 import net.minusmc.minusbounce.utils.RotationUtils
+import net.minusmc.minusbounce.utils.RotationUtils.isVisible
+import net.minusmc.minusbounce.utils.extensions.eyes
 import net.minusmc.minusbounce.utils.extensions.getDistanceToEntityBox
 import net.minusmc.minusbounce.utils.extensions.getNearestPointBB
 import net.minusmc.minusbounce.utils.misc.RandomUtils
@@ -75,7 +77,7 @@ class KillAura : Module() {
 
     //Target / Modes
     private val priorityValue = ListValue("Priority", arrayOf("Health", "Distance", "HurtResistance", "HurtTime", "Armor"), "Distance")
-    val targetModeValue = ListValue("TargetMode", arrayOf("Single", "Switch"), "Switch")
+    val targetModeValue = ListValue("TargetMode", arrayOf("Single", "Switch", "FastSwitch"), "Switch")
     private val switchDelayValue = IntegerValue("SwitchDelay", 1000, 1, 2000, "ms") {
         targetModeValue.get().equals("switch", true)
     }
@@ -130,7 +132,7 @@ class KillAura : Module() {
     private var attackDelay = 0L
     private val switchTimer = MSTimer()
     var clicks = 0
-    var swing = false
+    private var swing = false
     private var attackTickTimes = mutableListOf<Pair<MovingObjectPosition, Int>>()
 
     // Fake block status
@@ -162,10 +164,8 @@ class KillAura : Module() {
 
     @EventTarget
     fun onUpdate(event: PreUpdateEvent){
-        val target = target ?: return
-
         RotationUtils.setRotations(
-            rotation = getTargetRotation(target) ?: return,
+            rotation = getTargetRotation(target ?: return) ?: return,
             speed = RandomUtils.nextFloat(turnSpeed.getMinValue(), turnSpeed.getMaxValue()),
             fixType = when (movementCorrection.get().lowercase()) {
                 "normal" -> MovementFixType.NORMAL
@@ -175,18 +175,24 @@ class KillAura : Module() {
             silent = silentRotationValue.get()
         )
 
+        val target = (if(throughWall.get()) mc.objectMouseOver.entityHit else target) ?: return
+
+        if(target != this.target || mc.objectMouseOver == null || mc.objectMouseOver.typeOfHit != MovingObjectPosition.MovingObjectType.ENTITY){
+            return
+        }
+        
         when(clickMode.get().lowercase()) {
             "normal", "normalnoise" -> {
                 if (nextClickTime > 0L) {
                     if (System.currentTimeMillis() > nextClickTime) {
-                        runAttack()
+                        runAttack(target)
                         delay()
                     }
                 } else {
                     delay()
                 }
             }
-            else -> repeat(clicks) { runAttack(); clicks-- }
+            else -> repeat(clicks) { runAttack(target); clicks-- }
         }
     }
 
@@ -373,17 +379,11 @@ class KillAura : Module() {
         GL11.glPopMatrix()
     }
 
-    private fun runAttack() {
-        if(BadPacketUtils.bad(slot = false, attack = true, swing = true, block = true, inventory = true) &&
-            (autoBlockModeValue.get().equals("none", true)
-            || autoBlockModeValue.get().equals("reblock", true))
+    private fun runAttack(target: Entity) {
+        if((BadPacketUtils.bad(slot = false, attack = true, swing = true, block = true, inventory = true) &&
+                    (autoBlockModeValue.get().equals("none", true)
+                            || autoBlockModeValue.get().equals("reblock", true))) || (mc.thePlayer.ticksSprint <= 1 && mc.thePlayer.isSprinting)
         ){
-            return
-        }
-        
-        val target = mc.objectMouseOver.entityHit ?: return
-
-        if(target != this.target || mc.objectMouseOver == null || mc.objectMouseOver.typeOfHit != MovingObjectPosition.MovingObjectType.ENTITY){
             return
         }
 
@@ -398,9 +398,8 @@ class KillAura : Module() {
         }
 
         mc.leftClickCounter = 10
-
         mc.clickMouse()
-
+        
         /* AutoBlock */
         if (canBlock && !blockingStatus && mc.thePlayer.getDistanceToEntityBox(target) <= autoBlockRangeValue.get() && !autoBlockModeValue.get().equals("none", true)) {
             if(packetSend && noBadPackets.get()){
@@ -438,24 +437,44 @@ class KillAura : Module() {
         discoveredEntities.clear()
 
         for (entity in mc.theWorld.loadedEntityList) {
-            if (entity !is EntityLivingBase || !isSelected(entity, true) || (targetModeValue.get().equals("switch", true) && prevTargetEntities.contains(entity.entityId))) {
+            if (
+                entity !is EntityLivingBase ||
+                !isSelected(entity, true) ||
+                (targetModeValue.get().equals("switch", true) && prevTargetEntities.contains(entity.entityId)) ||
+                mc.thePlayer.getDistanceToEntityBox(entity) > rotationRangeValue.get()
+            ) {
                 continue
             }
 
-            if (mc.thePlayer.getDistanceToEntityBox(entity) <= rotationRangeValue.get()) {
+            if(throughWall.get() || isVisible(entity.positionVector) || isVisible(getNearestPointBB(mc.thePlayer.eyes, entity.entityBoundingBox)))
                 discoveredEntities.add(entity)
-            }
         }
 
-        when (priorityValue.get().lowercase()) {
-            "health" -> discoveredEntities.minByOrNull { it.health + it.absorptionAmount }
-            "hurtresistance" -> discoveredEntities.minByOrNull { it.hurtResistantTime }
-            "hurttime" -> discoveredEntities.minByOrNull { it.hurtTime }
-            "armor" -> discoveredEntities.minByOrNull { it.totalArmorValue }
-            else -> discoveredEntities.minByOrNull { mc.thePlayer.getDistanceToEntityBox(it) }
-        }?.let {
-            target = it
-            return
+        when (targetModeValue.get().lowercase()){
+            "single", "switch" -> {
+                when (priorityValue.get().lowercase()) {
+                    "health" -> discoveredEntities.minByOrNull { it.health + it.absorptionAmount }
+                    "hurtresistance" -> discoveredEntities.minByOrNull { it.hurtResistantTime }
+                    "hurttime" -> discoveredEntities.minByOrNull { it.hurtTime }
+                    "armor" -> discoveredEntities.minByOrNull { it.totalArmorValue }
+                    else -> discoveredEntities.minByOrNull { mc.thePlayer.getDistanceToEntityBox(it) }
+                }?.let {
+                    target = it
+                    return
+                }
+            }
+            else -> {
+                discoveredEntities.minByOrNull {
+                    val distance = mc.thePlayer.getDistanceToEntityBox(it)
+                    val health = it.health + it.absorptionAmount
+                    val hurtTime = it.hurtTime.toFloat()
+                    val armor = it.totalArmorValue.toFloat()
+                    sqrt(distance.pow(2) + health.pow(2) + hurtTime.pow(2) + armor.pow(2))
+                }?.let {
+                    target = it
+                    return
+                }
+            }
         }
 
         target = null
@@ -469,15 +488,7 @@ class KillAura : Module() {
     private fun getTargetRotation(entity: Entity): Rotation? {
         val boundingBox = entity.entityBoundingBox
 
-        /* We don't override. So Vec3(0.0, 0.0, 0.0) is a good solution */
-        val rotation = RotationUtils.searchCenter(
-            entity.entityBoundingBox,
-            outborder.get(),
-            doRandom.get(),
-            predict.get(),
-            throughWall.get()
-        )?.rotation
-
+        val rotation = RotationUtils.searchCenter(entity.entityBoundingBox, outborder.get(), doRandom.get(), predict.get(), throughWall.get())?.rotation
         return when (rotations.get().lowercase()) {
             /* Old BackTrack Rotation Function is getting vecRotation and DO NOTHING with it. then calculate from vec (input) */
             "backtrack" -> RotationUtils.toRotation(RotationUtils.getCenter(entity.entityBoundingBox))

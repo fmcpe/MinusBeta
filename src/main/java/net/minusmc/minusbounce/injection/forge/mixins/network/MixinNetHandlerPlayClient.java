@@ -6,6 +6,7 @@
 package net.minusmc.minusbounce.injection.forge.mixins.network;
 
 import io.netty.buffer.Unpooled;
+import net.fmcpe.viaforge.api.ProtocolFixer;
 import net.minecraft.client.ClientBrandRetriever;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
@@ -25,6 +26,7 @@ import net.minecraft.network.NetworkManager;
 import net.minecraft.network.PacketBuffer;
 import net.minecraft.network.PacketThreadUtil;
 import net.minecraft.network.play.client.C03PacketPlayer;
+import net.minecraft.network.play.client.C0FPacketConfirmTransaction;
 import net.minecraft.network.play.client.C17PacketCustomPayload;
 import net.minecraft.network.play.client.C19PacketResourcePackStatus;
 import net.minecraft.network.play.server.*;
@@ -189,6 +191,18 @@ public abstract class MixinNetHandlerPlayClient {
         callbackInfo.cancel();
     }
 
+    /**
+     * @author FlorianMichael
+     * @reason 1.17+ Transaction fix
+     */
+    @Inject(method = "handleConfirmTransaction", at = @At(value = "INVOKE", target = "Lnet/minecraft/network/PacketThreadUtil;checkThreadAndEnqueue(Lnet/minecraft/network/Packet;Lnet/minecraft/network/INetHandler;Lnet/minecraft/util/IThreadListener;)V", shift = At.Shift.AFTER), cancellable=true)
+    private void handleConfirmTransaction(S32PacketConfirmTransaction packetIn, CallbackInfo ci) {
+        if (ProtocolFixer.newerThanOrEqualsTo1_17()) {
+            MinecraftInstance.mc.getNetHandler().addToSendQueue(new C0FPacketConfirmTransaction(packetIn.getWindowId(), (short) 0, false));
+            ci.cancel();
+        }
+    }
+
     @Inject(method = "handleEntityMovement", at = @At(value = "FIELD", target = "Lnet/minecraft/entity/Entity;onGround:Z"))
     private void handleEntityMovementEvent(S14PacketEntity packetIn, final CallbackInfo callbackInfo) {
         final Entity entity = packetIn.getEntity(this.clientWorldController);
@@ -275,13 +289,13 @@ public abstract class MixinNetHandlerPlayClient {
     }
 
     @Inject(method = "handleEntityVelocity", at = @At("RETURN"))
-    public void onPostHandleEntityVelocity(S12PacketEntityVelocity packet, CallbackInfo ci) {
+    public void onPostHandle(S12PacketEntityVelocity p_handleEntityVelocity_1_, CallbackInfo ci){
         if(MinecraftInstance.mc.thePlayer == null ||
                 MinecraftInstance.mc.theWorld == null) {
             return;
         }
 
-        if (packet.getEntityID() == MinecraftInstance.mc.thePlayer.getEntityId()) {
+        if (p_handleEntityVelocity_1_.getEntityID() == MinecraftInstance.mc.thePlayer.getEntityId()) {
             MinusBounce.eventManager.callEvent(new PostVelocityEvent());
         }
     }

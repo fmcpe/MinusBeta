@@ -1,39 +1,45 @@
 package net.minusmc.minusbounce.features.module.modules.movement.speeds.grim
 
+import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityLivingBase
-import net.minecraft.entity.item.EntityArmorStand
 import net.minusmc.minusbounce.event.PreMotionEvent
 import net.minusmc.minusbounce.features.module.modules.movement.speeds.SpeedMode
 import net.minusmc.minusbounce.features.module.modules.movement.speeds.SpeedType
 import net.minusmc.minusbounce.utils.MovementUtils
 import net.minusmc.minusbounce.value.BoolValue
-import net.minusmc.minusbounce.value.FloatValue
+import net.minusmc.minusbounce.value.IntegerValue
 import kotlin.math.cos
 import kotlin.math.sin
+
 
 class GrimCollide: SpeedMode("GrimCollide", SpeedType.GRIM) {
 
     private val jump = BoolValue("Jump", false)
-    private val boostSpeed = FloatValue("BoostSpeed", 0.01f, 0.01f, 0.08f)
-
-    override fun onUpdate() {
-        if (MovementUtils.isMoving && mc.thePlayer.onGround && !mc.gameSettings.keyBindJump.pressed && jump.get())
-            mc.thePlayer.jump()
-    }
+    private val boostSpeed = IntegerValue("BoostSpeed", 4, 0, 10)
 
     override fun onPreMotion(event: PreMotionEvent) {
         if (!MovementUtils.isMoving)
             return
 
-        val playerBox = mc.thePlayer.entityBoundingBox.expand(1.0, 1.0, 1.0)
+        mc.thePlayer.movementInput.jump = mc.thePlayer.onGround && jump.get()
 
-        val collisions = mc.theWorld.loadedEntityList.count {
-            it != mc.thePlayer && it is EntityLivingBase &&
-                    it !is EntityArmorStand && playerBox.intersectsWith(it.entityBoundingBox)
+        var collisions = 0
+        val grimPlayerBox = mc.thePlayer.entityBoundingBox.expand(1.0, 1.0, 1.0)
+        for (entity in mc.theWorld.loadedEntityList) {
+            if (canCauseSpeed(entity) && (grimPlayerBox.intersectsWith(entity.entityBoundingBox))) {
+                collisions += 1
+            }
         }
-
-        val yaw = MovementUtils.direction()
-        val boost = boostSpeed.get().toDouble() * collisions
+        val yaw = Math.toRadians(moveYaw())
+        val boost = boostSpeed.get() / 100 * collisions
         mc.thePlayer.addVelocity(-sin(yaw) * boost, 0.0, cos(yaw) * boost)
+    }
+
+    private fun canCauseSpeed(entity: Entity): Boolean {
+        return entity != mc.thePlayer && entity is EntityLivingBase
+    }
+
+    private fun moveYaw(): Double {
+        return (MovementUtils.direction() * 180f / Math.PI)
     }
 }

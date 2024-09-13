@@ -5,8 +5,12 @@
  */
 package net.minusmc.minusbounce.injection.forge.mixins.gui;
 
+import com.viaversion.viaversion.api.protocol.version.ProtocolVersion;
+import net.fmcpe.viaforge.ProtocolBase;
+import net.fmcpe.viaforge.api.ProtocolSelector;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiMultiplayer;
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.ServerSelectionList;
 import net.minecraft.client.resources.I18n;
 import net.minusmc.minusbounce.ui.elements.ToolDropdown;
@@ -37,6 +41,7 @@ public abstract class MixinGuiMultiplayer extends MixinGuiScreen {
     @Inject(method = "initGui", at = @At("RETURN"))
     private void initGui(CallbackInfo callbackInfo) {
         buttonList.add(toolButton = new GuiButton(997, 5, 8, 138, 20, "Tools"));
+        buttonList.add(new GuiButton(1151, 4, height - 24, 68, 20, "Protocol"));
     }
 
     /**
@@ -76,6 +81,12 @@ public abstract class MixinGuiMultiplayer extends MixinGuiScreen {
         ToolDropdown.handleDraw(toolButton);
     }
 
+    @Inject(method = "drawScreen", at = @At("RETURN"))
+    private void drawScreen(CallbackInfo callbackInfo) {
+        final ProtocolVersion version = ProtocolBase.getManager().targetVersion;
+        this.fontRendererObj.drawStringWithShadow("§7Current Protocol: §d" + version.getName(), 6f, height - 35, 0xffffff);
+    }
+
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
     private void injectToolClick(int mouseX, int mouseY, int mouseButton, CallbackInfo callbackInfo) {
         if (mouseButton == 0)
@@ -85,7 +96,10 @@ public abstract class MixinGuiMultiplayer extends MixinGuiScreen {
 
     @Inject(method = "actionPerformed", at = @At("HEAD"))
     private void actionPerformed(GuiButton button, CallbackInfo callbackInfo) {
-        if (button.id == 997)
+        if (button.id == 997) {
             ToolDropdown.toggleState();
+        } else if (button.id == 1151) {
+            mc.displayGuiScreen(new ProtocolSelector((GuiScreen) (Object) this));
+        }
     }
 }

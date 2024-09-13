@@ -104,6 +104,15 @@
     "resources.MixinSkinManager",
     "world.MixinWorld",
     "world.MixinWorldClient",
-    "util.MixinTimer"
+    "util.MixinTimer",
+    "block.MixinBlockLadder",
+    "block.MixinBlockLilyPad",
+    "gui.MixinGuiOverlayDebug",
+    "item.MixinItemBlock",
+    "network.MixinGuiConnecting_1",
+    "network.MixinNetworkManager$5",
+    "network.MixinServerData",
+    "packets.MixinC0FPacketConfirmTransaction",
+    "packets.MixinS32PacketConfirmTransaction"
   ]
 }
