@@ -33,7 +33,7 @@ object Blink : Module() {
     private val pulseDelay = IntegerValue("Delay", 1000, 0, 10000, "ms") { pulse.get() }
     private val initialPosition = BoolValue("ShowInitialPosition", true)
     private val overlay = BoolValue("Overlay", false)
-    
+
     val blinkedPackets = ArrayList<Packet<*>>()
     private var startTime: Long = -1
     private var pos: Vec3? = null

@@ -38,6 +38,9 @@ class BackTrack : Module() {
     val packets = mutableListOf<Packet<*>>()
     val timer = MSTimer()
 
+    override val tag: String
+        get() = ("[" + delay.get() + " ms]")
+
     override fun onEnable() {
         mc.thePlayer ?: return
         mc.theWorld ?: return

@@ -106,6 +106,23 @@ object InventoryUtils : MinecraftInstance(), Listenable {
         return false
     }
 
+    fun findFireballInHotbar(): Int? {
+        val player = mc.thePlayer ?: return null
+        val inventory = player.openContainer
+
+        return (36..44).firstOrNull {
+            val stack = inventory.getSlot(it).stack ?: return@firstOrNull false
+            stack.item is ItemFireball && stack.stackSize > 0
+        }
+    }
+
+    fun findFireballSlot(): Int? {
+        return (0..8).firstOrNull {
+            val stack = Companion.mc.thePlayer.inventory.getStackInSlot(it)
+            stack?.item is ItemFireball
+        }
+    }
+
     fun findBlockInHotbar(): Int? {
         val player = mc.thePlayer ?: return null
         val inventory = player.openContainer
