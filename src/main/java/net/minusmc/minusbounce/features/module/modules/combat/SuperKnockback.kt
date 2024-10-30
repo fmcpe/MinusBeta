@@ -25,6 +25,9 @@ class SuperKnockback : Module() {
     private val mode = ListValue("Mode", arrayOf("Legit", "LegitFast", "LessPacket", "Packet", "DoublePacket"), "Legit")
     private val intelligent = BoolValue("Intelligent", false)
 
+    override val tag: String
+        get() = (mode.get())
+
     @EventTarget
     fun onEventTick(e: EventTick) {
         val mm = MinusBounce.moduleManager
