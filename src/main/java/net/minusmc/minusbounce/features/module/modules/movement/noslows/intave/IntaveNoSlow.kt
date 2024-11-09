@@ -8,6 +8,7 @@ import net.minecraft.util.EnumFacing
 import net.minusmc.minusbounce.event.PreMotionEvent
 import net.minusmc.minusbounce.features.module.modules.movement.noslows.NoSlowMode
 import net.minusmc.minusbounce.utils.MovementUtils
+import net.minusmc.minusbounce.utils.extensions.eyes
 
 
 class Intave: NoSlowMode("Intave") {
@@ -22,7 +23,7 @@ class Intave: NoSlowMode("Intave") {
         if(MovementUtils.isMoving){
             if(noslow.isEating){
                 if(!lastUsingItem){
-                    mc.netHandler.addToSendQueue(C07PacketPlayerDigging(C07PacketPlayerDigging.Action.RELEASE_USE_ITEM, BlockPos.ORIGIN, EnumFacing.UP))
+                    mc.netHandler.addToSendQueue(C07PacketPlayerDigging(C07PacketPlayerDigging.Action.RELEASE_USE_ITEM, BlockPos(mc.thePlayer.eyes), EnumFacing.DOWN))
                 }
             } else {
                 if(noslow.heldItem?.item is ItemSword){
