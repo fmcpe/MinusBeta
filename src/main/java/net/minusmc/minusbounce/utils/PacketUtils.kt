@@ -5,9 +5,10 @@
  */
 package net.minusmc.minusbounce.utils
 
-import net.minecraft.network.*
-import net.minecraft.network.play.client.C03PacketPlayer.C04PacketPlayerPosition
-import net.minecraft.network.play.client.C03PacketPlayer.C06PacketPlayerPosLook
+import net.minecraft.network.INetHandler
+import net.minecraft.network.NetworkManager
+import net.minecraft.network.Packet
+import net.minecraft.network.play.INetHandlerPlayServer
 import net.minecraft.network.play.server.S32PacketConfirmTransaction
 import net.minusmc.minusbounce.event.*
 import net.minusmc.minusbounce.utils.timer.MSTimer
@@ -42,6 +43,16 @@ object PacketUtils : MinecraftInstance(), Listenable {
     @JvmStatic
     fun sendPacketNoEvent(packet: Packet<*>) {
         sendPacket(packet, false)
+    }
+
+    fun receivePacketNoEvent(packet: Packet<INetHandlerPlayServer>) {
+        val netManager = mc.netHandler?.networkManager ?: return
+
+        if (netManager.channel.isOpen) {
+            try {
+                packet.processPacket(netManager.packetListener as INetHandlerPlayServer)
+            } catch (_: Exception) {}
+        }
     }
 
     @JvmStatic
