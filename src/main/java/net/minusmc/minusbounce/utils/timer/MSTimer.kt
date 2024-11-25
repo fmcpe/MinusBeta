@@ -36,6 +36,9 @@ class MSTimer {
         return delay + time - System.currentTimeMillis()
     }
 
+    val reachedTime: Long
+        get() = System.currentTimeMillis() - time
+    
     fun reset() {
         time = System.currentTimeMillis()
     }
