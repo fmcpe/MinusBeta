@@ -54,10 +54,8 @@ class SetBackFly : Module() {
         }
         blinkedPackets.clear()
         blinkStartPos = null
-        flyActive = false
-        pulseTimer.reset()
-        groundTimer.reset()
     }
+
 
     @EventTarget
     fun onPacket(event: PacketEvent) {
@@ -88,36 +86,32 @@ class SetBackFly : Module() {
     fun onUpdate(event: UpdateEvent) {
         if (mc.thePlayer == null || mc.theWorld == null) return
 
-        // Handle Vanilla Kick Bypass
         handleVanillaKickBypass()
+        mc.thePlayer.capabilities.isFlying = true
 
         if (blinkStartPos == null) {
             blinkStartPos = Vec3(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ)
         }
 
+        val currentPos = Vec3(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ)
+        val distance = calculateDistance(blinkStartPos!!, currentPos)
+
+        // Logic phát xung Blink mỗi 300ms
         if (pulseTimer.hasTimePassed(pulseDelay)) {
-            if (flyActive) {
-                // Reset fly and blink packets
-                reset()
-                flyActive = false
-            } else {
-                // Calculate fly-backward and downward positions
-                val currentPos = Vec3(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ)
-                val distance = calculateDistance(blinkStartPos!!, currentPos)
+            reset() // Gửi tất cả gói tin Blink đã lưu
+            blinkStartPos = currentPos // Cập nhật vị trí bắt đầu Blink mới
+            pulseTimer.reset() // Reset lại bộ đếm thời gian cho chu kỳ tiếp theo
+        }
 
-                if (distance >= 15) {
-                    // Fly backward 15 blocks
-                    flyBackward(15.0)
-                    // Shift down 8 blocks
-                    flyDownward(8.0)
+        if (distance >= 15) {
+            flyBackward(15.0)
+            flyDownward(8.0)
 
-                    // Activate fly
-                    flyActive = true
-                }
-            }
-            pulseTimer.reset()
+            state = false
         }
     }
+
+
 
     private fun handleVanillaKickBypass() {
         if (!groundTimer.hasTimePassed(1000)) return
