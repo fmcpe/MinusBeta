@@ -1,11 +1,24 @@
 
 <img width="100" height="100" align="left" style="float: left; margin: 0 10px 0 0;" alt="lb++" src="src/main/resources/assets/minecraft/minusbounce/big.png">
 
-# MinusBounce
+# MinusBeta (MinusBounce unreleased)
 A free forge hacked-client for Minecraft supporting version 1.8.9
 
 Website: https://minusbounce.lol \
 Discord: https://discord.minusbounce.lol
+
+### Notes:
+- MinusBounce có 2 phiên bản, bao gồm MinusBounce (đã release và discontinued từ trước) và MinusBeta (một phiên bản khác của MinusBounce, bao gồm những bypass, module mới)
+- Khi mình mới vào MinusMC, mình đã có dự định đối với MinusBeta là như vậy. Nhưng vì những chuyện xảy ra sau đó, MinusBounce đã discontinued và đã removed khỏi GitHub. Cũng vì vậy mà MinusBeta cũng discontinued ngay sau đó.
+- Mặc dù client chưa được tốt, đôi khi còn nhiều bugs, flags, nhưng đấy là những thứ tốt nhất mình có thể làm được trong khoảng thời gian đấy. Source cũng đã clean, nhìn cũng không đến nỗi mù mắt. Không GPT code, hoàn toàn do chính tay mình tạo nên.
+- Cũng là vì do bản kế nhiệm của MinusBounce - MinusBounce Reborn. Source quá nhiều lỗi, đa số là GPT code, cũng đã broke luôn source cũ (i think so). Nên đối với người tạo ra, không khác gì 1 phát đấm thẳng vào mồm người đó.
+- Những ngày phát triển phiên bản này, là những ngày vui vẻ nhất trong những năm mình học code gradle, java và kotlin. Khi mình cố gắng học thêm cách làm bypass, module, có khi thức đến sáng chỉ để vào server test anticheat. Một ngày gần 20 commits, khá là mệt nhưng khi thấy client có thể hvh, bypass scaffold,... Thì đấy là niềm vui lớn nhất, mang thêm nhiều động lực để mình tiếp tục. Nhưng khi nhìn thấy tâm huyết của chính mình, cùng với đó những đoạn code mình tạo ra được patch sơ sài bởi GPT, không khác gì nồi cám lợn, trong thân tâm mình cảm thấy rất bực bội.
+- Nếu những người phát triển MinusBounce Reborn có đọc được đoạn này, hãy học code 1 cách cẩn thận. Đừng để tâm huyết của mình đi theo là những dòng code do chatGPT viết ra. Hãy clean, refactor nó, phát triển nó thành một phiên bản tốt hơn bây giờ, chứ không phải chỉ copy và paste từ promp ra. Nó không mang lại điều gì cả, thậm chí còn gây tức điên mình lên. Nếu có thể làm được, đấy là niềm vui còn lớn hơn cả lúc mình phát triển phiên bản này.
+- MinusBeta bao gồm những bypass mà mình chưa merge vào bên git main, cũng là những thứ mình bỏ công sức ra để làm, mặc dù logic đã cũ, đôi khi còn skid, nhưng mình đã cố gắng làm để nó được tốt nhất.
+- Mang nhiều hi vọng của mình, cũng là vì source code đã leaked ra ngoài và được continue bởi (MinusBounce-Reborn)[https://github.com/MinusMC/MinusBounce-Reborn]. Vì những lí do trên, mình quyết định rằng là sẽ public source code chuẩn của MinusBeta.
+- Nên, hãy coi MinusBeta là phiên bản cuối cùng của MinusBouce, là di sản mà mình để lại của MinusBounce.
+- MinusBeta - Di sản cuối cùng của MinusBounce (by fmcpe).
+- Best regards, fmcpe (14/8/25).
 
 ### Issues
 If you notice any bugs or missing features, you can let us know by opening an issue [here](https://github.com/MinusMCNetwork/MinusBounce/issues).
