@@ -12,7 +12,7 @@ jobs:
       packages: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Java setup
         uses: actions/setup-java@v2
         with:
@@ -40,7 +40,7 @@ jobs:
           cd build/libs
           zip minusbounce.zip *
       - name: Upload artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          name: MinutBau
+          name: MinutBeta
           path: build/libs/minusbounce.zip
